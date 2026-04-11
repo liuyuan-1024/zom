@@ -1,0 +1,7 @@
+[package]
+name = "zom-input"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+zom-core = { workspace = true }

@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "crates/zom-core",
+    "crates/zom-text",
+    "crates/zom-input",
+    "crates/zom-editor",
+    "crates/zom-workspace",
+    "crates/zom-gpui",
+    "crates/zom-app",
+    "apps/zom-desktop",
+]
+
+# 可选：默认构建哪个（开发时很方便）
+default-members = [
+    "apps/zom-desktop"
+]
+
+# 统一依赖版本（非常重要，避免版本漂移）
+[workspace.dependencies]
+# ===== 核心层（最底层）=====
+zom-core = { path = "crates/zom-core" }
+# ===== 文本层 =====
+zom-text = { path = "crates/zom-text" }
+# ===== 输入层 =====
+zom-input = { path = "crates/zom-input" }
+# ===== 领域层 =====
+zom-editor = { path = "crates/zom-editor" }
+zom-workspace = { path = "crates/zom-workspace" }
+# ===== 应用层 =====
+zom-app = { path = "crates/zom-app" }
+# ===== UI 适配层 =====
+zom-gpui = { path = "crates/zom-gpui" }
+# ===== 第三方依赖 =====
+
+
+# ===== 统一 lint =====
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+todo = "warn"
+dbg_macro = "warn"
