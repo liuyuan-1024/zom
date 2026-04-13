@@ -1,8 +1,50 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BufferId(pub u64);
+use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct PaneId(pub u64);
+/// 定义共享 ID 新类型，避免业务层到处传裸 `u64`。
+macro_rules! define_id {
+    ($name:ident, $doc:literal) => {
+        #[doc = $doc]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub struct $name(pub u64);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WorkspaceId(pub u64);
+        impl $name {
+            /// 用底层整数值构造一个强类型 ID。
+            pub fn new(value: u64) -> Self {
+                Self(value)
+            }
+
+            /// 取出底层整数值。
+            pub fn get(self) -> u64 {
+                self.0
+            }
+        }
+
+        impl From<u64> for $name {
+            fn from(value: u64) -> Self {
+                Self::new(value)
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+    };
+}
+
+define_id!(BufferId, "文本缓冲区的标识符。");
+define_id!(PaneId, "面板的标识符。");
+define_id!(WorkspaceId, "工作区的标识符。");
+
+#[cfg(test)]
+mod tests {
+    use super::{BufferId, PaneId, WorkspaceId};
+
+    #[test]
+    fn ids_expose_their_underlying_value() {
+        assert_eq!(BufferId::new(7).get(), 7);
+        assert_eq!(PaneId::from(9).to_string(), "9");
+        assert_eq!(WorkspaceId::new(11).get(), 11);
+    }
+}

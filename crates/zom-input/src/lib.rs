@@ -28,7 +28,10 @@ impl Keymap {
             }
         }
 
-        self.global.get(input).cloned().unwrap_or(InputResolution::Noop)
+        self.global
+            .get(input)
+            .cloned()
+            .unwrap_or(InputResolution::Noop)
     }
 }
 
@@ -38,7 +41,7 @@ pub fn command(command: Command) -> InputResolution {
 
 #[cfg(test)]
 mod tests {
-    use super::{command, Keymap};
+    use super::{Keymap, command};
     use zom_core::{
         EditorCommand, EditorInputContext, FocusTarget, InputContext, InputResolution, KeyCode,
         Keystroke, Modifiers,
@@ -85,6 +88,9 @@ mod tests {
             modifiers: Modifiers::default(),
         };
 
-        assert_eq!(keymap.resolve(&key, &editor_context()), InputResolution::Noop);
+        assert_eq!(
+            keymap.resolve(&key, &editor_context()),
+            InputResolution::Noop
+        );
     }
 }
