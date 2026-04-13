@@ -1,15 +1,3 @@
-//! 命令协议层。
-//! 这里表达的是“用户想做什么”，而不是“具体如何执行”。
-
-/// 跨系统共享的顶层命令。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Command {
-    /// 作用于文本编辑器的命令。
-    Editor(EditorCommand),
-    /// 作用于工作台或界面的命令。
-    Workspace(WorkspaceCommand),
-}
-
 /// 编辑器领域的命令语义。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EditorCommand {
@@ -47,23 +35,4 @@ pub enum EditorCommand {
     Redo,
     /// 全选。
     SelectAll,
-}
-
-/// 工作台领域的命令语义。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum WorkspaceCommand {
-    /// 关闭当前激活项。
-    CloseActiveItem,
-    /// 打开命令面板。
-    OpenCommandPalette,
-    /// 打开文件查找器。
-    OpenFileFinder,
-    /// 切换侧边栏显示状态。
-    ToggleSidebar,
-    /// 将焦点切回编辑器。
-    FocusEditor,
-    /// 将焦点切到侧边栏。
-    FocusSidebar,
-    /// 将焦点切到命令面板。
-    FocusPalette,
 }

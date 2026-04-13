@@ -4,15 +4,25 @@ use crate::{Position, Range};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Selection {
     /// 固定端。
-    pub anchor: Position,
+    anchor: Position,
     /// 活动端，也就是当前光标端。
-    pub active: Position,
+    active: Position,
 }
 
 impl Selection {
     /// 用锚点和活动点构造一个选区。
     pub fn new(anchor: Position, active: Position) -> Self {
         Self { anchor, active }
+    }
+
+    /// 返回锚点位置。
+    pub fn anchor(self) -> Position {
+        self.anchor
+    }
+
+    /// 返回活动点位置。
+    pub fn active(self) -> Position {
+        self.active
     }
 
     /// 创建一个没有范围长度的光标选区。
@@ -50,13 +60,20 @@ impl Selection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectionSet {
     /// 当前所有选区，默认约定第一个为主选区。
-    pub selections: Vec<Selection>,
+    selections: Vec<Selection>,
 }
 
 impl SelectionSet {
-    /// 用一组选区构造选区集合。
+    /// 用一组选区构造选区集合，并移除重复选区。
     pub fn new(selections: Vec<Selection>) -> Self {
-        Self { selections }
+        let mut unique = Vec::with_capacity(selections.len());
+        for selection in selections {
+            if !unique.contains(&selection) {
+                unique.push(selection);
+            }
+        }
+
+        Self { selections: unique }
     }
 
     /// 用单个选区构造集合。
@@ -74,9 +91,26 @@ impl SelectionSet {
         self.selections.len()
     }
 
+    /// 返回所有选区的只读迭代器。
+    pub fn iter(&self) -> impl Iterator<Item = &Selection> {
+        self.selections.iter()
+    }
+
     /// 返回主选区。
     pub fn primary(&self) -> Option<&Selection> {
         self.selections.first()
+    }
+
+    /// 返回主选区的可变引用。
+    pub fn primary_mut(&mut self) -> Option<&mut Selection> {
+        self.selections.first_mut()
+    }
+
+    /// 追加一个选区；如果已存在则保持集合不变。
+    pub fn push(&mut self, selection: Selection) {
+        if !self.selections.contains(&selection) {
+            self.selections.push(selection);
+        }
     }
 }
 
@@ -113,5 +147,39 @@ mod tests {
 
         assert_eq!(set.len(), 2);
         assert_eq!(set.primary(), Some(&first));
+    }
+
+    #[test]
+    fn selection_exposes_anchor_and_active_points() {
+        let selection = Selection::new(Position::new(2, 1), Position::new(4, 3));
+
+        assert_eq!(selection.anchor(), Position::new(2, 1));
+        assert_eq!(selection.active(), Position::new(4, 3));
+    }
+
+    #[test]
+    fn selection_set_deduplicates_and_supports_primary_mutation() {
+        let first = Selection::caret(Position::new(0, 0));
+        let second = Selection::caret(Position::new(1, 1));
+        let mut set = SelectionSet::new(vec![first, first, second]);
+
+        assert_eq!(set.len(), 2);
+        assert_eq!(set.iter().count(), 2);
+
+        let primary = set.primary_mut().expect("primary selection should exist");
+        *primary = Selection::caret(Position::new(9, 9));
+
+        assert_eq!(set.primary(), Some(&Selection::caret(Position::new(9, 9))));
+    }
+
+    #[test]
+    fn push_keeps_selection_set_unique() {
+        let first = Selection::caret(Position::new(0, 0));
+        let mut set = SelectionSet::single(first);
+
+        set.push(first);
+        set.push(Selection::caret(Position::new(1, 2)));
+
+        assert_eq!(set.len(), 2);
     }
 }
