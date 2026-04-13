@@ -54,26 +54,34 @@ impl Selection {
     pub fn range(self) -> Range {
         Range::new(self.start(), self.end())
     }
+
+    /// 返回选区的逻辑排序键。
+    pub fn sort_key(self) -> (Position, Position, Position, Position) {
+        (self.start(), self.end(), self.anchor, self.active)
+    }
 }
 
 /// 多光标编辑时的一组稳定选区。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectionSet {
-    /// 当前所有选区，默认约定第一个为主选区。
+    /// 当前所有选区，始终按逻辑位置排序。
     selections: Vec<Selection>,
+    /// 主选区在有序数组中的索引。
+    primary_index: Option<usize>,
 }
 
 impl SelectionSet {
-    /// 用一组选区构造选区集合，并移除重复选区。
+    /// 用一组选区构造选区集合，移除重复项并按逻辑位置排序。
     pub fn new(selections: Vec<Selection>) -> Self {
-        let mut unique = Vec::with_capacity(selections.len());
-        for selection in selections {
-            if !unique.contains(&selection) {
-                unique.push(selection);
-            }
-        }
+        let primary = selections.first().copied();
+        let selections = Self::normalize_selections(selections);
+        let primary_index = primary
+            .and_then(|selection| selections.iter().position(|current| *current == selection));
 
-        Self { selections: unique }
+        Self {
+            selections,
+            primary_index,
+        }
     }
 
     /// 用单个选区构造集合。
@@ -91,6 +99,11 @@ impl SelectionSet {
         self.selections.len()
     }
 
+    /// 以切片形式返回已排序的全部选区。
+    pub fn as_slice(&self) -> &[Selection] {
+        &self.selections
+    }
+
     /// 返回所有选区的只读迭代器。
     pub fn iter(&self) -> impl Iterator<Item = &Selection> {
         self.selections.iter()
@@ -98,19 +111,56 @@ impl SelectionSet {
 
     /// 返回主选区。
     pub fn primary(&self) -> Option<&Selection> {
-        self.selections.first()
-    }
-
-    /// 返回主选区的可变引用。
-    pub fn primary_mut(&mut self) -> Option<&mut Selection> {
-        self.selections.first_mut()
+        self.primary_index
+            .and_then(|index| self.selections.get(index))
     }
 
     /// 追加一个选区；如果已存在则保持集合不变。
     pub fn push(&mut self, selection: Selection) {
+        if self.selections.contains(&selection) {
+            return;
+        }
+
+        self.selections.push(selection);
+        self.reindex_primary_after_normalize();
+    }
+
+    /// 将某个已存在或新加入的选区标记为主选区。
+    pub fn set_primary(&mut self, selection: Selection) {
         if !self.selections.contains(&selection) {
             self.selections.push(selection);
         }
+
+        self.reindex_primary_after_normalize_with(selection);
+    }
+
+    /// 重新规范化当前集合，保持主选区语义不变。
+    pub fn normalize(&mut self) {
+        self.reindex_primary_after_normalize();
+    }
+
+    fn normalize_selections(mut selections: Vec<Selection>) -> Vec<Selection> {
+        selections.sort_by_key(|selection| selection.sort_key());
+        selections.dedup();
+        selections
+    }
+
+    fn reindex_primary_after_normalize(&mut self) {
+        let primary = self.primary().copied();
+        self.reindex_primary_after_normalize_with_optional(primary);
+    }
+
+    fn reindex_primary_after_normalize_with(&mut self, primary: Selection) {
+        self.reindex_primary_after_normalize_with_optional(Some(primary));
+    }
+
+    fn reindex_primary_after_normalize_with_optional(&mut self, primary: Option<Selection>) {
+        self.selections = Self::normalize_selections(std::mem::take(&mut self.selections));
+        self.primary_index = primary.and_then(|selection| {
+            self.selections
+                .iter()
+                .position(|current| *current == selection)
+        });
     }
 }
 
@@ -141,12 +191,13 @@ mod tests {
 
     #[test]
     fn primary_selection_comes_from_first_entry() {
-        let first = Selection::caret(Position::new(0, 0));
-        let second = Selection::caret(Position::new(1, 1));
+        let first = Selection::caret(Position::new(1, 1));
+        let second = Selection::caret(Position::new(0, 0));
         let set = SelectionSet::new(vec![first, second]);
 
         assert_eq!(set.len(), 2);
         assert_eq!(set.primary(), Some(&first));
+        assert_eq!(set.as_slice(), &[second, first]);
     }
 
     #[test]
@@ -158,18 +209,14 @@ mod tests {
     }
 
     #[test]
-    fn selection_set_deduplicates_and_supports_primary_mutation() {
-        let first = Selection::caret(Position::new(0, 0));
-        let second = Selection::caret(Position::new(1, 1));
-        let mut set = SelectionSet::new(vec![first, first, second]);
+    fn selection_set_deduplicates_and_sorts_by_logical_position() {
+        let first = Selection::caret(Position::new(2, 2));
+        let second = Selection::caret(Position::new(0, 0));
+        let third = Selection::caret(Position::new(1, 1));
+        let set = SelectionSet::new(vec![first, second, first, third]);
 
-        assert_eq!(set.len(), 2);
-        assert_eq!(set.iter().count(), 2);
-
-        let primary = set.primary_mut().expect("primary selection should exist");
-        *primary = Selection::caret(Position::new(9, 9));
-
-        assert_eq!(set.primary(), Some(&Selection::caret(Position::new(9, 9))));
+        assert_eq!(set.len(), 3);
+        assert_eq!(set.as_slice(), &[second, third, first]);
     }
 
     #[test]
@@ -181,5 +228,32 @@ mod tests {
         set.push(Selection::caret(Position::new(1, 2)));
 
         assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn set_primary_preserves_primary_semantics_after_sorting() {
+        let first = Selection::caret(Position::new(2, 2));
+        let second = Selection::caret(Position::new(0, 0));
+        let mut set = SelectionSet::new(vec![first, second]);
+
+        set.set_primary(second);
+
+        assert_eq!(set.primary(), Some(&second));
+        assert_eq!(set.as_slice(), &[second, first]);
+    }
+
+    #[test]
+    fn normalize_rebuilds_sorted_unique_state() {
+        let first = Selection::caret(Position::new(1, 1));
+        let second = Selection::caret(Position::new(0, 0));
+        let mut set = SelectionSet {
+            selections: vec![first, second, first],
+            primary_index: Some(0),
+        };
+
+        set.normalize();
+
+        assert_eq!(set.as_slice(), &[second, first]);
+        assert_eq!(set.primary(), Some(&first));
     }
 }
