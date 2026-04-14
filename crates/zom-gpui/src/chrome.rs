@@ -24,8 +24,8 @@ const TRAFFIC_LIGHT_INTERNAL_GAP: f32 = MAC_SPACE;
 const TRAFFIC_LIGHT_LEADING_SLOT_UNITS: f32 = 4.0;
 /// 顶栏图标使用的尺寸。
 const TITLEBAR_ICON_SIZE: f32 = 14.0;
-/// 状态栏图标使用的尺寸。
-const STATUS_ICON_SIZE: f32 = 13.0;
+/// 工具栏图标使用的尺寸。
+const TOOL_ICON_SIZE: f32 = 13.0;
 
 /// 返回顶栏和底栏通用的容器样式。
 pub(crate) fn bar() -> Div {
@@ -74,9 +74,9 @@ pub(crate) fn titlebar_icon_size() -> f32 {
     TITLEBAR_ICON_SIZE
 }
 
-/// 返回状态栏图标的统一尺寸。
-pub(crate) fn status_icon_size() -> f32 {
-    STATUS_ICON_SIZE
+/// 返回工具栏图标的统一尺寸。
+pub(crate) fn tool_icon_size() -> f32 {
+    TOOL_ICON_SIZE
 }
 
 /// 计算 macOS 红绿灯按钮的摆放位置。

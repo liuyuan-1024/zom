@@ -1,9 +1,9 @@
 //! 顶部标题栏视图。
 
 use gpui::{CursorStyle, FontWeight, div, prelude::*, px, rgb};
-use zom_app::DesktopAppState;
+use zom_app::state::{DesktopAppState, TitleBarIcon};
 
-use super::icons::{self, TitleBarIcon};
+use super::icons;
 use crate::chrome;
 
 /// 渲染顶栏，表达当前工作区。
@@ -25,15 +25,23 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                     ),
                 ),
         )
-        .child(chrome::group().child(render_settings_button()))
+        .child(
+            chrome::group().children(
+                state
+                    .title_bar
+                    .right_items
+                    .iter()
+                    .map(|&icon| render_settings_button(icon)),
+            ),
+        )
 }
 
 /// 渲染标题栏右侧系统设置按钮。
-fn render_settings_button() -> impl IntoElement {
+fn render_settings_button(icon: TitleBarIcon) -> impl IntoElement {
     chrome::icon_chip()
         .cursor(CursorStyle::PointingHand)
         .child(icons::render(
-            TitleBarIcon::Settings,
+            icon,
             chrome::titlebar_icon_size(),
             rgb(0xc9d4e6),
         ))

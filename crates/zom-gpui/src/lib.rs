@@ -10,7 +10,7 @@ use gpui::{
     App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
-use zom_app::{BufferSummary, DesktopAppState, SidebarSection};
+use zom_app::state::{BufferSummary, DesktopAppState, SidebarSection};
 
 /// 启动桌面界面。
 pub fn run() {
