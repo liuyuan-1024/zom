@@ -7151,6 +7151,9 @@ version = "0.1.0"
 [[package]]
 name = "zom-desktop"
 version = "0.1.0"
+dependencies = [
+ "zom-gpui",
+]
 
 [[package]]
 name = "zom-editor"
@@ -7161,6 +7164,7 @@ name = "zom-gpui"
 version = "0.1.0"
 dependencies = [
  "gpui",
+ "zom-app",
 ]
 
 [[package]]

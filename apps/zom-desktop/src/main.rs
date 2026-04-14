@@ -1,3 +1,3 @@
 fn main() {
-    println!("Hello, world!");
+    zom_gpui::run();
 }
