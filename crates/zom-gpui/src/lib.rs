@@ -4,6 +4,7 @@
 mod assets;
 mod chrome;
 mod components;
+mod spacing;
 use components::{title_bar, tool_bar};
 
 use gpui::{
@@ -11,6 +12,8 @@ use gpui::{
     WindowOptions, div, prelude::*, px, rgb, size,
 };
 use zom_app::state::{BufferSummary, DesktopAppState, SidebarSection};
+
+use crate::spacing::{SPACE_1, SPACE_2, SPACE_3, SPACE_4, SPACE_5};
 
 /// 启动桌面界面。
 pub fn run() {
@@ -85,9 +88,9 @@ fn render_sidebar(sections: &[SidebarSection]) -> impl IntoElement {
         .bg(rgb(0x0d1117))
         .border_r_1()
         .border_color(rgb(0x222938))
-        .px_3()
-        .py_3()
-        .gap_4()
+        .px(px(SPACE_2))
+        .py(px(SPACE_2))
+        .gap(px(SPACE_3))
         .children(section_elements)
 }
 
@@ -99,7 +102,7 @@ fn render_sidebar_section(section: &SidebarSection) -> impl IntoElement {
             .h(px(28.0))
             .flex()
             .items_center()
-            .px_2()
+            .px(px(SPACE_2))
             .rounded_sm()
             .text_sm()
             .text_color(rgb(0xc8d1e5))
@@ -109,7 +112,7 @@ fn render_sidebar_section(section: &SidebarSection) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
-        .gap_2()
+        .gap(px(SPACE_2))
         .child(
             div()
                 .text_xs()
@@ -134,9 +137,9 @@ fn render_editor_surface(state: &DesktopAppState) -> impl IntoElement {
                 .flex()
                 .flex_col()
                 .flex_1()
-                .px_5()
-                .py_4()
-                .gap_3()
+                .px(px(SPACE_5))
+                .py(px(SPACE_4))
+                .gap(px(SPACE_3))
                 .child(
                     div()
                         .text_xs()
@@ -158,7 +161,7 @@ fn render_tab_strip(buffers: &[BufferSummary]) -> impl IntoElement {
         .flex()
         .flex_row()
         .items_end()
-        .px_3()
+        .px(px(SPACE_2))
         .bg(rgb(0x151b24))
         .border_b_1()
         .border_color(rgb(0x262d3a))
@@ -170,8 +173,8 @@ fn render_tab(buffer: &BufferSummary) -> impl IntoElement {
     let base = div()
         .h(px(36.0))
         .min_w(px(120.0))
-        .px_3()
-        .mr_2()
+        .px(px(SPACE_2))
+        .mr(px(SPACE_2))
         .flex()
         .items_center()
         .rounded_t_sm()
@@ -199,7 +202,7 @@ fn render_editor_preview(lines: &[String]) -> impl IntoElement {
             .min_h(px(28.0))
             .flex()
             .flex_row()
-            .gap_4()
+            .gap(px(SPACE_3))
             .child(
                 div()
                     .w(px(40.0))
@@ -221,8 +224,8 @@ fn render_editor_preview(lines: &[String]) -> impl IntoElement {
         .flex()
         .flex_col()
         .flex_1()
-        .gap_1()
-        .p_4()
+        .gap(px(SPACE_1))
+        .p(px(SPACE_4))
         .bg(rgb(0x0d1117))
         .border_1()
         .border_color(rgb(0x232b38))
