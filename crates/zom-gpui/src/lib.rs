@@ -5,7 +5,7 @@ use gpui::{
     App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
-use zom_app::{BufferSummary, DesktopAppState, SidebarSection};
+use zom_app::{BufferSummary, DesktopAppState, SidebarSection, StatusBarItem};
 
 /// 启动桌面界面。
 pub fn run() {
@@ -273,31 +273,67 @@ fn render_editor_preview(lines: &[String]) -> impl IntoElement {
 fn render_status_bar(state: &DesktopAppState) -> impl IntoElement {
     div()
         .w_full()
-        .h(px(28.0))
+        .h(px(30.0))
         .flex()
         .flex_row()
         .items_center()
         .justify_between()
-        .px_3()
-        .bg(rgb(0x0f141c))
+        .px_2()
+        .bg(rgb(0x0d1218))
         .border_t_1()
-        .border_color(rgb(0x262d3a))
+        .border_color(rgb(0x202938))
         .text_xs()
         .text_color(rgb(0xaeb8ca))
         .child(
             div()
                 .flex()
                 .flex_row()
-                .gap_3()
-                .child(state.status_bar.selection_summary.clone())
-                .child(state.status_bar.cursor.clone()),
+                .items_center()
+                .gap_1()
+                .children(state.status_bar.left_items.iter().map(render_status_item)),
         )
         .child(
             div()
                 .flex()
                 .flex_row()
-                .gap_3()
-                .child(state.status_bar.encoding.clone())
-                .child(state.status_bar.line_ending.clone()),
+                .items_center()
+                .gap_1()
+                .child(render_status_value(&state.status_bar.cursor))
+                .child(render_status_value(&state.status_bar.language))
+                .children(state.status_bar.right_items.iter().map(render_status_item)),
         )
+}
+
+/// 渲染状态栏中的单个图标入口。
+fn render_status_item(item: &StatusBarItem) -> impl IntoElement {
+    div()
+        .h(px(22.0))
+        .px_2()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap_1()
+        .rounded_sm()
+        .text_xs()
+        .bg(rgb(0x121923))
+        .border_1()
+        .border_color(rgb(0x283243))
+        .child(div().text_color(rgb(0xd7e0ef)).child(item.icon.clone()))
+        .child(div().text_color(rgb(0x8f9bb2)).child(item.label.clone()))
+}
+
+/// 渲染状态栏中的纯文本值。
+fn render_status_value(value: &str) -> impl IntoElement {
+    div()
+        .h(px(22.0))
+        .px_2()
+        .flex()
+        .items_center()
+        .rounded_sm()
+        .text_xs()
+        .text_color(rgb(0xd7e0ef))
+        .bg(rgb(0x121923))
+        .border_1()
+        .border_color(rgb(0x283243))
+        .child(value.to_string())
 }

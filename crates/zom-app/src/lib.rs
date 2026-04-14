@@ -25,15 +25,24 @@ pub struct SidebarSection {
 
 /// 状态栏展示信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StatusBarItem {
+    /// 图标文本。
+    pub icon: String,
+    /// 项目标签。
+    pub label: String,
+}
+
+/// 状态栏展示信息。
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusBarState {
-    /// 当前光标或选区摘要。
-    pub selection_summary: String,
-    /// 行尾格式。
-    pub line_ending: String,
-    /// 文本编码。
-    pub encoding: String,
+    /// 左侧工具入口。
+    pub left_items: Vec<StatusBarItem>,
     /// 光标位置文本。
     pub cursor: String,
+    /// 当前文本语言类型。
+    pub language: String,
+    /// 右侧工具入口。
+    pub right_items: Vec<StatusBarItem>,
 }
 
 /// 桌面端根界面使用的应用状态。
@@ -97,10 +106,52 @@ impl DesktopAppState {
             ],
             editor_preview,
             status_bar: StatusBarState {
-                selection_summary: "1 cursor".into(),
-                line_ending,
-                encoding: "UTF-8".into(),
+                left_items: vec![
+                    StatusBarItem {
+                        icon: "▦".into(),
+                        label: "Files".into(),
+                    },
+                    StatusBarItem {
+                        icon: "⑂".into(),
+                        label: "Git".into(),
+                    },
+                    StatusBarItem {
+                        icon: "≣".into(),
+                        label: "Outline".into(),
+                    },
+                    StatusBarItem {
+                        icon: "⌕".into(),
+                        label: "Search".into(),
+                    },
+                    StatusBarItem {
+                        icon: "λ".into(),
+                        label: "LSP".into(),
+                    },
+                ],
                 cursor,
+                language: "Rust".into(),
+                right_items: vec![
+                    StatusBarItem {
+                        icon: line_ending,
+                        label: "Line Endings".into(),
+                    },
+                    StatusBarItem {
+                        icon: "UTF-8".into(),
+                        label: "Encoding".into(),
+                    },
+                    StatusBarItem {
+                        icon: "▹".into(),
+                        label: "Terminal".into(),
+                    },
+                    StatusBarItem {
+                        icon: "▷".into(),
+                        label: "Debug".into(),
+                    },
+                    StatusBarItem {
+                        icon: "●".into(),
+                        label: "Notifications".into(),
+                    },
+                ],
             },
         }
     }
@@ -119,14 +170,14 @@ fn load_buffer_preview(path: &PathBuf) -> (Vec<String>, String, String) {
         return (
             vec![format!("// failed to read {}", path.display())],
             "LF".into(),
-            "Ln 1, Col 1".into(),
+            "1:1".into(),
         );
     };
 
     let buffer = TextBuffer::from_text(text.clone());
     let lines = split_lines(buffer.as_str());
     let line_ending = detect_line_ending(&text);
-    let cursor = format!("Ln {}, Col {}", lines.len().max(1), 1);
+    let cursor = format!("{}:{}", lines.len().max(1), 1);
 
     (lines, line_ending, cursor)
 }
