@@ -289,7 +289,7 @@ fn render_status_bar(state: &DesktopAppState) -> impl IntoElement {
                 .flex()
                 .flex_row()
                 .gap_3()
-                .child(state.status_bar.mode.clone())
+                .child(state.status_bar.selection_summary.clone())
                 .child(state.status_bar.cursor.clone()),
         )
         .child(

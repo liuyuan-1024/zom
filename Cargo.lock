@@ -7143,6 +7143,9 @@ checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 [[package]]
 name = "zom-app"
 version = "0.1.0"
+dependencies = [
+ "zom-text",
+]
 
 [[package]]
 name = "zom-core"
