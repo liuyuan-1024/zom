@@ -26,19 +26,29 @@ pub struct SidebarSection {
 /// 状态栏展示信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusBarItem {
-    /// 图标文本。
-    pub icon: String,
-    /// 项目标签。
-    pub label: String,
+    /// 图标语义。
+    pub icon: StatusBarIcon,
 }
 
-/// 当前用户摘要。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserSummary {
-    /// 用户显示名称。
-    pub name: String,
-    /// 头像缩写。
-    pub initials: String,
+/// 状态栏使用的图标语义。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatusBarIcon {
+    /// 文件树入口。
+    Files,
+    /// Git 入口。
+    GitBranch,
+    /// Outline 入口。
+    Outline,
+    /// 搜索入口。
+    Search,
+    /// LSP 入口。
+    LanguageServer,
+    /// 终端入口。
+    Terminal,
+    /// 调试入口。
+    Debug,
+    /// 通知入口。
+    Notifications,
 }
 
 /// 状态栏展示信息。
@@ -50,6 +60,10 @@ pub struct StatusBarState {
     pub cursor: String,
     /// 当前文本语言类型。
     pub language: String,
+    /// 当前文件换行符格式。
+    pub line_ending: String,
+    /// 当前文件编码。
+    pub encoding: String,
     /// 右侧工具入口。
     pub right_items: Vec<StatusBarItem>,
 }
@@ -57,12 +71,8 @@ pub struct StatusBarState {
 /// 桌面端根界面使用的应用状态。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DesktopAppState {
-    /// 产品名。
-    pub product_name: String,
     /// 当前打开目录名称。
     pub workspace_name: String,
-    /// 当前用户信息。
-    pub user: UserSummary,
     /// 当前激活文件。
     pub active_buffer: String,
     /// 打开的标签页。
@@ -82,12 +92,9 @@ impl DesktopAppState {
         let active_buffer_path = workspace_file(&active_buffer);
         let (editor_preview, line_ending, cursor) = load_buffer_preview(&active_buffer_path);
         let workspace_name = detect_workspace_name();
-        let user = detect_user_summary();
 
         Self {
-            product_name: "zom".into(),
             workspace_name,
-            user,
             active_buffer,
             buffers: vec![
                 BufferSummary {
@@ -122,48 +129,34 @@ impl DesktopAppState {
             status_bar: StatusBarState {
                 left_items: vec![
                     StatusBarItem {
-                        icon: "▦".into(),
-                        label: "Files".into(),
+                        icon: StatusBarIcon::Files,
                     },
                     StatusBarItem {
-                        icon: "⑂".into(),
-                        label: "Git".into(),
+                        icon: StatusBarIcon::GitBranch,
                     },
                     StatusBarItem {
-                        icon: "≣".into(),
-                        label: "Outline".into(),
+                        icon: StatusBarIcon::Outline,
                     },
                     StatusBarItem {
-                        icon: "⌕".into(),
-                        label: "Search".into(),
+                        icon: StatusBarIcon::Search,
                     },
                     StatusBarItem {
-                        icon: "λ".into(),
-                        label: "LSP".into(),
+                        icon: StatusBarIcon::LanguageServer,
                     },
                 ],
                 cursor,
                 language: "Rust".into(),
+                line_ending,
+                encoding: "UTF-8".into(),
                 right_items: vec![
                     StatusBarItem {
-                        icon: line_ending,
-                        label: "Line Endings".into(),
+                        icon: StatusBarIcon::Terminal,
                     },
                     StatusBarItem {
-                        icon: "UTF-8".into(),
-                        label: "Encoding".into(),
+                        icon: StatusBarIcon::Debug,
                     },
                     StatusBarItem {
-                        icon: "▹".into(),
-                        label: "Terminal".into(),
-                    },
-                    StatusBarItem {
-                        icon: "▷".into(),
-                        label: "Debug".into(),
-                    },
-                    StatusBarItem {
-                        icon: "●".into(),
-                        label: "Notifications".into(),
+                        icon: StatusBarIcon::Notifications,
                     },
                 ],
             },
@@ -188,31 +181,6 @@ fn detect_workspace_name() -> String {
         })
         .filter(|name| !name.is_empty())
         .unwrap_or_else(|| "workspace".into())
-}
-
-/// 推断当前用户名称和头像缩写。
-fn detect_user_summary() -> UserSummary {
-    let name = env::var("USER")
-        .ok()
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| "user".into());
-
-    let initials = name
-        .split(['.', '_', '-'])
-        .filter(|part| !part.is_empty())
-        .take(2)
-        .filter_map(|part| part.chars().next())
-        .flat_map(|ch| ch.to_uppercase())
-        .collect::<String>();
-
-    UserSummary {
-        name,
-        initials: if initials.is_empty() {
-            "U".into()
-        } else {
-            initials
-        },
-    }
 }
 
 /// 读取真实文件内容，并转换成界面需要的预览数据。
@@ -258,7 +226,7 @@ fn detect_line_ending(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{DesktopAppState, detect_line_ending, detect_user_summary, split_lines};
+    use super::{DesktopAppState, detect_line_ending, split_lines};
 
     #[test]
     fn sample_state_has_buffers_and_sidebar_content() {
@@ -266,7 +234,6 @@ mod tests {
 
         assert!(!state.buffers.is_empty());
         assert!(!state.sidebar_sections.is_empty());
-        assert_eq!(state.product_name, "zom");
     }
 
     #[test]
@@ -280,13 +247,5 @@ mod tests {
     fn detect_line_ending_distinguishes_crlf_and_lf() {
         assert_eq!(detect_line_ending("a\r\nb\r\n"), "CRLF");
         assert_eq!(detect_line_ending("a\nb\n"), "LF");
-    }
-
-    #[test]
-    fn user_summary_has_name_and_initials() {
-        let user = detect_user_summary();
-
-        assert!(!user.name.is_empty());
-        assert!(!user.initials.is_empty());
     }
 }

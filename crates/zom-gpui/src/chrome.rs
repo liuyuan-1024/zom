@@ -3,10 +3,13 @@
 
 use gpui::{Div, Pixels, Point, div, point, prelude::*, px, rgb};
 
+/// macOS 红绿灯按钮的视觉间距基准。
+/// 顶栏、底栏以及标题避让都以这个值作为统一的节奏单位。
+const MAC_SPACE: f32 = 6.0;
 /// 顶栏和底栏共用的内边距，统一控制四周留白。
-const CHROME_PADDING: f32 = 6.0;
+const CHROME_PADDING: f32 = MAC_SPACE;
 /// 顶栏和底栏内部元素共用的间距。
-const CHROME_GAP: f32 = 6.0;
+const CHROME_GAP: f32 = MAC_SPACE;
 /// 顶栏和底栏内部胶囊按钮的统一高度。
 const CHROME_ITEM_HEIGHT: f32 = 24.0;
 /// 顶栏和底栏的总高度，由统一的内边距和内容高度推导得出。
@@ -14,11 +17,15 @@ const CHROME_BAR_HEIGHT: f32 = CHROME_ITEM_HEIGHT + CHROME_PADDING * 2.0;
 /// macOS 红绿灯按钮的视觉直径。
 const TRAFFIC_LIGHT_SIZE: f32 = 12.0;
 /// 红绿灯按钮组之间的固定间距。
-const TRAFFIC_LIGHT_INTERNAL_GAP: f32 = 8.0;
-/// 顶栏正文与红绿灯区域之间的分隔距离。
-const TRAFFIC_LIGHT_CONTENT_GAP: f32 = CHROME_GAP;
-/// 顶栏搜索框的固定宽度。
-pub(crate) const TITLEBAR_SEARCH_WIDTH: f32 = 280.0;
+const TRAFFIC_LIGHT_INTERNAL_GAP: f32 = MAC_SPACE;
+/// 顶栏左侧为红绿灯预留的固定前导区域。
+/// 这比单纯按按钮几何宽度估算更接近 Zed 的标题栏处理方式：
+/// 把红绿灯当成一个完整的 leading slot，而不是让标题内容贴着按钮组起算。
+const TRAFFIC_LIGHT_LEADING_SLOT_UNITS: f32 = 4.0;
+/// 顶栏图标使用的尺寸。
+const TITLEBAR_ICON_SIZE: f32 = 14.0;
+/// 状态栏图标使用的尺寸。
+const STATUS_ICON_SIZE: f32 = 13.0;
 
 /// 返回顶栏和底栏通用的容器样式。
 pub(crate) fn bar() -> Div {
@@ -46,14 +53,30 @@ pub(crate) fn chip() -> Div {
         .rounded_sm()
 }
 
+/// 返回顶栏和底栏通用的纯图标按钮样式。
+pub(crate) fn icon_chip() -> Div {
+    div()
+        .w(px(CHROME_ITEM_HEIGHT))
+        .h(px(CHROME_ITEM_HEIGHT))
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded_sm()
+}
+
 /// 返回顶栏和底栏通用的水平分组样式。
 pub(crate) fn group() -> Div {
     div().flex().flex_row().items_center().gap(px(CHROME_GAP))
 }
 
-/// 返回公共胶囊内部的元素间距。
-pub(crate) fn gap() -> f32 {
-    CHROME_GAP
+/// 返回顶栏图标的统一尺寸。
+pub(crate) fn titlebar_icon_size() -> f32 {
+    TITLEBAR_ICON_SIZE
+}
+
+/// 返回状态栏图标的统一尺寸。
+pub(crate) fn status_icon_size() -> f32 {
+    STATUS_ICON_SIZE
 }
 
 /// 计算 macOS 红绿灯按钮的摆放位置。
@@ -66,7 +89,7 @@ pub(crate) fn traffic_light_position() -> Point<Pixels> {
 
 /// 计算标题栏左侧正文需要避开红绿灯的水平缩进。
 pub(crate) fn title_bar_leading_inset() -> f32 {
-    traffic_light_group_width() + TRAFFIC_LIGHT_CONTENT_GAP
+    traffic_light_group_width() + MAC_SPACE * TRAFFIC_LIGHT_LEADING_SLOT_UNITS
 }
 
 /// 估算红绿灯三按钮占据的总宽度。

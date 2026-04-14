@@ -1,8 +1,10 @@
 //! `zom-gpui` 负责把应用状态渲染成桌面界面。
 //! 当前阶段先提供一个最小可运行的编辑器壳子。
 
+mod assets;
 mod chrome;
 mod components;
+use components::{title_bar, tool_bar};
 
 use gpui::{
     App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
@@ -12,27 +14,29 @@ use zom_app::{BufferSummary, DesktopAppState, SidebarSection};
 
 /// 启动桌面界面。
 pub fn run() {
-    Application::new().run(|cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(1280.), px(820.0)), cx);
-        let state = DesktopAppState::sample();
+    Application::new()
+        .with_assets(assets::ZomAssets::new())
+        .run(|cx: &mut App| {
+            let bounds = Bounds::centered(None, size(px(1280.), px(820.0)), cx);
+            let state = DesktopAppState::sample();
 
-        cx.open_window(
-            WindowOptions {
-                titlebar: Some(TitlebarOptions {
-                    title: Some("Zom".into()),
-                    appears_transparent: true,
-                    traffic_light_position: Some(chrome::traffic_light_position()),
+            cx.open_window(
+                WindowOptions {
+                    titlebar: Some(TitlebarOptions {
+                        title: Some("Zom".into()),
+                        appears_transparent: true,
+                        traffic_light_position: Some(chrome::traffic_light_position()),
+                        ..Default::default()
+                    }),
+                    window_bounds: Some(WindowBounds::Windowed(bounds)),
                     ..Default::default()
-                }),
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                ..Default::default()
-            },
-            move |_, cx| cx.new(|_| ZomRootView::new(state)),
-        )
-        .unwrap();
+                },
+                move |_, cx| cx.new(|_| ZomRootView::new(state)),
+            )
+            .unwrap();
 
-        cx.activate(true);
-    });
+            cx.activate(true);
+        });
 }
 
 /// 根视图，负责拼装最外层界面布局。
@@ -56,7 +60,7 @@ impl Render for ZomRootView {
             .flex_col()
             .bg(rgb(0x111318))
             .text_color(rgb(0xe6edf7))
-            .child(components::title_bar::render(&self.state))
+            .child(title_bar::render(&self.state))
             .child(
                 div()
                     .flex()
@@ -65,7 +69,7 @@ impl Render for ZomRootView {
                     .child(render_sidebar(&self.state.sidebar_sections))
                     .child(render_editor_surface(&self.state)),
             )
-            .child(components::status_bar::render(&self.state))
+            .child(tool_bar::render(&self.state))
     }
 }
 

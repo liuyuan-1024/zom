@@ -1,9 +1,11 @@
-//! 底部状态栏组件。
+//! 底部状态栏视图。
 
-use gpui::{div, prelude::*, px, rgb};
+use gpui::{CursorStyle, prelude::*, rgb};
 use zom_app::{DesktopAppState, StatusBarItem};
 
 use crate::chrome;
+
+use super::icons::{self, StatusIcon};
 
 /// 渲染底部状态栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
@@ -18,20 +20,21 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
             chrome::group()
                 .child(render_value(&state.status_bar.cursor))
                 .child(render_value(&state.status_bar.language))
+                .child(render_value(&state.status_bar.line_ending))
+                .child(render_value(&state.status_bar.encoding))
                 .children(state.status_bar.right_items.iter().map(render_item)),
         )
 }
 
 /// 渲染状态栏中的单个图标入口。
 fn render_item(item: &StatusBarItem) -> impl IntoElement {
-    chrome::chip()
-        .gap(px(chrome::gap()))
-        .text_xs()
-        .bg(rgb(0x121923))
-        .border_1()
-        .border_color(rgb(0x283243))
-        .child(div().text_color(rgb(0xd7e0ef)).child(item.icon.clone()))
-        .child(div().text_color(rgb(0x8f9bb2)).child(item.label.clone()))
+    chrome::icon_chip()
+        .cursor(CursorStyle::PointingHand)
+        .child(icons::render(
+            StatusIcon::from(item.icon),
+            chrome::status_icon_size(),
+            rgb(0xd7e0ef),
+        ))
 }
 
 /// 渲染状态栏中的纯文本值。
