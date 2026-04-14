@@ -32,6 +32,15 @@ pub struct StatusBarItem {
     pub label: String,
 }
 
+/// 当前用户摘要。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserSummary {
+    /// 用户显示名称。
+    pub name: String,
+    /// 头像缩写。
+    pub initials: String,
+}
+
 /// 状态栏展示信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusBarState {
@@ -50,8 +59,10 @@ pub struct StatusBarState {
 pub struct DesktopAppState {
     /// 产品名。
     pub product_name: String,
-    /// 当前工作区名称。
+    /// 当前打开目录名称。
     pub workspace_name: String,
+    /// 当前用户信息。
+    pub user: UserSummary,
     /// 当前激活文件。
     pub active_buffer: String,
     /// 打开的标签页。
@@ -70,10 +81,13 @@ impl DesktopAppState {
         let active_buffer = "crates/zom-core/src/lib.rs".to_string();
         let active_buffer_path = workspace_file(&active_buffer);
         let (editor_preview, line_ending, cursor) = load_buffer_preview(&active_buffer_path);
+        let workspace_name = detect_workspace_name();
+        let user = detect_user_summary();
 
         Self {
             product_name: "zom".into(),
-            workspace_name: "zom".into(),
+            workspace_name,
+            user,
             active_buffer,
             buffers: vec![
                 BufferSummary {
@@ -164,6 +178,43 @@ fn workspace_file(relative_path: &str) -> PathBuf {
         .join(relative_path)
 }
 
+/// 推断当前工作区目录名称。
+fn detect_workspace_name() -> String {
+    env::current_dir()
+        .ok()
+        .and_then(|path| {
+            path.file_name()
+                .map(|name| name.to_string_lossy().to_string())
+        })
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "workspace".into())
+}
+
+/// 推断当前用户名称和头像缩写。
+fn detect_user_summary() -> UserSummary {
+    let name = env::var("USER")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "user".into());
+
+    let initials = name
+        .split(['.', '_', '-'])
+        .filter(|part| !part.is_empty())
+        .take(2)
+        .filter_map(|part| part.chars().next())
+        .flat_map(|ch| ch.to_uppercase())
+        .collect::<String>();
+
+    UserSummary {
+        name,
+        initials: if initials.is_empty() {
+            "U".into()
+        } else {
+            initials
+        },
+    }
+}
+
 /// 读取真实文件内容，并转换成界面需要的预览数据。
 fn load_buffer_preview(path: &PathBuf) -> (Vec<String>, String, String) {
     let Ok(text) = fs::read_to_string(path) else {
@@ -207,7 +258,7 @@ fn detect_line_ending(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{DesktopAppState, detect_line_ending, split_lines};
+    use super::{DesktopAppState, detect_line_ending, detect_user_summary, split_lines};
 
     #[test]
     fn sample_state_has_buffers_and_sidebar_content() {
@@ -229,5 +280,13 @@ mod tests {
     fn detect_line_ending_distinguishes_crlf_and_lf() {
         assert_eq!(detect_line_ending("a\r\nb\r\n"), "CRLF");
         assert_eq!(detect_line_ending("a\nb\n"), "LF");
+    }
+
+    #[test]
+    fn user_summary_has_name_and_initials() {
+        let user = detect_user_summary();
+
+        assert!(!user.name.is_empty());
+        assert!(!user.initials.is_empty());
     }
 }

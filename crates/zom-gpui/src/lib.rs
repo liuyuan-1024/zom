@@ -1,11 +1,14 @@
 //! `zom-gpui` 负责把应用状态渲染成桌面界面。
 //! 当前阶段先提供一个最小可运行的编辑器壳子。
 
+mod chrome;
+mod components;
+
 use gpui::{
     App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
-use zom_app::{BufferSummary, DesktopAppState, SidebarSection, StatusBarItem};
+use zom_app::{BufferSummary, DesktopAppState, SidebarSection};
 
 /// 启动桌面界面。
 pub fn run() {
@@ -17,6 +20,8 @@ pub fn run() {
             WindowOptions {
                 titlebar: Some(TitlebarOptions {
                     title: Some("Zom".into()),
+                    appears_transparent: true,
+                    traffic_light_position: Some(chrome::traffic_light_position()),
                     ..Default::default()
                 }),
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -51,7 +56,7 @@ impl Render for ZomRootView {
             .flex_col()
             .bg(rgb(0x111318))
             .text_color(rgb(0xe6edf7))
-            .child(render_title_bar(&self.state))
+            .child(components::title_bar::render(&self.state))
             .child(
                 div()
                     .flex()
@@ -60,56 +65,8 @@ impl Render for ZomRootView {
                     .child(render_sidebar(&self.state.sidebar_sections))
                     .child(render_editor_surface(&self.state)),
             )
-            .child(render_status_bar(&self.state))
+            .child(components::status_bar::render(&self.state))
     }
-}
-
-/// 渲染顶栏，表达当前工作区和搜索入口位置。
-fn render_title_bar(state: &DesktopAppState) -> impl IntoElement {
-    div()
-        .w_full()
-        .h(px(52.0))
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .px_4()
-        .bg(rgb(0x161a22))
-        .border_b_1()
-        .border_color(rgb(0x262d3a))
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap_0p5()
-                .child(
-                    div()
-                        .text_sm()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child(state.product_name.clone()),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(0x8f9bb3))
-                        .child(state.workspace_name.clone()),
-                ),
-        )
-        .child(
-            div()
-                .w(px(320.0))
-                .h(px(32.0))
-                .px_3()
-                .flex()
-                .items_center()
-                .bg(rgb(0x0f1319))
-                .border_1()
-                .border_color(rgb(0x2b3444))
-                .rounded_sm()
-                .text_sm()
-                .text_color(rgb(0x7f8aa3))
-                .child("Search files, symbols, commands"),
-        )
 }
 
 /// 渲染左侧侧边栏。
@@ -267,73 +224,4 @@ fn render_editor_preview(lines: &[String]) -> impl IntoElement {
         .border_color(rgb(0x232b38))
         .rounded_sm()
         .children(line_elements)
-}
-
-/// 渲染底部状态栏。
-fn render_status_bar(state: &DesktopAppState) -> impl IntoElement {
-    div()
-        .w_full()
-        .h(px(30.0))
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .px_2()
-        .bg(rgb(0x0d1218))
-        .border_t_1()
-        .border_color(rgb(0x202938))
-        .text_xs()
-        .text_color(rgb(0xaeb8ca))
-        .child(
-            div()
-                .flex()
-                .flex_row()
-                .items_center()
-                .gap_1()
-                .children(state.status_bar.left_items.iter().map(render_status_item)),
-        )
-        .child(
-            div()
-                .flex()
-                .flex_row()
-                .items_center()
-                .gap_1()
-                .child(render_status_value(&state.status_bar.cursor))
-                .child(render_status_value(&state.status_bar.language))
-                .children(state.status_bar.right_items.iter().map(render_status_item)),
-        )
-}
-
-/// 渲染状态栏中的单个图标入口。
-fn render_status_item(item: &StatusBarItem) -> impl IntoElement {
-    div()
-        .h(px(22.0))
-        .px_2()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap_1()
-        .rounded_sm()
-        .text_xs()
-        .bg(rgb(0x121923))
-        .border_1()
-        .border_color(rgb(0x283243))
-        .child(div().text_color(rgb(0xd7e0ef)).child(item.icon.clone()))
-        .child(div().text_color(rgb(0x8f9bb2)).child(item.label.clone()))
-}
-
-/// 渲染状态栏中的纯文本值。
-fn render_status_value(value: &str) -> impl IntoElement {
-    div()
-        .h(px(22.0))
-        .px_2()
-        .flex()
-        .items_center()
-        .rounded_sm()
-        .text_xs()
-        .text_color(rgb(0xd7e0ef))
-        .bg(rgb(0x121923))
-        .border_1()
-        .border_color(rgb(0x283243))
-        .child(value.to_string())
 }
