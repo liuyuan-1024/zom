@@ -1,31 +1,124 @@
 //! 文件树组件视图。
 
-use gpui::{AnyElement, div, prelude::*, px, rgb};
+use gpui::{
+    AnyElement, Context, CursorStyle, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    Render, Window, div, prelude::*, px, rgb,
+};
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
 use super::{FILE_TREE_GUIDE_COLOR, FILE_TREE_INDENT_STEP, row};
 use crate::spacing::SPACE_1;
 
-/// 文件树面板的固定宽度。
-const FILE_TREE_PANEL_WIDTH: f32 = 260.0;
-
-/// 渲染完整文件树面板。
-pub(crate) fn render(state: &FileTreeState) -> impl IntoElement {
-    div()
-        .w(px(FILE_TREE_PANEL_WIDTH))
-        .h_full()
-        .flex()
-        .flex_col()
-        .bg(rgb(0x0d1117))
-        .border_r_1()
-        .border_color(rgb(0x222938))
-        .px(px(SPACE_1))
-        .pb(px(SPACE_1))
-        .gap(px(SPACE_1))
-        .children(state.roots.iter().map(render_node))
+/// 文件树面板视图。
+pub struct FileTreePanel {
+    state: FileTreeState,
+    width: f32,
+    is_dragging: bool,
 }
 
-/// 递归渲染文件树节点。
+impl FileTreePanel {
+    /// 创建一个新的文件树面板。
+    pub fn new(state: FileTreeState) -> Self {
+        Self {
+            state,
+            width: 260.0,
+            is_dragging: false,
+        }
+    }
+}
+
+impl Render for FileTreePanel {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // 基础容器
+        let mut container = div()
+            .id("file-tree-container")
+            .relative()
+            .w(px(self.width))
+            .h_full()
+            .flex()
+            .flex_row();
+
+        // 左侧实际文件树内容
+        let tree_content = div()
+            .flex_1()
+            .h_full()
+            .flex()
+            .flex_col()
+            .overflow_hidden()
+            .bg(rgb(0x0d1117))
+            .border_r_1()
+            .border_color(rgb(0x222938))
+            .px(px(SPACE_1))
+            .pb(px(SPACE_1))
+            .gap(px(SPACE_1))
+            .children(self.state.roots.iter().map(render_node));
+
+        // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
+        let splitter = div()
+            .id("splitter")
+            .absolute()
+            .top(px(0.0))
+            .right(px(-1.0))
+            .w(px(2.0))
+            .h_full()
+            .cursor(CursorStyle::ResizeLeftRight)
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                    this.is_dragging = true;
+                    cx.notify();
+                }),
+            );
+
+        // 装配内容
+        container = container.child(tree_content).child(splitter);
+
+        // 拖拽时的全局事件捕获网
+        if self.is_dragging {
+            container = container.child(
+                div()
+                    .absolute()
+                    .top(px(-2000.0))
+                    .left(px(-2000.0))
+                    .w(px(10000.0))
+                    .h(px(10000.0))
+                    .cursor(CursorStyle::ResizeLeftRight)
+                    .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
+                        let mut new_width: f32 = event.position.x.into();
+                        if new_width < 160.0 {
+                            new_width = 160.0;
+                        }
+                        if new_width > 600.0 {
+                            new_width = 600.0;
+                        }
+                        this.width = new_width;
+                        cx.notify();
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _event: &MouseUpEvent, _window, cx| {
+                            this.is_dragging = false;
+                            cx.notify();
+                        }),
+                    ),
+            );
+        }
+
+        container
+    }
+}
+
+/// 渲染子树容器。
+fn render_children(children: &[FileTreeNode]) -> impl IntoElement {
+    div()
+        .ml(px(SPACE_1))
+        .pl(px(FILE_TREE_INDENT_STEP))
+        .border_l_1()
+        .border_color(rgb(FILE_TREE_GUIDE_COLOR))
+        .children(children.iter().map(render_node))
+}
+
+/// 递归渲染文件树节点 (保持为纯渲染逻辑)。
 fn render_node(node: &FileTreeNode) -> AnyElement {
     let container = div().flex().flex_col().child(row::render(node));
 
@@ -36,14 +129,4 @@ fn render_node(node: &FileTreeNode) -> AnyElement {
     } else {
         container.into_any_element()
     }
-}
-
-/// 渲染某个目录节点的子树容器，并由容器自己提供连续导线。
-fn render_children(children: &[FileTreeNode]) -> impl IntoElement {
-    div()
-        .ml(px(SPACE_1))
-        .pl(px(FILE_TREE_INDENT_STEP))
-        .border_l_1()
-        .border_color(rgb(FILE_TREE_GUIDE_COLOR))
-        .children(children.iter().map(render_node))
 }

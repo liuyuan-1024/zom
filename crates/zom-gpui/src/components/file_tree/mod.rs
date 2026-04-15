@@ -11,4 +11,4 @@ pub(super) const FILE_TREE_GUIDE_COLOR: u32 = 0x2a3242;
 mod row;
 mod view;
 
-pub(crate) use view::render;
+pub(crate) use view::FileTreePanel;

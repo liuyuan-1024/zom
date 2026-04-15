@@ -42,7 +42,12 @@ pub(super) fn render(node: &FileTreeNode) -> AnyElement {
 
 /// 渲染节点名称。
 fn render_label(node: &FileTreeNode) -> impl IntoElement {
-    div().flex_1().text_sm().child(node.name.clone())
+    div()
+        .flex_1()
+        .text_sm()
+        .overflow_hidden()
+        .whitespace_nowrap()
+        .child(node.name.clone())
 }
 
 /// 渲染目录图标或文件占位。

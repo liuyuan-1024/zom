@@ -5,10 +5,10 @@ mod assets;
 mod chrome;
 mod components;
 mod spacing;
-use components::{file_tree, title_bar, tool_bar};
+use components::{file_tree::FileTreePanel, title_bar, tool_bar};
 
 use gpui::{
-    App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
+    AnyView, App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
 use zom_app::state::{BufferSummary, DesktopAppState};
@@ -34,7 +34,7 @@ pub fn run() {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     ..Default::default()
                 },
-                move |_, cx| cx.new(|_| ZomRootView::new(state)),
+                move |_, cx| cx.new(|cx| ZomRootView::new(state, cx)),
             )
             .unwrap();
 
@@ -46,12 +46,21 @@ pub fn run() {
 pub struct ZomRootView {
     /// 用于展示的应用状态。
     state: DesktopAppState,
+    /// 文件树
+    file_tree_panel: AnyView,
 }
 
 impl ZomRootView {
     /// 用应用状态创建根视图。
-    pub fn new(state: DesktopAppState) -> Self {
-        Self { state }
+    pub fn new(state: DesktopAppState, cx: &mut Context<Self>) -> Self {
+        let file_tree_panel = cx
+            .new(|_| FileTreePanel::new(state.file_tree.clone()))
+            .into();
+
+        Self {
+            state,
+            file_tree_panel,
+        }
     }
 }
 
@@ -68,8 +77,7 @@ impl Render for ZomRootView {
                 div()
                     .flex()
                     .flex_1()
-                    .overflow_hidden()
-                    .child(file_tree::render(&self.state.file_tree))
+                    .child(self.file_tree_panel.clone())
                     .child(render_editor_surface(&self.state)),
             )
             .child(tool_bar::render(&self.state))
@@ -83,6 +91,7 @@ fn render_editor_surface(state: &DesktopAppState) -> impl IntoElement {
         .flex_col()
         .flex_1()
         .h_full()
+        .overflow_hidden()
         .bg(rgb(0x10151d))
         .child(render_tab_strip(&state.buffers))
         .child(
