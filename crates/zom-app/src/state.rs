@@ -7,13 +7,41 @@ pub struct BufferSummary {
     pub is_active: bool,
 }
 
-/// 侧边栏分组信息。
+/// 文件树节点类型。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileTreeNodeKind {
+    /// 目录节点。
+    Directory,
+    /// 文件节点。
+    File,
+}
+
+/// 文件树中的单个节点。
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SidebarSection {
-    /// 分组名称。
+pub struct FileTreeNode {
+    /// 节点显示名称。
+    pub name: String,
+    /// 节点在工作区中的相对路径。
+    pub path: String,
+    /// 节点类型。
+    pub kind: FileTreeNodeKind,
+    /// 当前节点是否处于展开状态。
+    pub is_expanded: bool,
+    /// 当前节点是否被文件树选中。
+    pub is_selected: bool,
+    /// 当前节点是否对应激活文件。
+    pub is_active: bool,
+    /// 子节点列表。
+    pub children: Vec<FileTreeNode>,
+}
+
+/// 文件树展示信息。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileTreeState {
+    /// 面板标题。
     pub title: String,
-    /// 分组下的条目。
-    pub items: Vec<String>,
+    /// 根节点列表。
+    pub roots: Vec<FileTreeNode>,
 }
 
 /// 标题栏使用的图标语义。
@@ -88,8 +116,8 @@ pub struct DesktopAppState {
     pub active_buffer: String,
     /// 打开的标签页。
     pub buffers: Vec<BufferSummary>,
-    /// 左侧侧边栏内容。
-    pub sidebar_sections: Vec<SidebarSection>,
+    /// 左侧文件树内容。
+    pub file_tree: FileTreeState,
     /// 主编辑区预览文本。
     pub editor_preview: Vec<String>,
 }

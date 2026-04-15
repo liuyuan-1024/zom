@@ -1,7 +1,7 @@
 use crate::{
     state::{
-        BufferSummary, DesktopAppState, SidebarSection, TitleBarIcon, TitleBarState, ToolBarIcon,
-        ToolBarItem, ToolBarState,
+        BufferSummary, DesktopAppState, FileTreeNode, FileTreeNodeKind, FileTreeState,
+        TitleBarIcon, TitleBarState, ToolBarIcon, ToolBarItem, ToolBarState,
     },
     utils,
 };
@@ -52,7 +52,7 @@ impl DesktopAppState {
                     },
                 ],
             },
-            workspace_name,
+            workspace_name: workspace_name.clone(),
             active_buffer,
             buffers: vec![
                 BufferSummary {
@@ -68,23 +68,109 @@ impl DesktopAppState {
                     is_active: false,
                 },
             ],
-            sidebar_sections: vec![
-                SidebarSection {
-                    title: "EXPLORER".into(),
-                    items: vec![
-                        "crates".into(),
-                        "apps".into(),
-                        "docs".into(),
-                        "Cargo.toml".into(),
+            file_tree: FileTreeState {
+                title: "EXPLORER".into(),
+                roots: vec![directory(
+                    &workspace_name,
+                    "",
+                    true,
+                    vec![
+                        directory(
+                            ".github / workflows",
+                            ".github/workflows",
+                            false,
+                            Vec::new(),
+                        ),
+                        directory("apps / zom-desktop", "apps/zom-desktop", false, Vec::new()),
+                        directory(
+                            "crates",
+                            "crates",
+                            true,
+                            vec![
+                                directory(
+                                    "zom-app",
+                                    "crates/zom-app",
+                                    true,
+                                    vec![
+                                        directory(
+                                            "src",
+                                            "crates/zom-app/src",
+                                            true,
+                                            vec![
+                                                file(
+                                                    "lib.rs",
+                                                    "crates/zom-app/src/lib.rs",
+                                                    false,
+                                                    false,
+                                                ),
+                                                file(
+                                                    "sample.rs",
+                                                    "crates/zom-app/src/sample.rs",
+                                                    true,
+                                                    true,
+                                                ),
+                                                file(
+                                                    "state.rs",
+                                                    "crates/zom-app/src/state.rs",
+                                                    false,
+                                                    false,
+                                                ),
+                                                file(
+                                                    "utils.rs",
+                                                    "crates/zom-app/src/utils.rs",
+                                                    false,
+                                                    false,
+                                                ),
+                                            ],
+                                        ),
+                                        file(
+                                            "Cargo.toml",
+                                            "crates/zom-app/Cargo.toml",
+                                            false,
+                                            false,
+                                        ),
+                                    ],
+                                ),
+                                directory("zom-core", "crates/zom-core", false, Vec::new()),
+                                directory("zom-gpui", "crates/zom-gpui", false, Vec::new()),
+                            ],
+                        ),
                     ],
-                },
-                SidebarSection {
-                    title: "OPEN EDITORS".into(),
-                    items: vec!["lib.rs".into(), "selection.rs".into(), "input.rs".into()],
-                },
-            ],
+                )],
+            },
             editor_preview,
         }
+    }
+}
+
+/// 构造目录节点，简化示例文件树的声明。
+fn directory(
+    name: &str,
+    path: &str,
+    is_expanded: bool,
+    children: Vec<FileTreeNode>,
+) -> FileTreeNode {
+    FileTreeNode {
+        name: name.into(),
+        path: path.into(),
+        kind: FileTreeNodeKind::Directory,
+        is_expanded,
+        is_selected: false,
+        is_active: false,
+        children,
+    }
+}
+
+/// 构造文件节点，简化示例文件树的声明。
+fn file(name: &str, path: &str, is_selected: bool, is_active: bool) -> FileTreeNode {
+    FileTreeNode {
+        name: name.into(),
+        path: path.into(),
+        kind: FileTreeNodeKind::File,
+        is_expanded: false,
+        is_selected,
+        is_active,
+        children: Vec::new(),
     }
 }
 
@@ -93,11 +179,11 @@ mod tests {
     use crate::{state::DesktopAppState, utils};
 
     #[test]
-    fn sample_state_has_buffers_and_sidebar_content() {
+    fn sample_state_has_buffers_and_file_tree_content() {
         let state = DesktopAppState::sample();
 
         assert!(!state.buffers.is_empty());
-        assert!(!state.sidebar_sections.is_empty());
+        assert!(!state.file_tree.roots.is_empty());
     }
 
     #[test]

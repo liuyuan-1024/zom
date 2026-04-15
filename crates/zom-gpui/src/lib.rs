@@ -5,13 +5,13 @@ mod assets;
 mod chrome;
 mod components;
 mod spacing;
-use components::{title_bar, tool_bar};
+use components::{file_tree, title_bar, tool_bar};
 
 use gpui::{
     App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
-use zom_app::state::{BufferSummary, DesktopAppState, SidebarSection};
+use zom_app::state::{BufferSummary, DesktopAppState};
 
 use crate::spacing::{SPACE_1, SPACE_2, SPACE_3, SPACE_4, SPACE_5};
 
@@ -69,58 +69,11 @@ impl Render for ZomRootView {
                     .flex()
                     .flex_1()
                     .overflow_hidden()
-                    .child(render_sidebar(&self.state.sidebar_sections))
+                    .child(file_tree::render(&self.state.file_tree))
                     .child(render_editor_surface(&self.state)),
             )
             .child(tool_bar::render(&self.state))
     }
-}
-
-/// 渲染左侧侧边栏。
-fn render_sidebar(sections: &[SidebarSection]) -> impl IntoElement {
-    let section_elements = sections.iter().map(render_sidebar_section);
-
-    div()
-        .w(px(260.0))
-        .h_full()
-        .flex()
-        .flex_col()
-        .bg(rgb(0x0d1117))
-        .border_r_1()
-        .border_color(rgb(0x222938))
-        .px(px(SPACE_2))
-        .py(px(SPACE_2))
-        .gap(px(SPACE_3))
-        .children(section_elements)
-}
-
-/// 渲染单个侧边栏分组。
-fn render_sidebar_section(section: &SidebarSection) -> impl IntoElement {
-    let item_elements = section.items.iter().map(|item| {
-        div()
-            .w_full()
-            .h(px(28.0))
-            .flex()
-            .items_center()
-            .px(px(SPACE_2))
-            .rounded_sm()
-            .text_sm()
-            .text_color(rgb(0xc8d1e5))
-            .child(item.clone())
-    });
-
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(SPACE_2))
-        .child(
-            div()
-                .text_xs()
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_color(rgb(0x76839c))
-                .child(section.title.clone()),
-        )
-        .children(item_elements)
 }
 
 /// 渲染标签栏和主编辑区。
