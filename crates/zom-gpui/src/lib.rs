@@ -77,6 +77,7 @@ impl Render for ZomRootView {
                 div()
                     .flex()
                     .flex_1()
+                    .overflow_hidden()
                     .child(self.file_tree_panel.clone())
                     .child(render_editor_surface(&self.state)),
             )
