@@ -3,7 +3,7 @@
 
 use gpui::{Pixels, Point, point, px};
 
-use crate::spacing::{SPACE_1, SPACE_2, SPACE_4};
+use crate::spacing::{SPACE_1, SPACE_2, SPACE_3};
 
 use super::bar::CHROME_BAR_HEIGHT;
 
@@ -14,7 +14,7 @@ const TRAFFIC_LIGHT_INTERNAL_GAP: f32 = SPACE_1;
 /// 红绿灯的左侧偏移量。
 const TRAFFIC_LIGHT_LEADING_INSET: f32 = SPACE_2;
 /// 按钮组结束后到正文安全区域之间的固定留白。
-const TRAFFIC_LIGHT_TRAILING_GAP: f32 = SPACE_4;
+const TRAFFIC_LIGHT_TRAILING_GAP: f32 = SPACE_3;
 
 /// 计算 macOS 红绿灯按钮的摆放位置。
 pub(super) fn traffic_light_position() -> Point<Pixels> {
