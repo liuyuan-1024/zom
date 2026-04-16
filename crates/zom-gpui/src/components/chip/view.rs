@@ -38,11 +38,9 @@ pub(crate) fn interactive_icon_chip(
 /// 返回通用的文本胶囊样式。
 fn chip() -> Div {
     div().flex().flex_row().items_center().justify_center()
-    // .rounded_sm()
 }
 
 /// 返回通用的图标胶囊样式。
 fn icon_chip() -> Div {
     div().flex().items_center().justify_center()
-    // .rounded_sm()
 }
