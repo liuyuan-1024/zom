@@ -2,7 +2,7 @@
 
 use gpui::{AnyView, App, Context, FontWeight, Window, div, prelude::*, px, rgb};
 
-use crate::spacing::SPACE_1;
+use crate::theme::{color, spacing::SPACE_1};
 
 /// 可复用的悬停提示语义。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,16 +69,16 @@ impl Render for TooltipView {
             .gap(px(SPACE_1))
             .px(px(SPACE_1))
             .py(px(SPACE_1))
-            .bg(rgb(0x151b24))
+            .bg(rgb(color::COLOR_BG_PANEL))
             .border_1()
-            .border_color(rgb(0x2b3444))
+            .border_color(rgb(color::COLOR_BORDER))
             .rounded_sm()
             .shadow_md()
             .child(
                 div()
                     .text_xs()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(rgb(0xe6edf7))
+                    .text_color(rgb(color::COLOR_FG_PRIMARY))
                     .child(self.label.clone()),
             );
 
@@ -86,7 +86,7 @@ impl Render for TooltipView {
             visual_box = visual_box.child(
                 div()
                     .text_xs()
-                    .text_color(rgb(0x8d9ab1))
+                    .text_color(rgb(color::COLOR_FG_MUTED))
                     .child(shortcut.clone()),
             );
         }

@@ -6,15 +6,16 @@ use zom_app::state::{DesktopAppState, ToolBarEntry};
 use super::icons;
 use crate::chrome;
 use crate::components::chip;
+use crate::theme::{color, spacing};
 
 /// 渲染底部工具栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     chrome::bar()
-        .bg(rgb(0x0d1218))
+        .bg(rgb(color::COLOR_BG_APP))
         .border_t_1()
-        .border_color(rgb(0x202938))
+        .border_color(rgb(color::COLOR_BORDER))
         .text_xs()
-        .text_color(rgb(0xaeb8ca))
+        .text_color(rgb(color::COLOR_FG_MUTED))
         .child(
             chrome::group().children(
                 state
@@ -52,8 +53,8 @@ fn render_tool(group: &'static str, index: usize, item: &ToolBarEntry) -> impl I
     )
     .child(icons::render(
         item.icon,
-        chrome::tool_icon_size(),
-        rgb(0xd7e0ef),
+        spacing::ICON_SIZE_MD,
+        rgb(color::COLOR_FG_MUTED),
     ))
 }
 

@@ -3,7 +3,10 @@ use zom_app::state::PaneState;
 
 use crate::{
     components::pane::tab_bar,
-    spacing::{SPACE_1, SPACE_3, SPACE_4, SPACE_5},
+    theme::{
+        color,
+        spacing::{SPACE_1, SPACE_3, SPACE_4, SPACE_5},
+    },
 };
 
 pub struct PaneView {
@@ -36,21 +39,20 @@ impl PaneView {
                         div()
                             .text_xs()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgb(0x8090ab))
-                            .child(active_tab.title.clone()), // 显示当前文件标题
+                            .text_color(rgb(color::COLOR_FG_MUTED))
+                            .child(active_tab.title.clone()),
                     )
                     .child(self.render_editor_preview_content())
                     .into_any_element();
             }
         }
 
-        // 如果没有活跃标签，显示空占位
         div()
             .flex_1()
             .flex()
             .items_center()
             .justify_center()
-            .text_color(rgb(0x5c6880))
+            .text_color(rgb(color::COLOR_FG_MUTED))
             .child("No Active Editor")
             .into_any_element()
     }
@@ -60,7 +62,7 @@ impl PaneView {
         let line_elements = self.editor_preview.iter().enumerate().map(|(index, line)| {
             div()
                 .w_full()
-                .min_h(px(28.0))
+                .py(px(SPACE_1))
                 .flex()
                 .flex_row()
                 .gap(px(SPACE_3))
@@ -69,14 +71,14 @@ impl PaneView {
                         .w(px(40.0))
                         .text_right()
                         .text_sm()
-                        .text_color(rgb(0x5c6880))
+                        .text_color(rgb(color::COLOR_FG_MUTED))
                         .child((index + 1).to_string()),
                 )
                 .child(
                     div()
                         .flex_1()
                         .text_sm()
-                        .text_color(rgb(0xd9e2f2))
+                        .text_color(rgb(color::COLOR_FG_PRIMARY))
                         .child(line.clone()),
                 )
         });
@@ -87,9 +89,9 @@ impl PaneView {
             .flex_1()
             .gap(px(SPACE_1))
             .p(px(SPACE_4))
-            .bg(rgb(0x0d1117))
+            .bg(rgb(color::COLOR_BG_APP))
             .border_1()
-            .border_color(rgb(0x232b38))
+            .border_color(rgb(color::COLOR_BORDER))
             .rounded_sm()
             .children(line_elements)
     }
@@ -103,7 +105,7 @@ impl Render for PaneView {
             .flex_1()
             .h_full()
             .overflow_hidden()
-            .bg(rgb(0x10151d))
+            .bg(rgb(color::COLOR_BG_APP))
             .child(tab_bar::render(&self.state))
             .child(self.render_active_content())
     }

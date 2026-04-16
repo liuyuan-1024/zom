@@ -6,8 +6,11 @@ use gpui::{
 };
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
-use super::{FILE_TREE_GUIDE_COLOR, FILE_TREE_INDENT_STEP, row};
-use crate::spacing::SPACE_1;
+use super::{FILE_TREE_INDENT_STEP, row};
+use crate::theme::{
+    color,
+    spacing::{self, SPACE_1},
+};
 
 /// 文件树面板视图。
 pub struct FileTreePanel {
@@ -21,7 +24,7 @@ impl FileTreePanel {
     pub fn new(state: FileTreeState) -> Self {
         Self {
             state,
-            width: 260.0,
+            width: spacing::PANEL_DEFAULT_WIDTH,
             is_dragging: false,
         }
     }
@@ -45,12 +48,10 @@ impl Render for FileTreePanel {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .bg(rgb(0x0d1117))
+            .bg(rgb(color::COLOR_BG_PANEL))
             .border_r_1()
-            .border_color(rgb(0x222938))
+            .border_color(rgb(color::COLOR_BORDER))
             .px(px(SPACE_1))
-            .pb(px(SPACE_1))
-            .gap(px(SPACE_1))
             .children(self.state.roots.iter().map(render_node));
 
         // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
@@ -85,11 +86,11 @@ impl Render for FileTreePanel {
                     .cursor(CursorStyle::ResizeLeftRight)
                     .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
                         let mut new_width: f32 = event.position.x.into();
-                        if new_width < 160.0 {
-                            new_width = 160.0;
+                        if new_width < spacing::PANEL_MIN_WIDTH {
+                            new_width = spacing::PANEL_MIN_WIDTH;
                         }
-                        if new_width > 600.0 {
-                            new_width = 600.0;
+                        if new_width > spacing::PANEL_MAX_WIDTH {
+                            new_width = spacing::PANEL_MAX_WIDTH;
                         }
                         this.width = new_width;
                         cx.notify();
@@ -114,7 +115,7 @@ fn render_children(children: &[FileTreeNode]) -> impl IntoElement {
         .ml(px(SPACE_1))
         .pl(px(FILE_TREE_INDENT_STEP))
         .border_l_1()
-        .border_color(rgb(FILE_TREE_GUIDE_COLOR))
+        .border_color(rgb(color::COLOR_BORDER))
         .children(children.iter().map(render_node))
 }
 

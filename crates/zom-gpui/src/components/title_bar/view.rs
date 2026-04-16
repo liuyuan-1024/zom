@@ -6,18 +6,20 @@ use zom_app::state::{DesktopAppState, TitleBarIcon};
 use super::icons;
 use crate::chrome;
 use crate::components::chip;
+use crate::components::title_bar::traffic_lights;
+use crate::theme::{color, spacing};
 
 /// 渲染顶栏，表达当前工作区。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     let workspace_name = state.project_name.clone();
 
     chrome::bar()
-        .bg(rgb(0x161a22))
+        .bg(rgb(color::COLOR_BG_PANEL))
         .border_b_1()
-        .border_color(rgb(0x262d3a))
+        .border_color(rgb(color::COLOR_BORDER))
         .child(
             chrome::group()
-                .pl(px(chrome::title_bar_leading_inset()))
+                .pl(px(traffic_lights::title_bar_leading_inset()))
                 .child(
                     chip::interactive_chip(
                         "title-bar-workspace-chip",
@@ -30,7 +32,7 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                         div()
                             .text_xs()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgb(0xe6edf7))
+                            .text_color(rgb(color::COLOR_FG_PRIMARY))
                             .child(state.project_name.clone()),
                     ),
                 ),
@@ -57,7 +59,7 @@ fn render_settings_button(index: usize, icon: TitleBarIcon) -> impl IntoElement 
     )
     .child(icons::render(
         icon,
-        chrome::titlebar_icon_size(),
-        rgb(0xc9d4e6),
+        spacing::ICON_SIZE_MD,
+        rgb(color::COLOR_FG_MUTED),
     ))
 }

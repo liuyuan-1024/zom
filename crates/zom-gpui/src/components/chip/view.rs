@@ -5,30 +5,25 @@ use gpui::{
 };
 
 use super::{TooltipSpec, tooltip::tooltip_view};
-use crate::chrome;
-
-/// 胶囊组件的统一高度。
-const CHIP_HEIGHT: f32 = 24.0;
+use crate::theme::{color, spacing};
 
 /// 返回 chrome 体系下通用的文本胶囊样式。
 pub(crate) fn chip() -> Div {
     div()
-        .h(px(CHIP_HEIGHT))
-        .px(px(chrome::chrome_padding()))
+        .px(px(spacing::SPACE_1))
         .flex()
         .flex_row()
         .items_center()
-        .bg(rgb(0x0f1319))
+        .bg(rgb(color::COLOR_BG_ELEMENT))
         .border_1()
-        .border_color(rgb(0x2b3444))
+        .border_color(rgb(color::COLOR_BORDER))
         .rounded_sm()
 }
 
 /// 返回 chrome 体系下通用的图标胶囊样式。
 pub(crate) fn icon_chip() -> Div {
     div()
-        .w(px(CHIP_HEIGHT))
-        .h(px(CHIP_HEIGHT))
+        .px(px(spacing::SPACE_1))
         .flex()
         .items_center()
         .justify_center()
@@ -40,9 +35,9 @@ pub(crate) fn icon_chip() -> Div {
 pub(crate) fn status_chip() -> Div {
     chip()
         .text_xs()
-        .text_color(rgb(0xd7e0ef))
-        .bg(rgb(0x121923))
-        .border_color(rgb(0x283243))
+        .text_color(rgb(color::COLOR_FG_MUTED))
+        .bg(rgb(color::COLOR_BG_PANEL))
+        .border_color(rgb(color::COLOR_BORDER))
 }
 
 /// 返回带统一悬停提示的文本胶囊按钮。

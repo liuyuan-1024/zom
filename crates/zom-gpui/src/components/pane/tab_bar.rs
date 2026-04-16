@@ -3,7 +3,10 @@ use crate::{
         chip,
         pane::icons::{self, PaneIcon},
     },
-    spacing::{SPACE_1, SPACE_4},
+    theme::{
+        color,
+        spacing::{self, SPACE_1, SPACE_4},
+    },
 };
 use gpui::{CursorStyle, IntoElement, div, prelude::*, px, rgb};
 use zom_app::state::{PaneState, TabState};
@@ -20,9 +23,9 @@ pub(super) fn render(pane: &PaneState) -> impl IntoElement {
         .flex()
         .flex_row()
         .items_end()
-        .bg(rgb(0x151b24))
+        .bg(rgb(color::COLOR_BG_PANEL))
         .border_b_1()
-        .border_color(rgb(0x262d3a))
+        .border_color(rgb(color::COLOR_BORDER))
         .children(tabs_elements)
 }
 
@@ -39,7 +42,7 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
         .items_center()
         .justify_center()
         .border_r_1()
-        .border_color(rgb(0x262d3a))
+        .border_color(rgb(color::COLOR_BORDER))
         .text_sm()
         .cursor(CursorStyle::PointingHand)
         .child(render_close_button(&group_id, index))
@@ -50,12 +53,11 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
                 .child(tab.title.clone()),
         );
 
-    // 根据活跃状态设置不同的颜色
     if is_active {
         tab_style = tab_style
-            .bg(rgb(0x10151d))
             .relative()
-            .text_color(rgb(0xf3f6fb))
+            .bg(rgb(color::COLOR_BG_ACTIVE))
+            .text_color(rgb(color::COLOR_FG_PRIMARY))
             .child(
                 div()
                     .absolute()
@@ -63,10 +65,14 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
                     .left_0()
                     .right_0()
                     .h(px(1.0))
-                    .bg(rgb(0x10151d)),
+                    // 遮住底部边框，与编辑器区融为一体
+                    .bg(rgb(color::COLOR_BG_APP)),
             );
     } else {
-        tab_style = tab_style.bg(rgb(0x1b2230)).text_color(rgb(0x8d9ab1))
+        tab_style = tab_style
+            .bg(rgb(color::COLOR_BG_ELEMENT))
+            // 未激活的 Tab 文字用次要色
+            .text_color(rgb(color::COLOR_FG_MUTED))
     }
 
     tab_style
@@ -89,10 +95,14 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
                 ("tab-close", index),
                 chip::TooltipSpec::new(spec.label, spec.shortcut),
             )
-            .size(px(16.0))
+            .size(px(spacing::BTN_CLOSE_SIZE))
             .opacity(0.0)
             .group_hover(group_id.to_string(), |style| style.opacity(1.0))
-            .hover(|style| style.bg(rgb(0x363d4a)))
-            .child(icons::render(icon, 10.0, rgb(0x9ca3af))),
+            .hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)))
+            .child(icons::render(
+                icon,
+                spacing::BTN_CLOSE_ICON_SIZE,
+                rgb(color::COLOR_FG_MUTED),
+            )),
         )
 }

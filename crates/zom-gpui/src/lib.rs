@@ -4,7 +4,7 @@
 mod assets;
 mod chrome;
 mod components;
-mod spacing;
+mod theme;
 use components::{file_tree::FileTreePanel, title_bar, tool_bar};
 
 use gpui::{
@@ -13,14 +13,24 @@ use gpui::{
 };
 use zom_app::state::DesktopAppState;
 
-use crate::components::pane::PaneView;
+use crate::{
+    components::{pane::PaneView, title_bar::traffic_lights},
+    theme::{color, spacing},
+};
 
 /// 启动桌面界面。
 pub fn run() {
     Application::new()
         .with_assets(assets::ZomAssets::new())
         .run(|cx: &mut App| {
-            let bounds = Bounds::centered(None, size(px(1280.), px(820.0)), cx);
+            let bounds = Bounds::centered(
+                None,
+                size(
+                    px(spacing::WINDOW_DEFAULT_WIDTH),
+                    px(spacing::WINDOW_DEFAULT_HEIGHT),
+                ),
+                cx,
+            );
             let state = DesktopAppState::sample();
 
             cx.open_window(
@@ -28,7 +38,7 @@ pub fn run() {
                     titlebar: Some(TitlebarOptions {
                         title: Some("Zom".into()),
                         appears_transparent: true,
-                        traffic_light_position: Some(chrome::traffic_light_position()),
+                        traffic_light_position: Some(traffic_lights::position()),
                         ..Default::default()
                     }),
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -77,8 +87,8 @@ impl Render for ZomRootView {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(0x111318))
-            .text_color(rgb(0xe6edf7))
+            .bg(rgb(color::COLOR_BG_APP))
+            .text_color(rgb(color::COLOR_FG_PRIMARY))
             .child(title_bar::render(&self.state))
             .child(
                 div()
