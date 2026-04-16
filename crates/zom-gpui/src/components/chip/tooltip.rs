@@ -62,7 +62,7 @@ impl TooltipView {
 
 impl Render for TooltipView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let base = div()
+        let mut visual_box = div()
             .flex()
             .flex_row()
             .items_center()
@@ -83,14 +83,14 @@ impl Render for TooltipView {
             );
 
         if let Some(shortcut) = &self.shortcut {
-            base.child(
+            visual_box = visual_box.child(
                 div()
                     .text_xs()
                     .text_color(rgb(0x8d9ab1))
                     .child(shortcut.clone()),
-            )
-        } else {
-            base
+            );
         }
+
+        div().py(px(SPACE_1)).px(px(SPACE_1)).child(visual_box)
     }
 }
