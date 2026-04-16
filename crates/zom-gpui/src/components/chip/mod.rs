@@ -5,4 +5,4 @@ mod tooltip;
 mod view;
 
 pub(crate) use tooltip::TooltipSpec;
-pub(crate) use view::{interactive_chip, interactive_icon_chip, status_chip};
+pub(crate) use view::{interactive_chip, interactive_icon_chip};

@@ -14,7 +14,7 @@ pub(crate) const SPACE_5: f32 = GAP * 5.0; // 30.0px (大区块间距)
 // 逻辑：统一不同场景的图标物理大小，不再根据“它是哪个组件”来命名
 pub(crate) const ICON_XS: f32 = 10.0; // 辅助图标 (如 Tab 的关闭叉号)
 pub(crate) const ICON_SM: f32 = 12.0; // 次要图标 (如红绿灯、文件树辅助图标)
-pub(crate) const ICON_MD: f32 = 15.0; // 核心图标 (如顶栏、工具栏、文件树主体图标)
+pub(crate) const ICON_MD: f32 = 16.0; // 核心图标 (如顶栏、工具栏、文件树主体图标)
 
 // --- 交互控件热区 (Control Areas) ---
 // 逻辑：图标可能很小，但为了符合 Fitts's Law (方便点击)，悬浮和点击的热区需要标准化

@@ -11,7 +11,6 @@ use crate::theme::{color, size};
 /// 渲染底部工具栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     chrome::bar()
-        .bg(rgb(color::COLOR_BG_APP))
         .border_t_1()
         .border_color(rgb(color::COLOR_BORDER))
         .text_xs()
@@ -28,10 +27,26 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
         )
         .child(
             chrome::group()
-                .child(render_value(&state.tool_bar.cursor))
-                .child(render_value(&state.tool_bar.language))
-                .child(render_value(&state.tool_bar.line_ending))
-                .child(render_value(&state.tool_bar.encoding))
+                .child(render_value(
+                    "tb-cursor",
+                    &state.tool_bar.cursor,
+                    "Go to Line/Col",
+                ))
+                .child(render_value(
+                    "tb-language",
+                    &state.tool_bar.language,
+                    "Select Language",
+                ))
+                .child(render_value(
+                    "tb-line-ending",
+                    &state.tool_bar.line_ending,
+                    "Select End of Line Sequence",
+                ))
+                .child(render_value(
+                    "tb-encoding",
+                    &state.tool_bar.encoding,
+                    "Select Encoding",
+                ))
                 .children(
                     state
                         .tool_bar
@@ -58,7 +73,8 @@ fn render_tool(group: &'static str, index: usize, item: &ToolBarEntry) -> impl I
     ))
 }
 
-/// 渲染工具栏中的纯文本值。
-fn render_value(value: &str) -> impl IntoElement {
-    chip::status_chip().child(value.to_string())
+/// 渲染工具栏中的与当前活动文本有关的工具。
+fn render_value(id: &'static str, value: &str, tooltip: &str) -> impl IntoElement {
+    chip::interactive_chip(id, chip::TooltipSpec::new(tooltip, None::<&str>))
+        .child(value.to_string())
 }

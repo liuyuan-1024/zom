@@ -14,7 +14,6 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     let workspace_name = state.project_name.clone();
 
     chrome::bar()
-        .bg(rgb(color::COLOR_BG_PANEL))
         .border_b_1()
         .border_color(rgb(color::COLOR_BORDER))
         .child(
