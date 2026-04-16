@@ -8,12 +8,12 @@ mod spacing;
 use components::{file_tree::FileTreePanel, title_bar, tool_bar};
 
 use gpui::{
-    AnyView, App, Application, Bounds, Context, FontWeight, TitlebarOptions, Window, WindowBounds,
+    AnyView, App, Application, Bounds, Context, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
-use zom_app::state::{BufferSummary, DesktopAppState};
+use zom_app::state::DesktopAppState;
 
-use crate::spacing::{SPACE_1, SPACE_2, SPACE_3, SPACE_4, SPACE_5};
+use crate::components::pane::PaneView;
 
 /// 启动桌面界面。
 pub fn run() {
@@ -48,6 +48,8 @@ pub struct ZomRootView {
     state: DesktopAppState,
     /// 文件树
     file_tree_panel: AnyView,
+    /// Pane 视图
+    pane_view: AnyView,
 }
 
 impl ZomRootView {
@@ -57,9 +59,14 @@ impl ZomRootView {
             .new(|_| FileTreePanel::new(state.file_tree.clone()))
             .into();
 
+        let pane_view = cx
+            .new(|_| PaneView::new(state.pane.clone(), state.editor_preview.clone()))
+            .into();
+
         Self {
             state,
             file_tree_panel,
+            pane_view,
         }
     }
 }
@@ -79,119 +86,8 @@ impl Render for ZomRootView {
                     .flex_1()
                     .overflow_hidden()
                     .child(self.file_tree_panel.clone())
-                    .child(render_editor_surface(&self.state)),
+                    .child(self.pane_view.clone()),
             )
             .child(tool_bar::render(&self.state))
     }
-}
-
-/// 渲染标签栏和主编辑区。
-fn render_editor_surface(state: &DesktopAppState) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_col()
-        .flex_1()
-        .h_full()
-        .overflow_hidden()
-        .bg(rgb(0x10151d))
-        .child(render_tab_strip(&state.buffers))
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .flex_1()
-                .px(px(SPACE_5))
-                .py(px(SPACE_4))
-                .gap(px(SPACE_3))
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(0x8090ab))
-                        .child(state.active_buffer.clone()),
-                )
-                .child(render_editor_preview(&state.editor_preview)),
-        )
-}
-
-/// 渲染顶部标签栏。
-fn render_tab_strip(buffers: &[BufferSummary]) -> impl IntoElement {
-    let tabs = buffers.iter().map(render_tab);
-
-    div()
-        .w_full()
-        .h(px(42.0))
-        .flex()
-        .flex_row()
-        .items_end()
-        .px(px(SPACE_2))
-        .bg(rgb(0x151b24))
-        .border_b_1()
-        .border_color(rgb(0x262d3a))
-        .children(tabs)
-}
-
-/// 渲染单个标签页。
-fn render_tab(buffer: &BufferSummary) -> impl IntoElement {
-    let base = div()
-        .h(px(36.0))
-        .min_w(px(120.0))
-        .px(px(SPACE_2))
-        .mr(px(SPACE_2))
-        .flex()
-        .items_center()
-        .rounded_t_sm()
-        .border_1()
-        .border_b_0()
-        .text_sm()
-        .child(buffer.title.clone());
-
-    if buffer.is_active {
-        base.bg(rgb(0x10151d))
-            .border_color(rgb(0x2f88ff))
-            .text_color(rgb(0xf3f6fb))
-    } else {
-        base.bg(rgb(0x1b2230))
-            .border_color(rgb(0x2a3242))
-            .text_color(rgb(0x8d9ab1))
-    }
-}
-
-/// 渲染编辑区内的文本预览。
-fn render_editor_preview(lines: &[String]) -> impl IntoElement {
-    let line_elements = lines.iter().enumerate().map(|(index, line)| {
-        div()
-            .w_full()
-            .min_h(px(28.0))
-            .flex()
-            .flex_row()
-            .gap(px(SPACE_3))
-            .child(
-                div()
-                    .w(px(40.0))
-                    .text_right()
-                    .text_sm()
-                    .text_color(rgb(0x5c6880))
-                    .child((index + 1).to_string()),
-            )
-            .child(
-                div()
-                    .flex_1()
-                    .text_sm()
-                    .text_color(rgb(0xd9e2f2))
-                    .child(line.clone()),
-            )
-    });
-
-    div()
-        .flex()
-        .flex_col()
-        .flex_1()
-        .gap(px(SPACE_1))
-        .p(px(SPACE_4))
-        .bg(rgb(0x0d1117))
-        .border_1()
-        .border_color(rgb(0x232b38))
-        .rounded_sm()
-        .children(line_elements)
 }
