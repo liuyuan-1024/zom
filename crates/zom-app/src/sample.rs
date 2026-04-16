@@ -1,6 +1,8 @@
+use zom_core::{BufferId, PaneId};
+
 use crate::{
     state::{
-        BufferSummary, DesktopAppState, FileTreeNode, FileTreeNodeKind, FileTreeState,
+        DesktopAppState, FileTreeNode, FileTreeNodeKind, FileTreeState, PaneState, TabState,
         TitleBarIcon, TitleBarState, ToolBarEntry, ToolBarIcon, ToolBarState,
     },
     utils,
@@ -52,22 +54,6 @@ impl DesktopAppState {
                     },
                 ],
             },
-            project_name: workspace_name.clone(),
-            active_buffer,
-            buffers: vec![
-                BufferSummary {
-                    title: "lib.rs".into(),
-                    is_active: true,
-                },
-                BufferSummary {
-                    title: "selection.rs".into(),
-                    is_active: false,
-                },
-                BufferSummary {
-                    title: "input.rs".into(),
-                    is_active: false,
-                },
-            ],
             file_tree: FileTreeState {
                 title: "EXPLORER".into(),
                 roots: vec![directory(
@@ -138,6 +124,25 @@ impl DesktopAppState {
                     ],
                 )],
             },
+            project_name: workspace_name.clone(),
+            pane: PaneState {
+                id: PaneId::new(1),
+                tabs: vec![
+                    TabState {
+                        buffer_id: BufferId::new(1),
+                        title: "lib.rs".into(),
+                    },
+                    TabState {
+                        buffer_id: BufferId::new(2),
+                        title: "selection.rs".into(),
+                    },
+                    TabState {
+                        buffer_id: BufferId::new(3),
+                        title: "input.rs".into(),
+                    },
+                ],
+                active_tab_index: Some(0),
+            },
             editor_preview,
         }
     }
@@ -182,7 +187,6 @@ mod tests {
     fn sample_state_has_buffers_and_file_tree_content() {
         let state = DesktopAppState::sample();
 
-        assert!(!state.buffers.is_empty());
         assert!(!state.file_tree.roots.is_empty());
     }
 
