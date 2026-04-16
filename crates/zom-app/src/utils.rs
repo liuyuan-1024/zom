@@ -2,14 +2,14 @@ use std::{env, fs, path::PathBuf};
 use zom_text::TextBuffer;
 
 /// 生成工作区文件的绝对路径。
-pub fn workspace_file(relative_path: &str) -> PathBuf {
+pub fn workspace_file_absolute_path(relative_path: &str) -> PathBuf {
     env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
         .join(relative_path)
 }
 
-/// 推断当前工作区目录名称。
-pub fn detect_workspace_name() -> String {
+/// 推断当前工作区项目名称。
+pub fn detect_workspace_project_name() -> String {
     env::current_dir()
         .ok()
         .and_then(|path| {

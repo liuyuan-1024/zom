@@ -110,8 +110,8 @@ pub struct DesktopAppState {
     pub title_bar: TitleBarState,
     /// 底部工具栏信息。
     pub tool_bar: ToolBarState,
-    /// 当前打开目录名称。
-    pub workspace_name: String,
+    /// 当前打开项目的名称。
+    pub project_name: String,
     /// 当前激活文件。
     pub active_buffer: String,
     /// 打开的标签页。

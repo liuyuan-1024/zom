@@ -10,9 +10,9 @@ impl DesktopAppState {
     /// 构造一个用于界面预览的示例状态。
     pub fn sample() -> Self {
         let active_buffer = "crates/zom-core/src/lib.rs".to_string();
-        let active_buffer_path = utils::workspace_file(&active_buffer);
+        let active_buffer_path = utils::workspace_file_absolute_path(&active_buffer);
         let (editor_preview, line_ending, cursor) = utils::load_buffer_preview(&active_buffer_path);
-        let workspace_name = utils::detect_workspace_name();
+        let workspace_name = utils::detect_workspace_project_name();
 
         Self {
             title_bar: TitleBarState {
@@ -52,7 +52,7 @@ impl DesktopAppState {
                     },
                 ],
             },
-            workspace_name: workspace_name.clone(),
+            project_name: workspace_name.clone(),
             active_buffer,
             buffers: vec![
                 BufferSummary {

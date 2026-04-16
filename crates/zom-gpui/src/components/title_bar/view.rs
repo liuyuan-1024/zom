@@ -9,7 +9,7 @@ use crate::components::chip;
 
 /// 渲染顶栏，表达当前工作区。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
-    let workspace_name = state.workspace_name.clone();
+    let workspace_name = state.project_name.clone();
 
     chrome::bar()
         .bg(rgb(0x161a22))
@@ -31,7 +31,7 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                             .text_xs()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(0xe6edf7))
-                            .child(state.workspace_name.clone()),
+                            .child(state.project_name.clone()),
                     ),
                 ),
         )
