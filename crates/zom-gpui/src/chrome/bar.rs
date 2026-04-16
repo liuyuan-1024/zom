@@ -13,17 +13,11 @@ const CHROME_GAP: f32 = SPACE_1;
 const TITLEBAR_ICON_SIZE: f32 = 15.0;
 /// 工具栏图标使用的尺寸。
 const TOOL_ICON_SIZE: f32 = 15.0;
-/// 顶栏与底栏的内容高度基准。
-/// bar 的整体高度应由图标尺寸加上下间距推导，而不是由胶囊高度反推。
-const CHROME_BAR_CONTENT_HEIGHT: f32 = TITLEBAR_ICON_SIZE;
-/// 顶栏和底栏的总高度，由图标尺寸和上下留白共同推导得出。
-pub(super) const CHROME_BAR_HEIGHT: f32 = CHROME_BAR_CONTENT_HEIGHT + CHROME_PADDING * 2.0;
 
 /// 返回顶栏和底栏通用的容器样式。
 pub(crate) fn bar() -> Div {
     div()
         .w_full()
-        .h(px(CHROME_BAR_HEIGHT))
         .flex()
         .flex_row()
         .items_center()

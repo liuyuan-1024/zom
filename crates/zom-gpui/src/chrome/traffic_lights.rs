@@ -5,8 +5,6 @@ use gpui::{Pixels, Point, point, px};
 
 use crate::spacing::{SPACE_1, SPACE_2, SPACE_3};
 
-use super::bar::CHROME_BAR_HEIGHT;
-
 /// macOS 红绿灯按钮的视觉直径。
 const TRAFFIC_LIGHT_SIZE: f32 = 12.0;
 /// 红绿灯按钮组之间的固定间距。
@@ -20,10 +18,15 @@ const TRAFFIC_LIGHT_TRAILING_GAP: f32 = SPACE_3;
 pub(super) fn traffic_light_position() -> Point<Pixels> {
     let layout = traffic_light_layout();
 
-    point(
-        px(layout.leading_inset),
-        px((CHROME_BAR_HEIGHT - layout.button_size) / 2.0),
-    )
+    // 根据设计系统推导垂直居中的 Y 坐标：
+    // 1. 获取顶栏的顶部内边距
+    let top_padding = SPACE_1;
+    // 2. 核心内容区（Chip 胶囊）的标准高度
+    let content_height = 24.0;
+    // 3. 在内容区内垂直居中
+    let y_offset = top_padding + (content_height - layout.button_size) / 2.0;
+
+    point(px(layout.leading_inset), px(y_offset))
 }
 
 /// 计算标题栏左侧正文需要避开红绿灯的水平缩进。
