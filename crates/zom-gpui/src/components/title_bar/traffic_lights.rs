@@ -3,54 +3,45 @@
 
 use gpui::{Pixels, Point, point, px};
 
-use crate::theme::size::{self, SPACE_1, SPACE_2, SPACE_3};
+use crate::theme::size;
 
-/// 计算 macOS 红绿灯按钮的摆放位置。
+// 圆点视觉直径
+const NATIVE_LIGHT_SIZE: f32 = 12.0;
+// 圆点边缘之间的间距
+const NATIVE_LIGHT_GAP: f32 = 8.0;
+
+/// 返回 macOS 红绿灯按钮组在顶栏中的左上角位置。
 pub(crate) fn position() -> Point<Pixels> {
-    let layout = layout();
-
-    // 根据设计系统推导垂直居中的 Y 坐标：
-    let top_padding = SPACE_1;
-    // GPUI 中 text_xs 默认行高约为 16.0
-    let text_line_height = 16.0;
-    // 胶囊自然撑开的高度：文字行高 + 上下 Padding (SPACE_1 * 2)
-    let content_height = text_line_height + SPACE_1 * 2.0;
-
-    // 在推导出的内容区内垂直居中
-    let y_offset = top_padding + (content_height - layout.button_size) / 2.0;
-
-    point(px(layout.leading_inset), px(y_offset))
+    point(px(bar_padding_left()), px(vertical_offset_in_bar()))
 }
 
-/// 计算标题栏左侧正文需要避开红绿灯的水平缩进。
-pub(super) fn title_bar_leading_inset() -> f32 {
-    layout().slot_width()
+/// 返回红绿灯在顶栏中预留的槽宽。
+pub(crate) fn slot_width() -> f32 {
+    bar_padding_left() + lights_width() + trailing_spacing()
 }
 
-/// 返回红绿灯整体布局规格。
-fn layout() -> TrafficLightLayout {
-    TrafficLightLayout {
-        leading_inset: SPACE_2,
-        button_size: size::ICON_MD,
-        button_gap: SPACE_1,
-        trailing_gap: SPACE_3,
-    }
+/// 红绿灯整体宽度。
+fn lights_width() -> f32 {
+    NATIVE_LIGHT_SIZE * 3.0 + NATIVE_LIGHT_GAP * 2.0
 }
 
-/// 表达 macOS 红绿灯按钮组整体布局的值对象。
-struct TrafficLightLayout {
-    leading_inset: f32,
-    button_size: f32,
-    button_gap: f32,
-    trailing_gap: f32,
+/// 顶栏左侧用于放置红绿灯的起始边距。
+fn bar_padding_left() -> f32 {
+    size::SPACE_1
 }
 
-impl TrafficLightLayout {
-    fn group_width(&self) -> f32 {
-        self.button_size * 3.0 + self.button_gap * 2.0
-    }
+/// 红绿灯右侧需要额外预留的安全间距。
+fn trailing_spacing() -> f32 {
+    size::SPACE_2
+}
 
-    fn slot_width(&self) -> f32 {
-        self.leading_inset + self.group_width() + self.trailing_gap
-    }
+/// 顶栏最终高度。
+/// 顶栏高度由内部最高元素和上下 padding 共同决定。
+fn bar_height() -> f32 {
+    size::FONT_MD + size::SPACE_1 * 2.0
+}
+
+/// 红绿灯在顶栏中的垂直居中偏移。
+fn vertical_offset_in_bar() -> f32 {
+    (bar_height() - NATIVE_LIGHT_SIZE) / 2.0
 }

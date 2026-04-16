@@ -10,6 +10,10 @@ pub(crate) const SPACE_3: f32 = GAP * 3.0; // 18.0px (段落/区块间距)
 pub(crate) const SPACE_4: f32 = GAP * 4.0; // 24.0px (容器内边距)
 pub(crate) const SPACE_5: f32 = GAP * 5.0; // 30.0px (大区块间距)
 
+// --- 字体尺寸 (Font Sizes) ---
+// 逻辑：统一不同场景的字体物理大小，不再根据“它是哪个组件”来命名
+pub(crate) const FONT_MD: f32 = 16.0; // 核心字体 (如正文、标题、工具栏文本)
+
 // --- 图标尺寸 (Icon Sizes) ---
 // 逻辑：统一不同场景的图标物理大小，不再根据“它是哪个组件”来命名
 pub(crate) const ICON_XS: f32 = 10.0; // 辅助图标 (如 Tab 的关闭叉号)

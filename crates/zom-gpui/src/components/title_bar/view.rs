@@ -1,6 +1,6 @@
 //! 顶部标题栏视图。
 
-use gpui::{FontWeight, div, prelude::*, px, rgb};
+use gpui::{div, prelude::*, px, rgb};
 use zom_app::state::{DesktopAppState, TitleBarIcon};
 
 use super::icons;
@@ -11,30 +11,25 @@ use crate::theme::{color, size};
 
 /// 渲染顶栏，表达当前工作区。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
-    let workspace_name = state.project_name.clone();
+    let project_name = state.project_name.clone();
 
     chrome::bar()
         .border_b_1()
         .border_color(rgb(color::COLOR_BORDER))
         .child(
-            chrome::group()
-                .pl(px(traffic_lights::title_bar_leading_inset()))
+            chrome::group().pl(px(traffic_lights::slot_width())).child(
+                chip::interactive_chip(
+                    "title-bar-project_name",
+                    chip::TooltipSpec::new(format!("Project: {project_name}"), Some("Cmd+Shift+P")),
+                )
                 .child(
-                    chip::interactive_chip(
-                        "title-bar-workspace-chip",
-                        chip::TooltipSpec::new(
-                            format!("Project: {workspace_name}"),
-                            Some("Cmd+Shift+P"),
-                        ),
-                    )
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgb(color::COLOR_FG_PRIMARY))
-                            .child(state.project_name.clone()),
-                    ),
+                    div()
+                        .text_xs()
+                        .line_height(px(size::FONT_MD))
+                        .text_color(rgb(color::COLOR_FG_PRIMARY))
+                        .child(state.project_name.clone()),
                 ),
+            ),
         )
         .child(
             chrome::group().children(
