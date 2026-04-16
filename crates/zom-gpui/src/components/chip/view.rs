@@ -5,12 +5,12 @@ use gpui::{
 };
 
 use super::{TooltipSpec, tooltip::tooltip_view};
-use crate::theme::{color, spacing};
+use crate::theme::{color, size};
 
 /// 返回 chrome 体系下通用的文本胶囊样式。
 pub(crate) fn chip() -> Div {
     div()
-        .px(px(spacing::SPACE_1))
+        .px(px(size::SPACE_1))
         .flex()
         .flex_row()
         .items_center()
@@ -23,7 +23,7 @@ pub(crate) fn chip() -> Div {
 /// 返回 chrome 体系下通用的图标胶囊样式。
 pub(crate) fn icon_chip() -> Div {
     div()
-        .px(px(spacing::SPACE_1))
+        .px(px(size::SPACE_1))
         .flex()
         .items_center()
         .justify_center()

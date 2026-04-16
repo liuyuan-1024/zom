@@ -9,7 +9,7 @@ use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 use super::{FILE_TREE_INDENT_STEP, row};
 use crate::theme::{
     color,
-    spacing::{self, SPACE_1},
+    size::{self, SPACE_1},
 };
 
 /// 文件树面板视图。
@@ -24,7 +24,7 @@ impl FileTreePanel {
     pub fn new(state: FileTreeState) -> Self {
         Self {
             state,
-            width: spacing::PANEL_DEFAULT_WIDTH,
+            width: size::PANEL_WIDTH,
             is_dragging: false,
         }
     }
@@ -86,11 +86,11 @@ impl Render for FileTreePanel {
                     .cursor(CursorStyle::ResizeLeftRight)
                     .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
                         let mut new_width: f32 = event.position.x.into();
-                        if new_width < spacing::PANEL_MIN_WIDTH {
-                            new_width = spacing::PANEL_MIN_WIDTH;
+                        if new_width < size::PANEL_WIDTH_MIN {
+                            new_width = size::PANEL_WIDTH_MIN;
                         }
-                        if new_width > spacing::PANEL_MAX_WIDTH {
-                            new_width = spacing::PANEL_MAX_WIDTH;
+                        if new_width > size::PANEL_WIDTH_MAX {
+                            new_width = size::PANEL_WIDTH_MAX;
                         }
                         this.width = new_width;
                         cx.notify();

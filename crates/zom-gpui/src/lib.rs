@@ -15,7 +15,7 @@ use zom_app::state::DesktopAppState;
 
 use crate::{
     components::{pane::PaneView, title_bar::traffic_lights},
-    theme::{color, spacing},
+    theme::{color, size},
 };
 
 /// 启动桌面界面。
@@ -25,10 +25,7 @@ pub fn run() {
         .run(|cx: &mut App| {
             let bounds = Bounds::centered(
                 None,
-                size(
-                    px(spacing::WINDOW_DEFAULT_WIDTH),
-                    px(spacing::WINDOW_DEFAULT_HEIGHT),
-                ),
+                size(px(size::WINDOW_WIDTH), px(size::WINDOW_HEIGHT)),
                 cx,
             );
             let state = DesktopAppState::sample();

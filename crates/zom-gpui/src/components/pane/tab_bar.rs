@@ -5,7 +5,7 @@ use crate::{
     },
     theme::{
         color,
-        spacing::{self, SPACE_1, SPACE_4},
+        size::{self, SPACE_1, SPACE_4},
     },
 };
 use gpui::{CursorStyle, IntoElement, div, prelude::*, px, rgb};
@@ -95,13 +95,13 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
                 ("tab-close", index),
                 chip::TooltipSpec::new(spec.label, spec.shortcut),
             )
-            .size(px(spacing::BTN_CLOSE_SIZE))
+            .size(px(size::CONTROL_XS))
             .opacity(0.0)
             .group_hover(group_id.to_string(), |style| style.opacity(1.0))
             .hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)))
             .child(icons::render(
                 icon,
-                spacing::BTN_CLOSE_ICON_SIZE,
+                size::ICON_XS,
                 rgb(color::COLOR_FG_MUTED),
             )),
         )

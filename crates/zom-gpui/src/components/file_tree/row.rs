@@ -3,12 +3,10 @@
 use gpui::{AnyElement, div, prelude::*, px, rgb, svg};
 use zom_app::state::{FileTreeNode, FileTreeNodeKind};
 
-use crate::theme::{color, spacing::SPACE_1};
-
-/// 节点图标区域的固定宽度。
-const FILE_TREE_KIND_BADGE_WIDTH: f32 = 18.0;
-/// 文件树节点图标尺寸。
-const FILE_TREE_NODE_ICON_SIZE: f32 = 15.0;
+use crate::theme::{
+    color,
+    size::{self, SPACE_1},
+};
 
 /// 渲染单个文件树节点行。
 pub(super) fn render(node: &FileTreeNode) -> AnyElement {
@@ -59,14 +57,14 @@ fn render_folder_icon(node: &FileTreeNode) -> impl IntoElement {
     };
 
     div()
-        .w(px(FILE_TREE_KIND_BADGE_WIDTH))
+        .w(px(size::SPACE_3))
         .flex()
         .items_center()
         .justify_center()
         .child(
             svg()
                 .path(icon_path)
-                .size(px(FILE_TREE_NODE_ICON_SIZE))
+                .size(px(size::ICON_MD))
                 .text_color(rgb(color::COLOR_FG_MUTED)),
         )
 }
@@ -74,14 +72,14 @@ fn render_folder_icon(node: &FileTreeNode) -> impl IntoElement {
 /// 渲染文件图标。
 fn render_file_icon() -> impl IntoElement {
     div()
-        .w(px(FILE_TREE_KIND_BADGE_WIDTH))
+        .w(px(size::SPACE_3))
         .flex()
         .items_center()
         .justify_center()
         .child(
             svg()
                 .path("icons/file_tree/file.svg")
-                .size(px(FILE_TREE_NODE_ICON_SIZE))
+                .size(px(size::ICON_MD))
                 .text_color(rgb(color::COLOR_FG_MUTED)),
         )
 }

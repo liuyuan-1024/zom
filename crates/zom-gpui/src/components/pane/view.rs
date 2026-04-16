@@ -5,7 +5,7 @@ use crate::{
     components::pane::tab_bar,
     theme::{
         color,
-        spacing::{SPACE_1, SPACE_3, SPACE_4, SPACE_5},
+        size::{SPACE_1, SPACE_3, SPACE_4, SPACE_5},
     },
 };
 

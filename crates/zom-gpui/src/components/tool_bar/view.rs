@@ -6,7 +6,7 @@ use zom_app::state::{DesktopAppState, ToolBarEntry};
 use super::icons;
 use crate::chrome;
 use crate::components::chip;
-use crate::theme::{color, spacing};
+use crate::theme::{color, size};
 
 /// 渲染底部工具栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
@@ -53,7 +53,7 @@ fn render_tool(group: &'static str, index: usize, item: &ToolBarEntry) -> impl I
     )
     .child(icons::render(
         item.icon,
-        spacing::ICON_SIZE_MD,
+        size::ICON_MD,
         rgb(color::COLOR_FG_MUTED),
     ))
 }

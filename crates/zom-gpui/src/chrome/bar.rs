@@ -3,7 +3,7 @@
 
 use gpui::{Div, div, prelude::*, px};
 
-use crate::theme::spacing;
+use crate::theme::size;
 
 /// 返回顶栏和底栏通用的容器样式。
 pub(crate) fn bar() -> Div {
@@ -13,7 +13,7 @@ pub(crate) fn bar() -> Div {
         .flex_row()
         .items_center()
         .justify_between()
-        .p(px(spacing::SPACE_1))
+        .p(px(size::SPACE_1))
 }
 
 /// 返回顶栏和底栏通用的水平分组样式。
@@ -22,5 +22,5 @@ pub(crate) fn group() -> Div {
         .flex()
         .flex_row()
         .items_center()
-        .gap(px(spacing::SPACE_1))
+        .gap(px(size::SPACE_1))
 }

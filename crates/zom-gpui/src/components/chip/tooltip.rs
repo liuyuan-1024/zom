@@ -2,7 +2,7 @@
 
 use gpui::{AnyView, App, Context, FontWeight, Window, div, prelude::*, px, rgb};
 
-use crate::theme::{color, spacing::SPACE_1};
+use crate::theme::{color, size::SPACE_1};
 
 /// 可复用的悬停提示语义。
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -3,16 +3,7 @@
 
 use gpui::{Pixels, Point, point, px};
 
-use crate::theme::spacing::{SPACE_1, SPACE_2, SPACE_3};
-
-/// macOS 红绿灯按钮的视觉直径。
-const TRAFFIC_LIGHT_SIZE: f32 = 12.0;
-/// 红绿灯按钮组之间的固定间距。
-const TRAFFIC_LIGHT_INTERNAL_GAP: f32 = SPACE_1;
-/// 红绿灯的左侧偏移量。
-const TRAFFIC_LIGHT_LEADING_INSET: f32 = SPACE_2;
-/// 按钮组结束后到正文安全区域之间的固定留白。
-const TRAFFIC_LIGHT_TRAILING_GAP: f32 = SPACE_3;
+use crate::theme::size::{self, SPACE_1, SPACE_2, SPACE_3};
 
 /// 计算 macOS 红绿灯按钮的摆放位置。
 pub(crate) fn position() -> Point<Pixels> {
@@ -39,10 +30,10 @@ pub(super) fn title_bar_leading_inset() -> f32 {
 /// 返回红绿灯整体布局规格。
 fn layout() -> TrafficLightLayout {
     TrafficLightLayout {
-        leading_inset: TRAFFIC_LIGHT_LEADING_INSET,
-        button_size: TRAFFIC_LIGHT_SIZE,
-        button_gap: TRAFFIC_LIGHT_INTERNAL_GAP,
-        trailing_gap: TRAFFIC_LIGHT_TRAILING_GAP,
+        leading_inset: SPACE_2,
+        button_size: size::ICON_MD,
+        button_gap: SPACE_1,
+        trailing_gap: SPACE_3,
     }
 }
 

@@ -7,7 +7,7 @@ use super::icons;
 use crate::chrome;
 use crate::components::chip;
 use crate::components::title_bar::traffic_lights;
-use crate::theme::{color, spacing};
+use crate::theme::{color, size};
 
 /// 渲染顶栏，表达当前工作区。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
@@ -59,7 +59,7 @@ fn render_settings_button(index: usize, icon: TitleBarIcon) -> impl IntoElement 
     )
     .child(icons::render(
         icon,
-        spacing::ICON_SIZE_MD,
+        size::ICON_MD,
         rgb(color::COLOR_FG_MUTED),
     ))
 }
