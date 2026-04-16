@@ -14,7 +14,7 @@ macro_rules! define_id {
             }
 
             /// 取出底层整数值。
-            pub fn get(self) -> u64 {
+            pub fn value(self) -> u64 {
                 self.0
             }
         }
@@ -43,8 +43,8 @@ mod tests {
 
     #[test]
     fn ids_expose_their_underlying_value() {
-        assert_eq!(BufferId::new(7).get(), 7);
+        assert_eq!(BufferId::new(7).value(), 7);
         assert_eq!(PaneId::from(9).to_string(), "9");
-        assert_eq!(WorkspaceId::new(11).get(), 11);
+        assert_eq!(WorkspaceId::new(11).value(), 11);
     }
 }

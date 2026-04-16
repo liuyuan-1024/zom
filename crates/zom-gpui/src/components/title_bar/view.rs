@@ -39,7 +39,7 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
             chrome::group().children(
                 state
                     .title_bar
-                    .right_items
+                    .right_icons
                     .iter()
                     .enumerate()
                     .map(|(index, &icon)| render_settings_button(index, icon)),

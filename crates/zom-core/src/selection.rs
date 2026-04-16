@@ -122,7 +122,7 @@ impl SelectionSet {
         }
 
         self.selections.push(selection);
-        self.reindex_primary_after_normalize();
+        self.update_primary_index_after_normalize();
     }
 
     /// 将某个已存在或新加入的选区标记为主选区。
@@ -131,12 +131,12 @@ impl SelectionSet {
             self.selections.push(selection);
         }
 
-        self.reindex_primary_after_normalize_with(selection);
+        self.update_primary_index_after_normalize_with(selection);
     }
 
     /// 重新规范化当前集合，保持主选区语义不变。
     pub fn normalize(&mut self) {
-        self.reindex_primary_after_normalize();
+        self.update_primary_index_after_normalize();
     }
 
     fn normalize_selections(mut selections: Vec<Selection>) -> Vec<Selection> {
@@ -145,16 +145,16 @@ impl SelectionSet {
         selections
     }
 
-    fn reindex_primary_after_normalize(&mut self) {
+    fn update_primary_index_after_normalize(&mut self) {
         let primary = self.primary().copied();
-        self.reindex_primary_after_normalize_with_optional(primary);
+        self.update_primary_index_after_normalize_with_optional(primary);
     }
 
-    fn reindex_primary_after_normalize_with(&mut self, primary: Selection) {
-        self.reindex_primary_after_normalize_with_optional(Some(primary));
+    fn update_primary_index_after_normalize_with(&mut self, primary: Selection) {
+        self.update_primary_index_after_normalize_with_optional(Some(primary));
     }
 
-    fn reindex_primary_after_normalize_with_optional(&mut self, primary: Option<Selection>) {
+    fn update_primary_index_after_normalize_with_optional(&mut self, primary: Option<Selection>) {
         self.selections = Self::normalize_selections(std::mem::take(&mut self.selections));
         self.primary_index = primary.and_then(|selection| {
             self.selections

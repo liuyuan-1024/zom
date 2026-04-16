@@ -7,29 +7,29 @@ use crate::Command;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Modifiers {
     /// 是否按下 Control。
-    pub ctrl: bool,
+    pub has_ctrl: bool,
     /// 是否按下 Alt。
-    pub alt: bool,
+    pub has_alt: bool,
     /// 是否按下 Shift。
-    pub shift: bool,
+    pub has_shift: bool,
     /// 是否按下 Meta 或 Command。
-    pub meta: bool,
+    pub has_meta: bool,
 }
 
 impl Modifiers {
     /// 构造一组显式的修饰键状态。
     pub fn new(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Self {
         Self {
-            ctrl,
-            alt,
-            shift,
-            meta,
+            has_ctrl: ctrl,
+            has_alt: alt,
+            has_shift: shift,
+            has_meta: meta,
         }
     }
 
     /// 判断当前是否没有任何修饰键。
     pub fn is_empty(self) -> bool {
-        !self.ctrl && !self.alt && !self.shift && !self.meta
+        !self.has_ctrl && !self.has_alt && !self.has_shift && !self.has_meta
     }
 }
 
@@ -107,9 +107,9 @@ pub struct InputContext {
     /// 当前焦点所在区域。
     pub focus: FocusTarget,
     /// 是否处于原生文本输入语境中。
-    pub in_text_input: bool,
+    pub is_in_text_input: bool,
     /// 命令面板当前是否打开。
-    pub command_palette_open: bool,
+    pub is_command_palette_open: bool,
     /// 编辑器相关上下文，仅在焦点位于编辑器时存在。
     pub editor: Option<EditorInputContext>,
 }
@@ -119,8 +119,8 @@ impl InputContext {
     pub fn new(focus: FocusTarget) -> Self {
         Self {
             focus,
-            in_text_input: false,
-            command_palette_open: false,
+            is_in_text_input: false,
+            is_command_palette_open: false,
             editor: None,
         }
     }
@@ -133,13 +133,13 @@ impl InputContext {
 
     /// 标记当前处于文本输入语境。
     pub fn with_text_input(mut self, in_text_input: bool) -> Self {
-        self.in_text_input = in_text_input;
+        self.is_in_text_input = in_text_input;
         self
     }
 
     /// 标记命令面板的打开状态。
     pub fn with_command_palette_open(mut self, command_palette_open: bool) -> Self {
-        self.command_palette_open = command_palette_open;
+        self.is_command_palette_open = command_palette_open;
         self
     }
 }
@@ -148,9 +148,9 @@ impl InputContext {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorInputContext {
     /// 当前编辑器是否允许编辑。
-    pub editable: bool,
+    pub is_editable: bool,
     /// 当前缓冲区是否只读。
-    pub read_only: bool,
+    pub is_read_only: bool,
     /// 当前是否已有选区。
     pub has_selection: bool,
 }
@@ -159,8 +159,8 @@ impl EditorInputContext {
     /// 构造一份编辑器局部输入上下文。
     pub fn new(editable: bool, read_only: bool, has_selection: bool) -> Self {
         Self {
-            editable,
-            read_only,
+            is_editable: editable,
+            is_read_only: read_only,
             has_selection,
         }
     }
@@ -218,8 +218,8 @@ mod tests {
             .with_command_palette_open(true);
 
         assert_eq!(context.focus, FocusTarget::Editor);
-        assert!(context.in_text_input);
-        assert!(context.command_palette_open);
+        assert!(context.is_in_text_input);
+        assert!(context.is_command_palette_open);
         assert_eq!(context.editor, Some(editor));
     }
 

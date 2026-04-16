@@ -55,12 +55,12 @@ pub enum TitleBarIcon {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TitleBarState {
     /// 标题栏右侧的工具入口。
-    pub right_items: Vec<TitleBarIcon>,
+    pub right_icons: Vec<TitleBarIcon>,
 }
 
 /// 工具栏展示信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolBarItem {
+pub struct ToolBarEntry {
     /// 图标语义。
     pub icon: ToolBarIcon,
 }
@@ -90,7 +90,7 @@ pub enum ToolBarIcon {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolBarState {
     /// 左侧工具入口。
-    pub left_items: Vec<ToolBarItem>,
+    pub left_tools: Vec<ToolBarEntry>,
     /// 光标位置文本。
     pub cursor: String,
     /// 当前文本语言类型。
@@ -100,7 +100,7 @@ pub struct ToolBarState {
     /// 当前文件编码。
     pub encoding: String,
     /// 右侧工具入口。
-    pub right_items: Vec<ToolBarItem>,
+    pub right_tools: Vec<ToolBarEntry>,
 }
 
 /// 桌面端根界面使用的应用状态。

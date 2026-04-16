@@ -50,11 +50,11 @@ mod tests {
     fn editor_context() -> InputContext {
         InputContext {
             focus: FocusTarget::Editor,
-            in_text_input: false,
-            command_palette_open: false,
+            is_in_text_input: false,
+            is_command_palette_open: false,
             editor: Some(EditorInputContext {
-                editable: true,
-                read_only: false,
+                is_editable: true,
+                is_read_only: false,
                 has_selection: false,
             }),
         }

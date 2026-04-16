@@ -1,7 +1,7 @@
 use crate::{
     state::{
         BufferSummary, DesktopAppState, FileTreeNode, FileTreeNodeKind, FileTreeState,
-        TitleBarIcon, TitleBarState, ToolBarIcon, ToolBarItem, ToolBarState,
+        TitleBarIcon, TitleBarState, ToolBarEntry, ToolBarIcon, ToolBarState,
     },
     utils,
 };
@@ -16,23 +16,23 @@ impl DesktopAppState {
 
         Self {
             title_bar: TitleBarState {
-                right_items: vec![TitleBarIcon::Settings],
+                right_icons: vec![TitleBarIcon::Settings],
             },
             tool_bar: ToolBarState {
-                left_items: vec![
-                    ToolBarItem {
+                left_tools: vec![
+                    ToolBarEntry {
                         icon: ToolBarIcon::Files,
                     },
-                    ToolBarItem {
+                    ToolBarEntry {
                         icon: ToolBarIcon::GitBranch,
                     },
-                    ToolBarItem {
+                    ToolBarEntry {
                         icon: ToolBarIcon::Outline,
                     },
-                    ToolBarItem {
+                    ToolBarEntry {
                         icon: ToolBarIcon::Search,
                     },
-                    ToolBarItem {
+                    ToolBarEntry {
                         icon: ToolBarIcon::LanguageServer,
                     },
                 ],
@@ -40,14 +40,14 @@ impl DesktopAppState {
                 language: "Rust".into(),
                 line_ending,
                 encoding: "UTF-8".into(),
-                right_items: vec![
-                    ToolBarItem {
+                right_tools: vec![
+                    ToolBarEntry {
                         icon: ToolBarIcon::Terminal,
                     },
-                    ToolBarItem {
+                    ToolBarEntry {
                         icon: ToolBarIcon::Debug,
                     },
-                    ToolBarItem {
+                    ToolBarEntry {
                         icon: ToolBarIcon::Notifications,
                     },
                 ],

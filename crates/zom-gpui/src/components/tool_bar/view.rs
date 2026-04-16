@@ -1,7 +1,7 @@
 //! 底部工具栏视图。
 
 use gpui::{prelude::*, rgb};
-use zom_app::state::{DesktopAppState, ToolBarItem};
+use zom_app::state::{DesktopAppState, ToolBarEntry};
 
 use super::icons;
 use crate::chrome;
@@ -19,10 +19,10 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
             chrome::group().children(
                 state
                     .tool_bar
-                    .left_items
+                    .left_tools
                     .iter()
                     .enumerate()
-                    .map(|(index, item)| render_item("tool-bar-left", index, item)),
+                    .map(|(index, item)| render_tool("tool-bar-left", index, item)),
             ),
         )
         .child(
@@ -34,16 +34,16 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                 .children(
                     state
                         .tool_bar
-                        .right_items
+                        .right_tools
                         .iter()
                         .enumerate()
-                        .map(|(index, item)| render_item("tool-bar-right", index, item)),
+                        .map(|(index, item)| render_tool("tool-bar-right", index, item)),
                 ),
         )
 }
 
 /// 渲染工具栏中的单个图标入口。
-fn render_item(group: &'static str, index: usize, item: &ToolBarItem) -> impl IntoElement {
+fn render_tool(group: &'static str, index: usize, item: &ToolBarEntry) -> impl IntoElement {
     let spec = icons::spec(item.icon);
 
     chip::interactive_icon_chip(
