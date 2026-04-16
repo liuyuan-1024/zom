@@ -47,7 +47,7 @@ mod tests {
     #[test]
     fn command_kind_helpers_match_the_payload() {
         let editor = Command::from(EditorCommand::Undo);
-        let workspace = Command::from(WorkspaceCommand::OpenCommandPalette);
+        let workspace = Command::from(WorkspaceCommand::FocusCommandPalette);
 
         assert!(editor.is_editor());
         assert!(!editor.is_workspace());
