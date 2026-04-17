@@ -1,8 +1,8 @@
 //! 文件树组件视图。
 
 use gpui::{
-    AnyElement, Context, CursorStyle, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    Render, Window, div, prelude::*, px, rgb,
+    AnyElement, Context, CursorStyle, EventEmitter, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, Render, Window, div, prelude::*, px, rgb,
 };
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
@@ -19,6 +19,15 @@ pub struct FileTreePanel {
     is_dragging: bool,
 }
 
+/// 文件树节点点击事件。
+#[derive(Debug, Clone)]
+pub struct FileTreeNodeClicked {
+    pub relative_path: String,
+    pub kind: FileTreeNodeKind,
+}
+
+impl EventEmitter<FileTreeNodeClicked> for FileTreePanel {}
+
 impl FileTreePanel {
     /// 创建一个新的文件树面板。
     pub fn new(state: FileTreeState) -> Self {
@@ -27,6 +36,12 @@ impl FileTreePanel {
             width: size::PANEL_WIDTH,
             is_dragging: false,
         }
+    }
+
+    /// 更新文件树展示状态（例如选中态、展开态）。
+    pub fn set_state(&mut self, state: FileTreeState, cx: &mut Context<Self>) {
+        self.state = state;
+        cx.notify();
     }
 }
 
@@ -121,16 +136,21 @@ fn render_children(children: &[FileTreeNode], cx: &mut Context<FileTreePanel>) -
 
 /// 递归渲染文件树节点 (保持为纯渲染逻辑)。
 fn render_node(node: &FileTreeNode, cx: &mut Context<FileTreePanel>) -> AnyElement {
-    let node_id = gpui::SharedString::from(format!("tree-node-{}", node.name));
+    let node_id = gpui::SharedString::from(format!("tree-node-{}", node.path));
     let is_dir = matches!(node.kind, FileTreeNodeKind::Directory);
+    let clicked_path = node.path.clone();
+    let clicked_kind = node.kind;
 
     // 给行容器增加 id 和点击事件
     let row_view = div()
         .id(node_id)
         .child(row::render(node))
-        .on_click(cx.listener(move |this, event, window, cx| {
-            // 在这里处理点击事件！
-            // _cx.dispatch_action(...)
+        .on_click(cx.listener(move |_this, _event, _window, cx| {
+            cx.emit(FileTreeNodeClicked {
+                relative_path: clicked_path.clone(),
+                kind: clicked_kind,
+            });
+            cx.notify();
         }));
 
     let container = div().flex().flex_col().child(row_view);

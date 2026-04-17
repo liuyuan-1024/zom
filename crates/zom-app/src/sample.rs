@@ -1,11 +1,9 @@
-use std::path::Path;
-
-use zom_core::{BufferId, PaneId};
+use zom_core::PaneId;
 
 use crate::{
     state::{
-        DesktopAppState, FileTreeNode, FileTreeNodeKind, FileTreeState, PaneState, TabState,
-        TitleBarIcon, TitleBarState, ToolBarEntry, ToolBarIcon, ToolBarState,
+        DesktopAppState, FileTreeNode, FileTreeNodeKind, FileTreeState, PaneState, TitleBarIcon,
+        TitleBarState, ToolBarEntry, ToolBarIcon, ToolBarState,
     },
     utils,
 };
@@ -13,11 +11,6 @@ use crate::{
 impl DesktopAppState {
     /// 构造一个用于界面预览的示例状态。
     pub fn sample() -> Self {
-        let active_tab_relative_path = "crates/zom-core/src/lib.rs";
-        let active_tab_absolute_path =
-            utils::workspace_file_absolute_path(active_tab_relative_path);
-        let (active_buffer_lines, line_ending, cursor) =
-            utils::load_buffer_preview(&active_tab_absolute_path);
         let workspace_name = utils::detect_workspace_project_name();
 
         Self {
@@ -42,9 +35,9 @@ impl DesktopAppState {
                         icon: ToolBarIcon::LanguageServer,
                     },
                 ],
-                cursor,
+                cursor: "1:1".into(),
                 language: "Rust".into(),
-                line_ending,
+                line_ending: "LF".into(),
                 encoding: "UTF-8".into(),
                 right_tools: vec![
                     ToolBarEntry {
@@ -96,8 +89,8 @@ impl DesktopAppState {
                                                 file(
                                                     "sample.rs",
                                                     "crates/zom-app/src/sample.rs",
-                                                    true,
-                                                    true,
+                                                    false,
+                                                    false,
                                                 ),
                                                 file(
                                                     "state.rs",
@@ -131,41 +124,11 @@ impl DesktopAppState {
             project_name: workspace_name.clone(),
             pane: PaneState {
                 id: PaneId::new(1),
-                tabs: vec![
-                    TabState {
-                        buffer_id: BufferId::new(1),
-                        title: "lib.rs".into(),
-                        relative_path: active_tab_relative_path.into(),
-                        buffer_lines: active_buffer_lines,
-                    },
-                    tab_from_file(BufferId::new(2), "crates/zom-core/src/selection.rs"),
-                    tab_from_file(BufferId::new(3), "crates/zom-core/src/input.rs"),
-                ],
-                active_tab_index: Some(0),
+                tabs: Vec::new(),
+                active_tab_index: None,
             },
         }
     }
-}
-
-/// 从真实文件创建用于 Pane 的标签页状态。
-fn tab_from_file(buffer_id: BufferId, relative_path: &str) -> TabState {
-    let absolute_path = utils::workspace_file_absolute_path(relative_path);
-    let (buffer_lines, _, _) = utils::load_buffer_preview(&absolute_path);
-
-    TabState {
-        buffer_id,
-        title: file_name(relative_path),
-        relative_path: relative_path.into(),
-        buffer_lines,
-    }
-}
-
-/// 从相对路径提取标签标题。
-fn file_name(relative_path: &str) -> String {
-    Path::new(relative_path)
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_else(|| relative_path.to_string())
 }
 
 /// 构造目录节点，简化示例文件树的声明。
@@ -208,15 +171,13 @@ mod tests {
         let state = DesktopAppState::sample();
 
         assert!(!state.file_tree.roots.is_empty());
-        assert!(!state.pane.tabs.is_empty());
+        assert!(state.pane.tabs.is_empty());
     }
 
     #[test]
-    fn sample_state_active_tab_has_loaded_file_content() {
+    fn sample_state_starts_without_active_tab() {
         let state = DesktopAppState::sample();
-        let active_tab = state.pane.active_tab().expect("active tab should exist");
-
-        assert!(!active_tab.buffer_lines.is_empty());
+        assert!(state.pane.active_tab().is_none());
     }
 
     #[test]

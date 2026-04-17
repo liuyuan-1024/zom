@@ -5,10 +5,13 @@ mod assets;
 mod chrome;
 mod components;
 mod theme;
-use components::{file_tree::FileTreePanel, title_bar, tool_bar};
+use components::{
+    file_tree::{FileTreeNodeClicked, FileTreePanel},
+    title_bar, tool_bar,
+};
 
 use gpui::{
-    AnyView, App, Application, Bounds, Context, TitlebarOptions, Window, WindowBounds,
+    App, Application, Bounds, Context, Entity, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
 use zom_app::state::DesktopAppState;
@@ -54,25 +57,55 @@ pub struct ZomRootView {
     /// 用于展示的应用状态。
     state: DesktopAppState,
     /// 文件树
-    file_tree_panel: AnyView,
+    file_tree_panel: Entity<FileTreePanel>,
     /// Pane 视图
-    pane_view: AnyView,
+    pane_view: Entity<PaneView>,
 }
 
 impl ZomRootView {
     /// 用应用状态创建根视图。
     pub fn new(state: DesktopAppState, cx: &mut Context<Self>) -> Self {
-        let file_tree_panel = cx
-            .new(|_| FileTreePanel::new(state.file_tree.clone()))
-            .into();
+        let file_tree_panel = cx.new(|_| FileTreePanel::new(state.file_tree.clone()));
+        let pane_view = cx.new(|_| PaneView::new(state.pane.clone()));
 
-        let pane_view = cx.new(|_| PaneView::new(state.pane.clone())).into();
+        cx.subscribe(
+            &file_tree_panel,
+            |this, _, event: &FileTreeNodeClicked, cx| {
+                this.handle_file_tree_node_clicked(event, cx);
+            },
+        )
+        .detach();
 
         Self {
             state,
             file_tree_panel,
             pane_view,
         }
+    }
+
+    /// 响应文件树点击，驱动应用层状态并同步子视图。
+    fn handle_file_tree_node_clicked(
+        &mut self,
+        event: &FileTreeNodeClicked,
+        cx: &mut Context<Self>,
+    ) {
+        self.state
+            .handle_file_tree_node_click(&event.relative_path, event.kind);
+        self.sync_child_views(cx);
+    }
+
+    /// 将最新应用状态同步到文件树和窗格视图。
+    fn sync_child_views(&mut self, cx: &mut Context<Self>) {
+        let file_tree_state = self.state.file_tree.clone();
+        let pane_state = self.state.pane.clone();
+
+        self.file_tree_panel.update(cx, |this, cx| {
+            this.set_state(file_tree_state, cx);
+        });
+        self.pane_view.update(cx, |this, cx| {
+            this.set_state(pane_state, cx);
+        });
+        cx.notify();
     }
 }
 

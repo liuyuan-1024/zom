@@ -1,4 +1,7 @@
-use std::{env, fs, path::PathBuf};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 use zom_text::TextBuffer;
 
 /// 生成工作区文件的绝对路径。
@@ -18,6 +21,14 @@ pub fn detect_workspace_project_name() -> String {
         })
         .filter(|name| !name.is_empty())
         .unwrap_or_else(|| "workspace".into())
+}
+
+/// 从相对路径提取文件名，作为标签标题等展示用途。
+pub fn file_name_from_path(relative_path: &str) -> String {
+    Path::new(relative_path)
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| relative_path.to_string())
 }
 
 /// 读取真实文件内容，并转换成界面需要的预览数据。
