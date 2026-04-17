@@ -8,7 +8,6 @@ pub(crate) const SPACE_1: f32 = GAP; // 6.0px  (极小间距/微调)
 pub(crate) const SPACE_2: f32 = GAP * 2.0; // 12.0px (组件内容间距)
 pub(crate) const SPACE_3: f32 = GAP * 3.0; // 18.0px (段落/区块间距)
 pub(crate) const SPACE_4: f32 = GAP * 4.0; // 24.0px (容器内边距)
-pub(crate) const SPACE_5: f32 = GAP * 5.0; // 30.0px (大区块间距)
 
 // --- 字体尺寸 (Font Sizes) ---
 // 逻辑：统一不同场景的字体物理大小，不再根据“它是哪个组件”来命名

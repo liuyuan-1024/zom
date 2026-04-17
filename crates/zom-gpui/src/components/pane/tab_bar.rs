@@ -56,7 +56,7 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
     if is_active {
         tab_style = tab_style
             .relative()
-            .bg(rgb(color::COLOR_BG_ACTIVE))
+            .bg(rgb(color::COLOR_BG_APP))
             .text_color(rgb(color::COLOR_FG_PRIMARY))
             .child(
                 div()

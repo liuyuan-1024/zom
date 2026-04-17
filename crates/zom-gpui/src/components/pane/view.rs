@@ -1,12 +1,9 @@
-use gpui::{Context, FontWeight, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb};
+use gpui::{Context, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb};
 use zom_app::state::PaneState;
 
 use crate::{
     components::pane::tab_bar,
-    theme::{
-        color,
-        size::{SPACE_1, SPACE_3, SPACE_4, SPACE_5},
-    },
+    theme::{color, size::SPACE_3},
 };
 
 pub struct PaneView {
@@ -23,28 +20,30 @@ impl PaneView {
     }
 }
 
+impl Render for PaneView {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .h_full()
+            .overflow_hidden()
+            .bg(rgb(color::COLOR_BG_APP))
+            .child(tab_bar::render(&self.state))
+            .child(self.render_active_content())
+    }
+}
+
 impl PaneView {
     /// 渲染当前活动标签的内容（编辑区）
     fn render_active_content(&self) -> impl IntoElement {
         if let Some(active_index) = self.state.active_tab_index {
-            if let Some(active_tab) = self.state.tabs.get(active_index) {
-                return div()
-                    .flex()
-                    .flex_col()
-                    .flex_1()
-                    .px(px(SPACE_5))
-                    .py(px(SPACE_4))
-                    .gap(px(SPACE_3))
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgb(color::COLOR_FG_MUTED))
-                            .child(active_tab.title.clone()),
-                    )
-                    .child(self.render_editor_preview_content())
-                    .into_any_element();
-            }
+            return div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .child(self.render_editor_preview_content())
+                .into_any_element();
         }
 
         div()
@@ -62,7 +61,6 @@ impl PaneView {
         let line_elements = self.editor_preview.iter().enumerate().map(|(index, line)| {
             div()
                 .w_full()
-                .py(px(SPACE_1))
                 .flex()
                 .flex_row()
                 .gap(px(SPACE_3))
@@ -78,7 +76,7 @@ impl PaneView {
                     div()
                         .flex_1()
                         .text_sm()
-                        .text_color(rgb(color::COLOR_FG_PRIMARY))
+                        .text_color(rgb(color::COLOR_FG_MUTED))
                         .child(line.clone()),
                 )
         });
@@ -87,26 +85,7 @@ impl PaneView {
             .flex()
             .flex_col()
             .flex_1()
-            .gap(px(SPACE_1))
-            .p(px(SPACE_4))
             .bg(rgb(color::COLOR_BG_APP))
-            .border_1()
-            .border_color(rgb(color::COLOR_BORDER))
-            .rounded_sm()
             .children(line_elements)
-    }
-}
-
-impl Render for PaneView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .flex()
-            .flex_col()
-            .flex_1()
-            .h_full()
-            .overflow_hidden()
-            .bg(rgb(color::COLOR_BG_APP))
-            .child(tab_bar::render(&self.state))
-            .child(self.render_active_content())
     }
 }
