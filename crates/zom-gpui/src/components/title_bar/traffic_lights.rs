@@ -38,7 +38,7 @@ fn trailing_spacing() -> f32 {
 /// 顶栏最终高度。
 /// 顶栏高度由内部最高元素和上下 padding 共同决定。
 fn bar_height() -> f32 {
-    size::FONT_MD + size::SPACE_1 * 2.0
+    size::FONT_MD + size::SPACE_2
 }
 
 /// 红绿灯在顶栏中的垂直居中偏移。

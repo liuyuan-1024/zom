@@ -73,9 +73,8 @@ impl Render for FileTreePanel {
         let splitter = div()
             .id("splitter")
             .absolute()
-            .top(px(0.0))
-            .right(px(-1.0))
-            .w(px(2.0))
+            .right(px(-(size::SPACE_1 / 2.0)))
+            .w(px(size::SPACE_1))
             .h_full()
             .cursor(CursorStyle::ResizeLeftRight)
             .on_mouse_down(
@@ -94,6 +93,7 @@ impl Render for FileTreePanel {
             container = container.child(
                 div()
                     .absolute()
+                    // TODO: 消除硬编码
                     .top(px(-2000.0))
                     .left(px(-2000.0))
                     .w(px(10000.0))

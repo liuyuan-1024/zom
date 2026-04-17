@@ -3,10 +3,7 @@ use crate::{
         chip,
         pane::icons::{self, PaneIcon},
     },
-    theme::{
-        color,
-        size::{self, SPACE_1, SPACE_4},
-    },
+    theme::{color, opacity, size},
 };
 use gpui::{CursorStyle, IntoElement, div, prelude::*, px, rgb};
 use zom_app::state::{PaneState, TabState};
@@ -36,8 +33,7 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
     let mut tab_style = div()
         .group(group_id.clone())
         .relative()
-        .py(px(SPACE_1))
-        .px(px(SPACE_4))
+        .p(px(size::SPACE_1))
         .flex()
         .items_center()
         .justify_center()
@@ -45,29 +41,27 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
         .border_color(rgb(color::COLOR_BORDER))
         .text_sm()
         .cursor(CursorStyle::PointingHand)
-        .child(render_close_button(&group_id, index))
         .child(
             div()
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .child(tab.title.clone()),
+                .flex()
+                .items_center()
+                .gap(px(size::SPACE_1))
+                .child(render_close_button(&group_id, index))
+                .child(
+                    div()
+                        .overflow_hidden()
+                        .whitespace_nowrap()
+                        .child(tab.title.clone()),
+                )
+                // 右侧等宽占位，避免左侧关闭按钮显隐时标题飘移
+                .child(render_close_button_placeholder()),
         );
 
     if is_active {
         tab_style = tab_style
             .relative()
             .bg(rgb(color::COLOR_BG_APP))
-            .text_color(rgb(color::COLOR_FG_PRIMARY))
-            .child(
-                div()
-                    .absolute()
-                    .bottom(px(-1.0))
-                    .left_0()
-                    .right_0()
-                    .h(px(1.0))
-                    // 遮住底部边框，与编辑器区融为一体
-                    .bg(rgb(color::COLOR_BG_APP)),
-            );
+            .text_color(rgb(color::COLOR_FG_PRIMARY));
     } else {
         tab_style = tab_style
             .bg(rgb(color::COLOR_BG_ELEMENT))
@@ -84,20 +78,21 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
     let spec = icons::spec(icon);
 
     div()
-        .absolute()
-        .left(px(3.0))
-        .top_0()
-        .bottom_0()
+        .size(px(size::CONTROL_XS))
+        .flex_shrink_0()
         .flex()
         .items_center()
+        .justify_center()
         .child(
             chip::interactive_icon_chip(
                 ("tab-close", index),
                 chip::TooltipSpec::new(spec.label, spec.shortcut),
             )
             .size(px(size::CONTROL_XS))
-            .opacity(0.0)
-            .group_hover(group_id.to_string(), |style| style.opacity(1.0))
+            .opacity(opacity::OPACITY_HIDDEN)
+            .group_hover(group_id.to_string(), |style| {
+                style.opacity(opacity::OPACITY_VISIBLE)
+            })
             .hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)))
             .child(icons::render(
                 icon,
@@ -105,4 +100,9 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
                 rgb(color::COLOR_FG_MUTED),
             )),
         )
+}
+
+/// 渲染和关闭按钮等宽的占位槽，用来维持标题居中。
+fn render_close_button_placeholder() -> impl IntoElement {
+    div().size(px(size::CONTROL_XS)).flex_shrink_0()
 }
