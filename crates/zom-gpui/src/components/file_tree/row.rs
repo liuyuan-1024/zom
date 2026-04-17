@@ -54,7 +54,7 @@ fn render_folder_icon(node: &FileTreeNode) -> impl IntoElement {
     };
 
     div()
-        .w(px(size::SPACE_3))
+        .w(px(size::GAP_3))
         .flex()
         .items_center()
         .justify_center()
@@ -69,7 +69,7 @@ fn render_folder_icon(node: &FileTreeNode) -> impl IntoElement {
 /// 渲染文件图标。
 fn render_file_icon() -> impl IntoElement {
     div()
-        .w(px(size::SPACE_3))
+        .w(px(size::GAP_3))
         .flex()
         .items_center()
         .justify_center()

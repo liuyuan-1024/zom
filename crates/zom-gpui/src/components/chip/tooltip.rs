@@ -2,7 +2,7 @@
 
 use gpui::{AnyView, App, Context, FontWeight, Window, div, prelude::*, px, rgb};
 
-use crate::theme::{color, size::SPACE_1};
+use crate::theme::{color, size};
 
 /// 可复用的悬停提示语义。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,9 +66,9 @@ impl Render for TooltipView {
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(SPACE_1))
-            .px(px(SPACE_1))
-            .py(px(SPACE_1))
+            .gap(px(size::GAP_1))
+            .px(px(size::GAP_1))
+            .py(px(size::GAP_1))
             .bg(rgb(color::COLOR_BG_PANEL))
             .border_1()
             .border_color(rgb(color::COLOR_BORDER))
@@ -91,6 +91,9 @@ impl Render for TooltipView {
             );
         }
 
-        div().py(px(SPACE_1)).px(px(SPACE_1)).child(visual_box)
+        div()
+            .py(px(size::GAP_1))
+            .px(px(size::GAP_1))
+            .child(visual_box)
     }
 }

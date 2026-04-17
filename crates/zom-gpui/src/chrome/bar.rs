@@ -13,15 +13,11 @@ pub(crate) fn bar() -> Div {
         .flex_row()
         .items_center()
         .justify_between()
-        .p(px(size::SPACE_1))
+        .p(px(size::GAP_1))
         .bg(rgb(color::COLOR_BG_PANEL))
 }
 
 /// 返回顶栏和底栏通用的水平分组样式。
 pub(crate) fn group() -> Div {
-    div()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(size::SPACE_1))
+    div().flex().flex_row().items_center().gap(px(size::GAP_1))
 }

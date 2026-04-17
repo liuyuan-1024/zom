@@ -6,7 +6,7 @@ use zom_app::state::PaneState;
 
 use crate::{
     components::pane::tab_bar,
-    theme::{color, size::SPACE_3},
+    theme::{color, size::GAP_3},
 };
 
 /// 查看器模式下的软换行阈值（按字符数近似）。
@@ -85,7 +85,7 @@ impl PaneView {
                             .w_full()
                             .flex()
                             .flex_row()
-                            .gap(px(SPACE_3))
+                            .gap(px(GAP_3))
                             // 顶部对齐：确保长文本软换行时，行号停留在第一行的高度
                             .items_start()
                             .child(

@@ -27,18 +27,18 @@ fn lights_width() -> f32 {
 
 /// 顶栏左侧用于放置红绿灯的起始边距。
 fn bar_padding_left() -> f32 {
-    size::SPACE_1
+    size::GAP_1
 }
 
 /// 红绿灯右侧需要额外预留的安全间距。
 fn trailing_spacing() -> f32 {
-    size::SPACE_2
+    size::GAP_2
 }
 
 /// 顶栏最终高度。
 /// 顶栏高度由内部最高元素和上下 padding 共同决定。
 fn bar_height() -> f32 {
-    size::FONT_MD + size::SPACE_2
+    size::FONT_MD + size::GAP_2
 }
 
 /// 红绿灯在顶栏中的垂直居中偏移。

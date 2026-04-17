@@ -1,6 +1,6 @@
 //! 底部工具栏视图。
 
-use gpui::{prelude::*, rgb};
+use gpui::{div, prelude::*, px, rgb};
 use zom_app::state::{DesktopAppState, ToolBarEntry};
 
 use super::icons;
@@ -16,13 +16,15 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
         .text_xs()
         .text_color(rgb(color::COLOR_FG_MUTED))
         .child(
-            chrome::group().children(
-                state
-                    .tool_bar
-                    .left_tools
-                    .iter()
-                    .enumerate()
-                    .map(|(index, item)| render_tool("tool-bar-left", index, item)),
+            chrome::group().child(
+                div().flex().items_center().gap(px(size::GAP_1_5)).children(
+                    state
+                        .tool_bar
+                        .left_tools
+                        .iter()
+                        .enumerate()
+                        .map(|(index, item)| render_tool("tool-bar-left", index, item)),
+                ),
             ),
         )
         .child(
@@ -47,13 +49,15 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                     &state.tool_bar.encoding,
                     "Select Encoding",
                 ))
-                .children(
-                    state
-                        .tool_bar
-                        .right_tools
-                        .iter()
-                        .enumerate()
-                        .map(|(index, item)| render_tool("tool-bar-right", index, item)),
+                .child(
+                    div().flex().items_center().gap(px(size::GAP_1_5)).children(
+                        state
+                            .tool_bar
+                            .right_tools
+                            .iter()
+                            .enumerate()
+                            .map(|(index, item)| render_tool("tool-bar-right", index, item)),
+                    ),
                 ),
         )
 }

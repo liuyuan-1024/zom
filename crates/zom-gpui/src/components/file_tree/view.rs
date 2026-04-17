@@ -7,10 +7,7 @@ use gpui::{
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
 use super::{FILE_TREE_INDENT_STEP, row};
-use crate::theme::{
-    color,
-    size::{self, SPACE_1},
-};
+use crate::theme::{color, size};
 
 /// 文件树面板视图。
 pub struct FileTreePanel {
@@ -66,15 +63,15 @@ impl Render for FileTreePanel {
             .bg(rgb(color::COLOR_BG_PANEL))
             .border_r_1()
             .border_color(rgb(color::COLOR_BORDER))
-            .px(px(SPACE_1))
+            .px(px(size::GAP_1))
             .children(self.state.roots.iter().map(|node| render_node(node, cx)));
 
         // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
         let splitter = div()
             .id("splitter")
             .absolute()
-            .right(px(-(size::SPACE_1 / 2.0)))
-            .w(px(size::SPACE_1))
+            .right(px(-(size::GAP_0_5)))
+            .w(px(size::GAP_1))
             .h_full()
             .cursor(CursorStyle::ResizeLeftRight)
             .on_mouse_down(
@@ -127,7 +124,7 @@ impl Render for FileTreePanel {
 /// 渲染子树容器。
 fn render_children(children: &[FileTreeNode], cx: &mut Context<FileTreePanel>) -> impl IntoElement {
     div()
-        .ml(px(SPACE_1))
+        .ml(px(size::GAP_1))
         .pl(px(FILE_TREE_INDENT_STEP))
         .border_l_1()
         .border_color(rgb(color::COLOR_BORDER))

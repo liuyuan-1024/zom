@@ -33,7 +33,7 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
     let mut tab_style = div()
         .group(group_id.clone())
         .relative()
-        .p(px(size::SPACE_1))
+        .p(px(size::GAP_1))
         .flex()
         .items_center()
         .justify_center()
@@ -45,7 +45,7 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
             div()
                 .flex()
                 .items_center()
-                .gap(px(size::SPACE_1))
+                .gap(px(size::GAP_1))
                 .child(render_close_button(&group_id, index))
                 .child(
                     div()
