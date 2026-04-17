@@ -1,4 +1,7 @@
-use gpui::{Context, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb};
+use gpui::{
+    Context, InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement,
+    Styled, Window, div, px, rgb,
+};
 use zom_app::state::PaneState;
 
 use crate::{
@@ -8,15 +11,11 @@ use crate::{
 
 pub struct PaneView {
     state: PaneState,
-    editor_preview: Vec<String>,
 }
 
 impl PaneView {
-    pub fn new(state: PaneState, editor_preview: Vec<String>) -> Self {
-        Self {
-            state,
-            editor_preview,
-        }
+    pub fn new(state: PaneState) -> Self {
+        Self { state }
     }
 }
 
@@ -37,12 +36,13 @@ impl Render for PaneView {
 impl PaneView {
     /// 渲染当前活动标签的内容（编辑区）
     fn render_active_content(&self) -> impl IntoElement {
-        if let Some(active_index) = self.state.active_tab_index {
+        if let Some(active_tab) = self.state.active_tab() {
             return div()
                 .flex()
                 .flex_col()
                 .flex_1()
-                .child(self.render_editor_preview_content())
+                .overflow_hidden()
+                .child(self.render_viewer_content(&active_tab.buffer_lines))
                 .into_any_element();
         }
 
@@ -56,17 +56,20 @@ impl PaneView {
             .into_any_element()
     }
 
-    /// 渲染文本内容
-    fn render_editor_preview_content(&self) -> impl IntoElement {
-        let line_elements = self.editor_preview.iter().enumerate().map(|(index, line)| {
+    /// 渲染实际的文件内容查看器
+    fn render_viewer_content(&self, buffer_lines: &[String]) -> impl IntoElement + '_ {
+        let line_elements = buffer_lines.iter().enumerate().map(|(index, line)| {
             div()
                 .w_full()
                 .flex()
                 .flex_row()
                 .gap(px(SPACE_3))
+                // 顶部对齐：确保长文本软换行时，行号停留在第一行的高度
+                .items_start()
                 .child(
                     div()
                         .w(px(40.0))
+                        .flex_shrink_0()
                         .text_right()
                         .text_sm()
                         .text_color(rgb(color::COLOR_FG_MUTED))
@@ -75,6 +78,7 @@ impl PaneView {
                 .child(
                     div()
                         .flex_1()
+                        .w_full()
                         .text_sm()
                         .text_color(rgb(color::COLOR_FG_MUTED))
                         .child(line.clone()),
@@ -82,10 +86,15 @@ impl PaneView {
         });
 
         div()
+            // 建议：后续如果支持多 Tab，这里的 ID 应该加上当前 Tab 的唯一标识，防止切换文件时滚动条位置串位。
+            .id("file-viewer-scroll")
             .flex()
             .flex_col()
             .flex_1()
+            .w_full()
             .bg(rgb(color::COLOR_BG_APP))
+            .p(px(8.0))
+            .overflow_scroll()
             .children(line_elements)
     }
 }

@@ -11,8 +11,6 @@ pub struct DesktopAppState {
     pub file_tree: FileTreeState,
     /// 窗格
     pub pane: PaneState,
-    /// 主编辑区预览文本。（后续应下放到具体的 EditorView 状态中）
-    pub editor_preview: Vec<String>,
     /// 当前打开项目的名称。
     pub project_name: String,
 }

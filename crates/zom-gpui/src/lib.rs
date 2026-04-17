@@ -66,9 +66,7 @@ impl ZomRootView {
             .new(|_| FileTreePanel::new(state.file_tree.clone()))
             .into();
 
-        let pane_view = cx
-            .new(|_| PaneView::new(state.pane.clone(), state.editor_preview.clone()))
-            .into();
+        let pane_view = cx.new(|_| PaneView::new(state.pane.clone())).into();
 
         Self {
             state,
