@@ -43,8 +43,8 @@ impl Render for FileTreePanel {
 
         // 左侧实际文件树内容
         let tree_content = div()
-            .flex_1()
             .h_full()
+            .flex_1()
             .flex()
             .flex_col()
             .overflow_hidden()

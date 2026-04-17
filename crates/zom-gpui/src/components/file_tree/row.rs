@@ -3,10 +3,7 @@
 use gpui::{AnyElement, div, prelude::*, px, rgb, svg};
 use zom_app::state::{FileTreeNode, FileTreeNodeKind};
 
-use crate::theme::{
-    color,
-    size::{self, SPACE_1},
-};
+use crate::theme::{color, size};
 
 /// 渲染单个文件树节点行。
 pub(super) fn render(node: &FileTreeNode) -> AnyElement {
@@ -15,7 +12,6 @@ pub(super) fn render(node: &FileTreeNode) -> AnyElement {
         .flex()
         .flex_row()
         .items_center()
-        .py(px(SPACE_1))
         .child(render_kind_badge(node))
         .child(render_label(node));
 
