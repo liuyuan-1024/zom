@@ -52,7 +52,7 @@ impl Render for FileTreePanel {
             .border_r_1()
             .border_color(rgb(color::COLOR_BORDER))
             .px(px(SPACE_1))
-            .children(self.state.roots.iter().map(render_node));
+            .children(self.state.roots.iter().map(|node| render_node(node, cx)));
 
         // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
         let splitter = div()
@@ -110,22 +110,34 @@ impl Render for FileTreePanel {
 }
 
 /// 渲染子树容器。
-fn render_children(children: &[FileTreeNode]) -> impl IntoElement {
+fn render_children(children: &[FileTreeNode], cx: &mut Context<FileTreePanel>) -> impl IntoElement {
     div()
         .ml(px(SPACE_1))
         .pl(px(FILE_TREE_INDENT_STEP))
         .border_l_1()
         .border_color(rgb(color::COLOR_BORDER))
-        .children(children.iter().map(render_node))
+        .children(children.iter().map(|node| render_node(node, cx)))
 }
 
 /// 递归渲染文件树节点 (保持为纯渲染逻辑)。
-fn render_node(node: &FileTreeNode) -> AnyElement {
-    let container = div().flex().flex_col().child(row::render(node));
+fn render_node(node: &FileTreeNode, cx: &mut Context<FileTreePanel>) -> AnyElement {
+    let node_id = gpui::SharedString::from(format!("tree-node-{}", node.name));
+    let is_dir = matches!(node.kind, FileTreeNodeKind::Directory);
 
-    if matches!(node.kind, FileTreeNodeKind::Directory) && node.is_expanded {
+    // 给行容器增加 id 和点击事件
+    let row_view = div()
+        .id(node_id)
+        .child(row::render(node))
+        .on_click(cx.listener(move |this, event, window, cx| {
+            // 在这里处理点击事件！
+            // _cx.dispatch_action(...)
+        }));
+
+    let container = div().flex().flex_col().child(row_view);
+
+    if is_dir && node.is_expanded {
         container
-            .child(render_children(&node.children))
+            .child(render_children(&node.children, cx))
             .into_any_element()
     } else {
         container.into_any_element()

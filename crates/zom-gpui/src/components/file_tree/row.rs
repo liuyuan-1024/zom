@@ -12,6 +12,7 @@ pub(super) fn render(node: &FileTreeNode) -> AnyElement {
         .flex()
         .flex_row()
         .items_center()
+        .hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)))
         .child(render_kind_badge(node))
         .child(render_label(node));
 

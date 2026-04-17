@@ -14,7 +14,7 @@ pub(crate) const COLOR_BG_ELEMENT: u32 = 0x21262D;
 // 统一悬停态 (Hover)
 pub(crate) const COLOR_BG_HOVER: u32 = 0x30363D;
 // 激活/选中态 (用于当前 Tab、文件树选中行)
-pub(crate) const COLOR_BG_ACTIVE: u32 = 0x1F242C;
+pub(crate) const COLOR_BG_ACTIVE: u32 = 0x2A405A;
 
 // --- 边框 (Borders) ---
 // 逻辑：全系统只需一种通用分割线颜色即可，靠环境对比度自然显现。
