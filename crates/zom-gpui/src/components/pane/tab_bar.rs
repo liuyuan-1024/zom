@@ -85,7 +85,7 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
 
     div()
         .absolute()
-        .left(px(4.0))
+        .left(px(3.0))
         .top_0()
         .bottom_0()
         .flex()
@@ -101,7 +101,7 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
             .hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)))
             .child(icons::render(
                 icon,
-                size::ICON_XS,
+                size::ICON_SM,
                 rgb(color::COLOR_FG_MUTED),
             )),
         )
