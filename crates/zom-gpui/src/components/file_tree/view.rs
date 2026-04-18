@@ -2,12 +2,12 @@
 
 use gpui::{
     AnyElement, App, Context, CursorStyle, FocusHandle, Focusable, InteractiveElement, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Render, Styled, Window, div,
-    prelude::*, px, rgb,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Render, ScrollHandle,
+    StatefulInteractiveElement, Styled, Window, div, prelude::*, px, rgb,
 };
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
-use super::{FILE_TREE_INDENT_STEP, row};
+use super::row;
 use crate::theme::{color, size};
 
 /// 文件树面板视图。
@@ -16,6 +16,8 @@ pub struct FileTreePanel {
     width: f32,
     is_dragging: bool,
     focus_handle: FocusHandle,
+    scroll_handle: ScrollHandle,
+    pending_scroll_to_selection: bool,
 }
 
 impl FileTreePanel {
@@ -26,11 +28,18 @@ impl FileTreePanel {
             width: size::PANEL_WIDTH,
             is_dragging: false,
             focus_handle: cx.focus_handle(),
+            scroll_handle: ScrollHandle::new(),
+            pending_scroll_to_selection: true,
         }
     }
 
     /// 更新文件树展示状态（例如选中态、展开态）。
     pub fn set_state(&mut self, state: FileTreeState, cx: &mut Context<Self>) {
+        let previous_selected_path = selected_path(&self.state.roots).map(ToOwned::to_owned);
+        let next_selected_path = selected_path(&state.roots).map(ToOwned::to_owned);
+        if previous_selected_path != next_selected_path {
+            self.pending_scroll_to_selection = true;
+        }
         self.state = state;
         cx.notify();
     }
@@ -56,17 +65,29 @@ impl Render for FileTreePanel {
             .tab_index(0);
 
         // 左侧实际文件树内容
+        let visible_rows = collect_visible_rows(&self.state.roots);
+        let selected_row_index = visible_rows.iter().position(|row| row.node.is_selected);
+
+        if self.pending_scroll_to_selection {
+            if let Some(selected_row_index) = selected_row_index {
+                self.scroll_handle.scroll_to_item(selected_row_index);
+            }
+            self.pending_scroll_to_selection = false;
+        }
+
         let tree_content = div()
+            .id("file-tree-scroll")
             .h_full()
             .flex_1()
             .flex()
             .flex_col()
-            .overflow_hidden()
+            .overflow_scroll()
+            .track_scroll(&self.scroll_handle)
             .bg(rgb(color::COLOR_BG_PANEL))
             .border_r_1()
             .border_color(rgb(color::COLOR_BORDER))
             .px(px(size::GAP_1))
-            .children(self.state.roots.iter().map(render_node));
+            .children(visible_rows.iter().map(render_visible_row));
 
         // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
         let splitter = div()
@@ -122,30 +143,47 @@ impl Render for FileTreePanel {
     }
 }
 
-/// 渲染子树容器。
-fn render_children(children: &[FileTreeNode]) -> impl IntoElement {
-    div()
-        .ml(px(size::GAP_1))
-        .pl(px(FILE_TREE_INDENT_STEP))
-        .border_l_1()
-        .border_color(rgb(color::COLOR_BORDER))
-        .children(children.iter().map(render_node))
+/// 可见文件树行（平铺后便于滚动到指定选中项）。
+struct VisibleRow<'a> {
+    node: &'a FileTreeNode,
+    depth: usize,
 }
 
-/// 递归渲染文件树节点 (保持为纯渲染逻辑)。
-fn render_node(node: &FileTreeNode) -> AnyElement {
-    let node_id = gpui::SharedString::from(format!("tree-node-{}", node.path));
-    let is_dir = matches!(node.kind, FileTreeNodeKind::Directory);
+fn collect_visible_rows<'a>(roots: &'a [FileTreeNode]) -> Vec<VisibleRow<'a>> {
+    let mut rows = Vec::new();
+    collect_visible_rows_inner(roots, 0, &mut rows);
+    rows
+}
 
-    let row_view = div().id(node_id).child(row::render(node));
-
-    let container = div().flex().flex_col().child(row_view);
-
-    if is_dir && node.is_expanded {
-        container
-            .child(render_children(&node.children))
-            .into_any_element()
-    } else {
-        container.into_any_element()
+fn collect_visible_rows_inner<'a>(
+    nodes: &'a [FileTreeNode],
+    depth: usize,
+    rows: &mut Vec<VisibleRow<'a>>,
+) {
+    for node in nodes {
+        rows.push(VisibleRow { node, depth });
+        if matches!(node.kind, FileTreeNodeKind::Directory) && node.is_expanded {
+            collect_visible_rows_inner(&node.children, depth + 1, rows);
+        }
     }
+}
+
+fn render_visible_row(row: &VisibleRow<'_>) -> AnyElement {
+    let node = row.node;
+    let node_id = gpui::SharedString::from(format!("tree-node-{}", node.path));
+    div()
+        .id(node_id)
+        .child(row::render(node, row.depth))
+        .into_any_element()
+}
+
+fn selected_path(nodes: &[FileTreeNode]) -> Option<&str> {
+    nodes.iter().find_map(selected_path_in_node)
+}
+
+fn selected_path_in_node(node: &FileTreeNode) -> Option<&str> {
+    if node.is_selected {
+        return Some(node.path.as_str());
+    }
+    node.children.iter().find_map(selected_path_in_node)
 }

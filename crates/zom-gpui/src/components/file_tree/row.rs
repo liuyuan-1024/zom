@@ -3,15 +3,17 @@
 use gpui::{AnyElement, div, prelude::*, px, rgb, svg};
 use zom_app::state::{FileTreeNode, FileTreeNodeKind};
 
+use super::FILE_TREE_INDENT_STEP;
 use crate::theme::{color, size};
 
 /// 渲染单个文件树节点行。
-pub(super) fn render(node: &FileTreeNode) -> AnyElement {
+pub(super) fn render(node: &FileTreeNode, depth: usize) -> AnyElement {
     let row = div()
         .w_full()
         .flex()
         .flex_row()
         .items_center()
+        .pl(px(FILE_TREE_INDENT_STEP * depth as f32))
         .child(render_kind_badge(node))
         .child(render_label(node));
 
