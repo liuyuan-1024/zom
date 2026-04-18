@@ -1,9 +1,9 @@
 //! 顶部标题栏专属的图标定义与渲染。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
+use zom_app::projection::shortcut_hint;
 use zom_app::state::TitleBarIcon;
 use zom_core::{Command, command::WorkspaceCommand};
-use zom_input::shortcut_hint;
 
 /// 标题栏图标的展示规格。
 pub(super) struct TitleBarIconSpec {

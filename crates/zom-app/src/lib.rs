@@ -2,5 +2,6 @@
 //! 当前阶段先提供桌面界面所需的静态应用状态，后续再接命令分发和服务注入。
 
 mod initial_state;
+pub mod projection;
 pub mod state;
 mod utils;

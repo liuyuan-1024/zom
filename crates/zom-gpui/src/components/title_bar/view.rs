@@ -1,9 +1,9 @@
 //! 顶部标题栏视图。
 
 use gpui::{App, ClickEvent, Window, div, prelude::*, px, rgb};
+use zom_app::projection::shortcut_hint;
 use zom_app::state::{DesktopAppState, TitleBarIcon};
 use zom_core::{Command, command::WorkspaceCommand};
-use zom_input::shortcut_hint;
 
 use super::icons;
 use crate::chrome;

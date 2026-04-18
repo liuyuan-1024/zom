@@ -1,9 +1,9 @@
 //! 底部工具栏专属的图标定义与渲染。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
+use zom_app::projection::shortcut_hint;
 use zom_app::state::ToolBarIcon;
 use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
-use zom_input::shortcut_hint;
 
 /// 底部工具栏图标的展示规格。
 pub(super) struct ToolBarIconSpec {
