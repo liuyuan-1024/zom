@@ -1,7 +1,7 @@
 //! 输入协议模型。
 //! 这里只描述输入世界长什么样，具体解析逻辑放在 `zom-input`。
 
-use crate::Command;
+use crate::{Command, FocusTarget};
 
 /// 键盘修饰键状态。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
@@ -82,23 +82,6 @@ impl Keystroke {
     pub fn new(key: KeyCode, modifiers: Modifiers) -> Self {
         Self { key, modifiers }
     }
-}
-
-/// 当前焦点所在的逻辑区域。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FocusTarget {
-    /// 编辑器区域。
-    Editor,
-    /// 侧边栏区域。
-    Sidebar,
-    /// 命令面板区域。
-    Palette,
-    /// 普通面板区域。
-    Panel,
-    /// 终端区域。
-    Terminal,
-    /// 当前没有明确焦点。
-    None,
 }
 
 /// 输入解析时依赖的上下文信息。

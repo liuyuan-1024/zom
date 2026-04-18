@@ -5,6 +5,8 @@
 pub mod command;
 /// 通用方向与坐标轴定义。
 pub mod direction;
+/// 焦点目标定义。
+pub mod focus;
 /// 强类型 ID 定义。
 pub mod ids;
 /// 输入协议模型，不包含具体解析逻辑。
@@ -20,12 +22,12 @@ pub mod selection;
 pub use command::{Command, EditorCommand, WorkspaceCommand};
 /// 统一导出方向类型。
 pub use direction::{Axis, Direction};
+/// 统一导出焦点目标
+pub use focus::FocusTarget;
 /// 统一导出强类型 ID。
 pub use ids::{BufferId, PaneId, WorkspaceId};
 /// 统一导出输入协议类型。
-pub use input::{
-    EditorInputContext, FocusTarget, InputContext, InputResolution, KeyCode, Keystroke, Modifiers,
-};
+pub use input::{EditorInputContext, InputContext, InputResolution, KeyCode, Keystroke, Modifiers};
 /// 统一导出文本位置。
 pub use position::Position;
 /// 统一导出文本范围。
