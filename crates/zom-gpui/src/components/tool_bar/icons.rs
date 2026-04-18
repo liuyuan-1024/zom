@@ -2,7 +2,8 @@
 
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_app::state::ToolBarIcon;
-use zom_input::{ShortcutAction, shortcut_hint};
+use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
+use zom_input::shortcut_hint;
 
 /// 底部工具栏图标的展示规格。
 pub(super) struct ToolBarIconSpec {
@@ -20,44 +21,52 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         ToolBarIcon::FileTree => ToolBarIconSpec {
             path: "icons/tool_bar/tool_file_tree.svg",
             label: "文件树",
-            shortcut: shortcut_hint(ShortcutAction::FocusFileTreePanel),
+            shortcut: focus_panel_shortcut(FocusTarget::FileTreePanel),
         },
         ToolBarIcon::GitBranch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_git_branch_alt.svg",
             label: "Git",
-            shortcut: shortcut_hint(ShortcutAction::FocusGitPanel),
+            shortcut: focus_panel_shortcut(FocusTarget::GitPanel),
         },
         ToolBarIcon::Outline => ToolBarIconSpec {
             path: "icons/tool_bar/tool_list_tree.svg",
             label: "Outline",
-            shortcut: shortcut_hint(ShortcutAction::FocusOutlinePanel),
+            shortcut: focus_panel_shortcut(FocusTarget::OutlinePanel),
         },
         ToolBarIcon::ProjectSearch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_search.svg",
             label: "Search",
-            shortcut: shortcut_hint(ShortcutAction::FocusProjectSearchPanel),
+            shortcut: focus_panel_shortcut(FocusTarget::ProjectSearch),
         },
         ToolBarIcon::LSP => ToolBarIconSpec {
             path: "icons/tool_bar/tool_bolt_outlined.svg",
             label: "Code Actions",
-            shortcut: Some("Cmd+.".into()),
+            shortcut: workspace_shortcut(WorkspaceCommand::OpenCodeActions),
         },
         ToolBarIcon::Terminal => ToolBarIconSpec {
             path: "icons/tool_bar/tool_terminal.svg",
             label: "Terminal",
-            shortcut: shortcut_hint(ShortcutAction::FocusTerminalPanel),
+            shortcut: focus_panel_shortcut(FocusTarget::Terminal),
         },
         ToolBarIcon::Debug => ToolBarIconSpec {
             path: "icons/tool_bar/tool_debug.svg",
             label: "Debug",
-            shortcut: Some("F5".into()),
+            shortcut: workspace_shortcut(WorkspaceCommand::StartDebugging),
         },
         ToolBarIcon::Notification => ToolBarIconSpec {
             path: "icons/tool_bar/tool_notification.svg",
             label: "Notifications",
-            shortcut: Some("Cmd+Shift+N".into()),
+            shortcut: focus_panel_shortcut(FocusTarget::Notification),
         },
     }
+}
+
+fn focus_panel_shortcut(target: FocusTarget) -> Option<String> {
+    workspace_shortcut(WorkspaceCommand::FocusPanel(target))
+}
+
+fn workspace_shortcut(command: WorkspaceCommand) -> Option<String> {
+    shortcut_hint(&Command::from(command))
 }
 
 /// 渲染工具栏中的单色 SVG 图标

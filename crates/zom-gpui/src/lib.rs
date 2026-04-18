@@ -13,7 +13,7 @@ use gpui::{
     PathPromptOptions, Render, Styled, TitlebarOptions, Window, WindowBounds, WindowOptions, div,
     prelude::*, px, rgb, size,
 };
-use zom_app::state::DesktopAppState;
+use zom_app::state::{DesktopAppState, DesktopUiAction};
 use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
 
 use crate::{
@@ -94,6 +94,20 @@ impl ZomRootView {
         }
     }
 
+    fn apply_ui_action(
+        &mut self,
+        action: DesktopUiAction,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match action {
+            DesktopUiAction::OpenProjectPicker => self.open_project_from_title_bar(window, cx),
+            DesktopUiAction::OpenSettings => {
+                // TODO: 设置页接入后在这里打开设置界面。
+            }
+        }
+    }
+
     /// 将最新应用状态同步到文件树和窗格视图。
     fn sync_child_views(&mut self, cx: &mut Context<Self>) {
         let file_tree_state = self.state.file_tree.clone();
@@ -146,6 +160,10 @@ impl ZomRootView {
 
 impl Render for ZomRootView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if let Some(action) = self.state.take_pending_ui_action() {
+            self.apply_ui_action(action, window, cx);
+        }
+
         if let Some(target) = self.state.take_pending_focus_target() {
             self.apply_focus_target(target, window, cx);
         }

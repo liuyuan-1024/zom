@@ -2,7 +2,8 @@
 
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_app::state::TitleBarIcon;
-use zom_input::{ShortcutAction, shortcut_hint};
+use zom_core::{Command, command::WorkspaceCommand};
+use zom_input::shortcut_hint;
 
 /// 标题栏图标的展示规格。
 pub(super) struct TitleBarIconSpec {
@@ -20,7 +21,7 @@ pub(super) fn spec(icon: TitleBarIcon) -> TitleBarIconSpec {
         TitleBarIcon::Settings => TitleBarIconSpec {
             path: "icons/title_bar/title_settings.svg",
             label: "Settings",
-            shortcut: shortcut_hint(ShortcutAction::OpenSettingsFromTitleBar),
+            shortcut: shortcut_hint(&Command::from(WorkspaceCommand::OpenSettings)),
         },
     }
 }
