@@ -1,3 +1,8 @@
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 /// 文件树节点类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileTreeNodeKind {
@@ -36,6 +41,25 @@ pub struct FileTreeState {
 }
 
 impl FileTreeState {
+    /// 从真实工作区目录构建文件树状态。
+    pub fn from_workspace_root(workspace_root: &Path) -> Self {
+        let root_name = workspace_root
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .filter(|name| !name.is_empty())
+            .unwrap_or_else(|| workspace_root.display().to_string());
+
+        Self {
+            title: "EXPLORER".into(),
+            roots: vec![directory_node(
+                root_name,
+                String::new(),
+                true,
+                collect_directory_children(workspace_root, Path::new("")),
+            )],
+        }
+    }
+
     /// 折叠或展开指定目录节点。
     pub fn toggle_directory(&mut self, relative_path: &str) {
         for root in &mut self.roots {
@@ -273,8 +297,106 @@ fn find_selected_node_path(node: &FileTreeNode) -> Option<&str> {
     node.children.iter().find_map(find_selected_node_path)
 }
 
+const SKIPPED_DIRECTORY_NAMES: &[&str] = &[".git", "node_modules", "target"];
+const SKIPPED_FILE_NAMES: &[&str] = &[".DS_Store"];
+
+fn collect_directory_children(absolute_dir: &Path, relative_dir: &Path) -> Vec<FileTreeNode> {
+    let Ok(entries) = fs::read_dir(absolute_dir) else {
+        return Vec::new();
+    };
+
+    let mut directories = Vec::new();
+    let mut files = Vec::new();
+
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        let name = entry.file_name().to_string_lossy().to_string();
+        if file_type.is_dir() && SKIPPED_DIRECTORY_NAMES.contains(&name.as_str()) {
+            continue;
+        }
+        if file_type.is_file() && SKIPPED_FILE_NAMES.contains(&name.as_str()) {
+            continue;
+        }
+
+        let relative_path = path_join(relative_dir, &name);
+        let relative_path_string = to_unix_style_path(&relative_path);
+
+        if file_type.is_dir() {
+            let children = collect_directory_children(&entry.path(), &relative_path);
+            directories.push(directory_node(name, relative_path_string, false, children));
+            continue;
+        }
+
+        if file_type.is_file() {
+            files.push(file_node(name, relative_path_string));
+        }
+    }
+
+    sort_nodes_by_name(&mut directories);
+    sort_nodes_by_name(&mut files);
+    directories.extend(files);
+    directories
+}
+
+fn sort_nodes_by_name(nodes: &mut [FileTreeNode]) {
+    nodes.sort_by_cached_key(|node| node.name.to_lowercase());
+}
+
+fn path_join(base: &Path, child_name: &str) -> PathBuf {
+    if base.as_os_str().is_empty() {
+        PathBuf::from(child_name)
+    } else {
+        base.join(child_name)
+    }
+}
+
+fn to_unix_style_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn directory_node(
+    name: impl Into<String>,
+    path: impl Into<String>,
+    is_expanded: bool,
+    children: Vec<FileTreeNode>,
+) -> FileTreeNode {
+    FileTreeNode {
+        name: name.into(),
+        path: path.into(),
+        kind: FileTreeNodeKind::Directory,
+        is_expanded,
+        is_selected: false,
+        is_active: false,
+        children,
+    }
+}
+
+fn file_node(name: impl Into<String>, path: impl Into<String>) -> FileTreeNode {
+    FileTreeNode {
+        name: name.into(),
+        path: path.into(),
+        kind: FileTreeNodeKind::File,
+        is_expanded: false,
+        is_selected: false,
+        is_active: false,
+        children: Vec::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
     use super::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
     #[test]
@@ -416,6 +538,59 @@ mod tests {
         );
     }
 
+    #[test]
+    fn from_workspace_root_loads_real_directory_entries() {
+        let workspace = create_temp_workspace("load-real-directory");
+
+        fs::create_dir_all(workspace.join("src")).expect("create src directory");
+        fs::write(workspace.join("Cargo.toml"), "[package]").expect("create Cargo.toml");
+        fs::write(workspace.join("src/main.rs"), "fn main() {}").expect("create main.rs");
+
+        let tree = FileTreeState::from_workspace_root(&workspace);
+
+        assert_eq!(tree.roots.len(), 1);
+        assert_eq!(tree.roots[0].name, workspace_file_name(&workspace));
+        assert_eq!(tree.roots[0].path, "");
+        assert!(tree.roots[0].is_expanded);
+        assert_eq!(
+            tree.roots[0]
+                .children
+                .iter()
+                .map(|node| node.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["src", "Cargo.toml"]
+        );
+        assert_eq!(
+            tree.roots[0].children[0]
+                .children
+                .iter()
+                .map(|node| node.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["src/main.rs"]
+        );
+
+        remove_temp_workspace(workspace);
+    }
+
+    #[test]
+    fn from_workspace_root_skips_common_generated_directories() {
+        let workspace = create_temp_workspace("skip-generated-directories");
+
+        fs::create_dir_all(workspace.join("target/debug")).expect("create target directory");
+        fs::write(workspace.join("README.md"), "hello").expect("create README.md");
+
+        let tree = FileTreeState::from_workspace_root(&workspace);
+        let child_paths = tree.roots[0]
+            .children
+            .iter()
+            .map(|node| node.path.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(child_paths, vec!["README.md"]);
+
+        remove_temp_workspace(workspace);
+    }
+
     fn directory(
         name: &str,
         path: &str,
@@ -443,5 +618,25 @@ mod tests {
             is_active: false,
             children: Vec::new(),
         }
+    }
+
+    fn create_temp_workspace(name: &str) -> PathBuf {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("current time should be after unix epoch")
+            .as_nanos();
+        let workspace = std::env::temp_dir().join(format!("zom-file-tree-{name}-{timestamp}"));
+        fs::create_dir_all(&workspace).expect("create temp workspace directory");
+        workspace
+    }
+
+    fn remove_temp_workspace(path: PathBuf) {
+        fs::remove_dir_all(path).expect("remove temp workspace");
+    }
+
+    fn workspace_file_name(path: &PathBuf) -> String {
+        path.file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.display().to_string())
     }
 }

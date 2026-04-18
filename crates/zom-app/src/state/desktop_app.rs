@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 use zom_core::{
     BufferId, Command, FocusTarget, InputContext, InputResolution, Keystroke,
@@ -28,11 +29,26 @@ pub struct DesktopAppState {
     pub visible_panels: HashSet<FocusTarget>,
     /// 当前打开项目的名称。
     pub project_name: String,
+    /// 当前打开项目的根目录绝对路径。
+    pub project_root: PathBuf,
     /// 下一帧需要应用的焦点请求（仅应用层内部可写）。
     pub(crate) pending_focus_target: Option<FocusTarget>,
 }
 
 impl DesktopAppState {
+    /// 切换当前工作区项目，并重建文件树。
+    pub fn switch_project(&mut self, project_root: impl Into<PathBuf>) {
+        let project_root = utils::normalize_workspace_root(project_root.into());
+        self.project_name = utils::project_name_from_root(&project_root);
+        self.project_root = project_root.clone();
+        self.file_tree = FileTreeState::from_workspace_root(&project_root);
+
+        // 旧项目打开的标签页路径不再可信，切换项目时统一清空。
+        self.pane.tabs.clear();
+        self.pane.active_tab_index = None;
+        self.tool_bar.cursor = "1:1".into();
+    }
+
     /// 确保文件树存在初始选中项（用于首次获取键盘焦点前）。
     pub fn ensure_file_tree_selection(&mut self) -> bool {
         self.file_tree.ensure_selection()
@@ -159,7 +175,7 @@ impl DesktopAppState {
 
     /// 在当前 Pane 打开文件：已打开则切换并刷新内容，未打开则新增标签页。
     fn open_file_in_pane(&mut self, relative_path: &str) {
-        let absolute_path = utils::workspace_file_absolute_path(relative_path);
+        let absolute_path = utils::workspace_file_absolute_path(&self.project_root, relative_path);
         let (buffer_lines, line_ending, cursor) = utils::load_buffer_preview(&absolute_path);
 
         self.tool_bar.cursor = cursor;
@@ -199,6 +215,12 @@ impl DesktopAppState {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
     use zom_core::{
         Command, FocusTarget, Keystroke,
         command::{FileTreeCommand, WorkspaceCommand},
@@ -209,7 +231,7 @@ mod tests {
 
     #[test]
     fn activating_file_tree_file_opens_tab_and_activates_it() {
-        let mut state = DesktopAppState::sample();
+        let mut state = DesktopAppState::from_current_workspace();
         let before_len = state.pane.tabs.len();
 
         state.handle_file_tree_node_activate("crates/zom-app/src/lib.rs", FileTreeNodeKind::File);
@@ -222,9 +244,14 @@ mod tests {
 
     #[test]
     fn keyboard_select_and_activate_opens_file_in_pane() {
-        let mut state = DesktopAppState::sample();
+        let workspace = create_temp_workspace("keyboard-open");
+        fs::write(workspace.join("main.rs"), "fn main() {}").expect("write main.rs");
 
-        state.file_tree.activate_file("crates/zom-app/src/lib.rs");
+        let mut state = DesktopAppState::from_current_workspace();
+        state.switch_project(workspace.clone());
+
+        state.file_tree.select_next_visible();
+        state.file_tree.select_next_visible();
         state.pane.tabs.clear();
         state.pane.active_tab_index = None;
 
@@ -232,12 +259,14 @@ mod tests {
 
         assert_eq!(state.pane.tabs.len(), 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
-        assert_eq!(active_tab.relative_path, "crates/zom-app/src/lib.rs");
+        assert_eq!(active_tab.relative_path, "main.rs");
+
+        remove_temp_workspace(workspace);
     }
 
     #[test]
     fn focus_panel_shows_file_tree_and_requests_focus() {
-        let mut state = DesktopAppState::sample();
+        let mut state = DesktopAppState::from_current_workspace();
         state.visible_panels.remove(&FocusTarget::FileTreePanel);
         state.file_tree.roots[0].is_selected = false;
 
@@ -259,7 +288,7 @@ mod tests {
 
     #[test]
     fn toggle_panel_hides_focused_file_tree_and_falls_back_to_editor() {
-        let mut state = DesktopAppState::sample();
+        let mut state = DesktopAppState::from_current_workspace();
         state.focused_target = FocusTarget::FileTreePanel;
         state.visible_panels.insert(FocusTarget::FileTreePanel);
 
@@ -274,7 +303,7 @@ mod tests {
 
     #[test]
     fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command() {
-        let mut state = DesktopAppState::sample();
+        let mut state = DesktopAppState::from_current_workspace();
         let keystroke = Keystroke::new(
             zom_core::KeyCode::Char('b'),
             zom_core::Modifiers::new(false, false, false, true),
@@ -284,5 +313,76 @@ mod tests {
 
         assert!(handled);
         assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
+    }
+
+    #[test]
+    fn switch_project_reloads_real_file_tree_and_clears_tabs() {
+        let workspace = create_temp_workspace("switch-project-tree");
+        fs::create_dir_all(workspace.join("src")).expect("create src directory");
+        fs::write(workspace.join("src/lib.rs"), "pub fn answer() -> u8 { 42 }")
+            .expect("write lib.rs");
+
+        let mut state = DesktopAppState::from_current_workspace();
+        state.pane.tabs.push(zom_app_test_tab("old.rs"));
+        state.pane.active_tab_index = Some(0);
+
+        state.switch_project(workspace.clone());
+
+        assert_eq!(
+            state.project_root,
+            crate::utils::normalize_workspace_root(workspace.clone())
+        );
+        assert_eq!(state.pane.tabs.len(), 0);
+        assert!(state.pane.active_tab_index.is_none());
+        assert_eq!(
+            state.file_tree.roots[0]
+                .children
+                .iter()
+                .map(|node| node.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["src"]
+        );
+
+        remove_temp_workspace(workspace);
+    }
+
+    #[test]
+    fn open_file_reads_from_selected_project_root() {
+        let workspace = create_temp_workspace("open-file-from-root");
+        fs::create_dir_all(workspace.join("src")).expect("create src directory");
+        fs::write(workspace.join("src/main.rs"), "fn main() {}").expect("write main.rs");
+
+        let mut state = DesktopAppState::from_current_workspace();
+        state.switch_project(workspace.clone());
+        state.handle_file_tree_node_activate("src/main.rs", FileTreeNodeKind::File);
+
+        let active_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(active_tab.relative_path, "src/main.rs");
+        assert_eq!(active_tab.buffer_lines[0], "fn main() {}");
+
+        remove_temp_workspace(workspace);
+    }
+
+    fn create_temp_workspace(name: &str) -> PathBuf {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("current time should be after unix epoch")
+            .as_nanos();
+        let workspace = std::env::temp_dir().join(format!("zom-desktop-state-{name}-{timestamp}"));
+        fs::create_dir_all(&workspace).expect("create temp workspace");
+        workspace
+    }
+
+    fn remove_temp_workspace(path: PathBuf) {
+        fs::remove_dir_all(path).expect("remove temp workspace");
+    }
+
+    fn zom_app_test_tab(relative_path: &str) -> crate::state::TabState {
+        crate::state::TabState {
+            buffer_id: zom_core::BufferId::new(999),
+            title: "old".into(),
+            relative_path: relative_path.into(),
+            buffer_lines: vec!["old".into()],
+        }
     }
 }

@@ -1,6 +1,6 @@
 //! `zom-app` 负责应用层编排。
 //! 当前阶段先提供桌面界面所需的静态应用状态，后续再接命令分发和服务注入。
 
-mod sample;
+mod initial_state;
 pub mod state;
 mod utils;

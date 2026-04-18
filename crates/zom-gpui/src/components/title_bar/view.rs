@@ -1,6 +1,6 @@
 //! 顶部标题栏视图。
 
-use gpui::{div, prelude::*, px, rgb};
+use gpui::{App, ClickEvent, Window, div, prelude::*, px, rgb};
 use zom_app::state::{DesktopAppState, TitleBarIcon};
 
 use super::icons;
@@ -10,9 +10,10 @@ use crate::components::title_bar::traffic_lights;
 use crate::theme::{color, size};
 
 /// 渲染顶栏，表达当前工作区。
-pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
-    let project_name = state.project_name.clone();
-
+pub(crate) fn render(
+    state: &DesktopAppState,
+    on_project_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+) -> impl IntoElement {
     chrome::bar()
         .border_b_1()
         .border_color(rgb(color::COLOR_BORDER))
@@ -20,8 +21,9 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
             chrome::group().pl(px(traffic_lights::slot_width())).child(
                 chip::interactive_chip(
                     "title-bar-project_name",
-                    chip::TooltipSpec::new(format!("Project: {project_name}"), Some("Cmd+Shift+P")),
+                    chip::TooltipSpec::new(format!("选择项目"), Some("Cmd+Shift+P")),
                 )
+                .on_click(on_project_click)
                 .child(
                     div()
                         .text_xs()

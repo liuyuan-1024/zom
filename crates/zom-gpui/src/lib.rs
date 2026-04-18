@@ -9,8 +9,9 @@ mod theme;
 use components::{file_tree::FileTreePanel, title_bar, tool_bar};
 
 use gpui::{
-    App, Application, Bounds, Context, Entity, InteractiveElement, ParentElement, Render, Styled,
-    TitlebarOptions, Window, WindowBounds, WindowOptions, div, prelude::*, px, rgb, size,
+    App, Application, Bounds, Context, Entity, InteractiveElement, ParentElement,
+    PathPromptOptions, Render, Styled, TitlebarOptions, Window, WindowBounds, WindowOptions, div,
+    prelude::*, px, rgb, size,
 };
 use zom_app::state::DesktopAppState;
 use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
@@ -30,7 +31,7 @@ pub fn run() {
                 size(px(size::WINDOW_WIDTH), px(size::WINDOW_HEIGHT)),
                 cx,
             );
-            let state = DesktopAppState::sample();
+            let state = DesktopAppState::from_current_workspace();
 
             cx.open_window(
                 WindowOptions {
@@ -115,6 +116,41 @@ impl ZomRootView {
         });
         cx.notify();
     }
+
+    /// 从标题栏打开项目目录
+    fn open_project_from_title_bar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let picked_paths = cx.prompt_for_paths(PathPromptOptions {
+            files: false,
+            directories: true,
+            multiple: false,
+            prompt: Some("Open Project Folder".into()),
+        });
+
+        let this = cx.weak_entity();
+        window
+            .spawn(cx, async move |cx| {
+                let Ok(selection_result) = picked_paths.await else {
+                    return;
+                };
+                let Ok(Some(paths)) = selection_result else {
+                    return;
+                };
+                let Some(project_root) = paths.into_iter().next() else {
+                    return;
+                };
+
+                this.update(cx, |this, cx| {
+                    this.state.switch_project(project_root);
+                    this.state
+                        .handle_command(Command::from(WorkspaceCommand::FocusPanel(
+                            FocusTarget::FileTreePanel,
+                        )));
+                    this.sync_child_views(cx);
+                })
+                .ok();
+            })
+            .detach();
+    }
 }
 
 impl Render for ZomRootView {
@@ -158,7 +194,12 @@ impl Render for ZomRootView {
             }))
             .bg(rgb(color::COLOR_BG_APP))
             .text_color(rgb(color::COLOR_FG_PRIMARY))
-            .child(title_bar::render(&self.state))
+            .child(title_bar::render(
+                &self.state,
+                cx.listener(|this, _event, window, cx| {
+                    this.open_project_from_title_bar(window, cx);
+                }),
+            ))
             .child(workspace_row)
             .child(tool_bar::render(&self.state))
     }
