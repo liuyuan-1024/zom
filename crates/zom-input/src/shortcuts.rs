@@ -1,69 +1,96 @@
-use zom_core::{FocusTarget, InputResolution, KeyCode, Keystroke};
+use zom_core::{
+    Command, InputResolution, KeyCode, Keystroke,
+    command::{
+        ShortcutPlatform as CoreShortcutPlatform, ShortcutScope as CoreShortcutScope,
+        ShortcutWhen as CoreShortcutWhen,
+    },
+};
 
-/// 快捷键代表的语义动作。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ShortcutAction {
-    /// 显示并聚焦文件树。
-    FocusFileTreePanel,
-    /// 显示并聚焦 Git 面板。
-    FocusGitPanel,
-    /// 显示并聚焦 Outline 面板。
-    FocusOutlinePanel,
-    /// 显示并聚焦全局搜索面板。
-    FocusProjectSearchPanel,
-    /// 显示并聚焦终端面板。
-    FocusTerminalPanel,
-    /// 从标题栏打开项目选择。
-    OpenProjectFromTitleBar,
-    /// 从标题栏打开设置。
-    OpenSettingsFromTitleBar,
-    /// 关闭当前已聚焦面板。
-    HideFocusedPanel,
-    /// 文件树选择上一项。
-    FileTreeSelectPrev,
-    /// 文件树选择下一项。
-    FileTreeSelectNext,
-    /// 文件树展开目录或下探到子项。
-    FileTreeExpandOrDescend,
-    /// 文件树折叠目录或回到父项。
-    FileTreeCollapseOrAscend,
-    /// 文件树激活当前选中项。
-    FileTreeActivateSelection,
+/// 快捷键作用域（源自 `zom-core::command::ShortcutScope`）。
+pub type ShortcutScope = CoreShortcutScope;
+/// 快捷键触发条件（源自 `zom-core::command::ShortcutWhen`）。
+pub type ShortcutWhen = CoreShortcutWhen;
+/// 快捷键平台（源自 `zom-core::command::ShortcutPlatform`）。
+pub type ShortcutPlatform = CoreShortcutPlatform;
+
+/// 快捷键绑定契约（不含运行时解析结果）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShortcutBindingSpec {
+    /// 语义命令。
+    pub command: Command,
+    /// 按键定义。
+    pub keystroke: Keystroke,
+    /// 额外触发条件。
+    pub when: ShortcutWhen,
+    /// 适用平台。
+    pub platform: ShortcutPlatform,
+    /// 冲突处理优先级（越大越优先）。
+    pub priority: u8,
 }
 
-/// 快捷键的作用域。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ShortcutScope {
-    /// 全局快捷键。
-    Global,
-    /// 仅在指定焦点下生效。
-    Focus(FocusTarget),
+impl ShortcutBindingSpec {
+    /// 创建一个默认绑定契约。
+    pub fn new(command: Command, keystroke: Keystroke) -> Self {
+        Self {
+            command,
+            keystroke,
+            when: ShortcutWhen::Always,
+            platform: ShortcutPlatform::Any,
+            priority: 0,
+        }
+    }
+
+    /// 设置额外触发条件。
+    pub fn with_when(mut self, when: ShortcutWhen) -> Self {
+        self.when = when;
+        self
+    }
+
+    /// 设置适用平台。
+    pub fn with_platform(mut self, platform: ShortcutPlatform) -> Self {
+        self.platform = platform;
+        self
+    }
+
+    /// 设置绑定优先级。
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
 }
 
 /// 统一快捷键绑定定义（按键 + 作用域 + 语义命令）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShortcutBinding {
-    /// 语义动作标识。
-    pub action: ShortcutAction,
+    /// 语义命令。
+    pub command: Command,
     /// 作用域。
     pub scope: ShortcutScope,
     /// 按键定义。
     pub keystroke: Keystroke,
+    /// 额外触发条件。
+    pub when: ShortcutWhen,
+    /// 适用平台。
+    pub platform: ShortcutPlatform,
+    /// 冲突处理优先级（越大越优先）。
+    pub priority: u8,
     /// 解析后的执行结果。
     pub resolution: InputResolution,
 }
 
 impl ShortcutBinding {
-    pub(crate) fn new(
-        action: ShortcutAction,
+    pub(crate) fn from_spec(
+        spec: ShortcutBindingSpec,
         scope: ShortcutScope,
-        keystroke: Keystroke,
         resolution: InputResolution,
     ) -> Self {
         Self {
-            action,
+            command: spec.command,
             scope,
-            keystroke,
+            keystroke: spec.keystroke,
+            when: spec.when,
+            platform: spec.platform,
+            priority: spec.priority,
             resolution,
         }
     }
@@ -91,11 +118,11 @@ impl ShortcutRegistry {
         &self.bindings
     }
 
-    /// 读取某个语义动作对应的默认快捷键文案。
-    pub fn shortcut_hint(&self, action: ShortcutAction) -> Option<String> {
+    /// 读取某个命令对应的默认快捷键文案。
+    pub fn shortcut_hint(&self, command: &Command) -> Option<String> {
         self.bindings
             .iter()
-            .find(|binding| binding.action == action)
+            .find(|binding| &binding.command == command)
             .map(|binding| format_keystroke(&binding.keystroke))
     }
 }
