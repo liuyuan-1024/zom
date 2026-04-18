@@ -1,10 +1,12 @@
 //! 文件树组件视图。
 
 use gpui::{
-    AnyElement, Context, CursorStyle, EventEmitter, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Render, Window, div, prelude::*, px, rgb,
+    AnyElement, App, Context, CursorStyle, EventEmitter, FocusHandle, Focusable,
+    InteractiveElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    ParentElement, Render, Styled, Window, div, prelude::*, px, rgb,
 };
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
+use zom_core::{Command, command::FileTreeCommand};
 
 use super::{FILE_TREE_INDENT_STEP, row};
 use crate::theme::{color, size};
@@ -14,24 +16,19 @@ pub struct FileTreePanel {
     state: FileTreeState,
     width: f32,
     is_dragging: bool,
+    focus_handle: FocusHandle,
 }
 
-/// 文件树节点点击事件。
-#[derive(Debug, Clone)]
-pub struct FileTreeNodeClicked {
-    pub relative_path: String,
-    pub kind: FileTreeNodeKind,
-}
-
-impl EventEmitter<FileTreeNodeClicked> for FileTreePanel {}
+impl EventEmitter<Command> for FileTreePanel {}
 
 impl FileTreePanel {
     /// 创建一个新的文件树面板。
-    pub fn new(state: FileTreeState) -> Self {
+    pub fn new(state: FileTreeState, cx: &mut Context<Self>) -> Self {
         Self {
             state,
             width: size::PANEL_WIDTH,
             is_dragging: false,
+            focus_handle: cx.focus_handle(),
         }
     }
 
@@ -39,6 +36,12 @@ impl FileTreePanel {
     pub fn set_state(&mut self, state: FileTreeState, cx: &mut Context<Self>) {
         self.state = state;
         cx.notify();
+    }
+}
+
+impl Focusable for FileTreePanel {
+    fn focus_handle(&self, _: &App) -> FocusHandle {
+        self.focus_handle.clone()
     }
 }
 
@@ -51,7 +54,27 @@ impl Render for FileTreePanel {
             .w(px(self.width))
             .h_full()
             .flex()
-            .flex_row();
+            .flex_row()
+            .track_focus(&self.focus_handle)
+            .tab_index(0)
+            .on_key_down(cx.listener(|_, event: &KeyDownEvent, _window, cx| {
+                if has_any_modifier(&event.keystroke.modifiers) {
+                    return;
+                }
+
+                let command = match event.keystroke.key.as_str() {
+                    "up" => Command::from(FileTreeCommand::SelectPrev),
+                    "down" => Command::from(FileTreeCommand::SelectNext),
+                    "right" => Command::from(FileTreeCommand::ExpandOrDescend),
+                    "left" => Command::from(FileTreeCommand::CollapseOrAscend),
+                    "enter" => Command::from(FileTreeCommand::ActivateSelection),
+                    _ => return,
+                };
+
+                cx.emit(command);
+                cx.stop_propagation();
+                cx.notify();
+            }));
 
         // 左侧实际文件树内容
         let tree_content = div()
@@ -64,7 +87,7 @@ impl Render for FileTreePanel {
             .border_r_1()
             .border_color(rgb(color::COLOR_BORDER))
             .px(px(size::GAP_1))
-            .children(self.state.roots.iter().map(|node| render_node(node, cx)));
+            .children(self.state.roots.iter().map(render_node));
 
         // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
         let splitter = div()
@@ -122,41 +145,37 @@ impl Render for FileTreePanel {
 }
 
 /// 渲染子树容器。
-fn render_children(children: &[FileTreeNode], cx: &mut Context<FileTreePanel>) -> impl IntoElement {
+fn render_children(children: &[FileTreeNode]) -> impl IntoElement {
     div()
         .ml(px(size::GAP_1))
         .pl(px(FILE_TREE_INDENT_STEP))
         .border_l_1()
         .border_color(rgb(color::COLOR_BORDER))
-        .children(children.iter().map(|node| render_node(node, cx)))
+        .children(children.iter().map(render_node))
 }
 
 /// 递归渲染文件树节点 (保持为纯渲染逻辑)。
-fn render_node(node: &FileTreeNode, cx: &mut Context<FileTreePanel>) -> AnyElement {
+fn render_node(node: &FileTreeNode) -> AnyElement {
     let node_id = gpui::SharedString::from(format!("tree-node-{}", node.path));
     let is_dir = matches!(node.kind, FileTreeNodeKind::Directory);
-    let clicked_path = node.path.clone();
-    let clicked_kind = node.kind;
 
-    // 给行容器增加 id 和点击事件
-    let row_view = div()
-        .id(node_id)
-        .child(row::render(node))
-        .on_click(cx.listener(move |_this, _event, _window, cx| {
-            cx.emit(FileTreeNodeClicked {
-                relative_path: clicked_path.clone(),
-                kind: clicked_kind,
-            });
-            cx.notify();
-        }));
+    let row_view = div().id(node_id).child(row::render(node));
 
     let container = div().flex().flex_col().child(row_view);
 
     if is_dir && node.is_expanded {
         container
-            .child(render_children(&node.children, cx))
+            .child(render_children(&node.children))
             .into_any_element()
     } else {
         container.into_any_element()
     }
+}
+
+fn has_any_modifier(modifiers: &gpui::Modifiers) -> bool {
+    modifiers.control
+        || modifiers.alt
+        || modifiers.shift
+        || modifiers.platform
+        || modifiers.function
 }

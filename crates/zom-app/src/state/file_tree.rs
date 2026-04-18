@@ -51,6 +51,146 @@ impl FileTreeState {
             activate_file_node(root, relative_path);
         }
     }
+
+    /// 选中下一条可见节点。
+    pub fn select_next_visible(&mut self) {
+        self.move_selection(1);
+    }
+
+    /// 选中上一条可见节点。
+    pub fn select_prev_visible(&mut self) {
+        self.move_selection(-1);
+    }
+
+    /// 展开选中的目录，或在已展开目录中下探到第一个子节点。
+    pub fn expand_or_descend_selected(&mut self) {
+        let Some(selected) = self.selected_visible_node_or_first() else {
+            return;
+        };
+
+        if matches!(selected.kind, FileTreeNodeKind::Directory) {
+            if !selected.is_expanded {
+                self.toggle_directory(&selected.path);
+            } else if let Some(first_child_path) = selected.first_child_path {
+                self.select_only(&first_child_path);
+            }
+        }
+    }
+
+    /// 折叠选中的目录，或回到父节点。
+    pub fn collapse_or_ascend_selected(&mut self) {
+        let Some(selected) = self.selected_visible_node_or_first() else {
+            return;
+        };
+
+        if matches!(selected.kind, FileTreeNodeKind::Directory) && selected.is_expanded {
+            self.toggle_directory(&selected.path);
+            return;
+        }
+
+        if let Some(parent_path) = selected.parent_path {
+            self.select_only(&parent_path);
+        }
+    }
+
+    /// 返回当前选中节点的路径和类型。
+    pub fn selected_node(&self) -> Option<(String, FileTreeNodeKind)> {
+        let visible_nodes = self.visible_nodes();
+        let selected_path = self.selected_path()?;
+        visible_nodes
+            .into_iter()
+            .find(|node| node.path == selected_path)
+            .map(|node| (node.path, node.kind))
+    }
+
+    /// 确保当前至少有一条可见选中节点。
+    /// 若无选中或选中项不可见，则自动选中第一条可见节点。
+    /// 返回值表示是否发生了状态变更。
+    pub fn ensure_selection(&mut self) -> bool {
+        let visible_nodes = self.visible_nodes();
+        let Some(first_visible_path) = visible_nodes.first().map(|node| node.path.clone()) else {
+            return false;
+        };
+
+        if let Some(selected_path) = self.selected_path()
+            && visible_nodes.iter().any(|node| node.path == selected_path)
+        {
+            return false;
+        }
+
+        self.select_only(&first_visible_path);
+        true
+    }
+
+    fn move_selection(&mut self, direction: isize) {
+        let visible_nodes = self.visible_nodes();
+        if visible_nodes.is_empty() {
+            return;
+        }
+
+        let selected_path = self.selected_path();
+        let target_index = match selected_path
+            .as_ref()
+            .and_then(|path| visible_nodes.iter().position(|node| &node.path == path))
+        {
+            Some(current_index) => {
+                if direction > 0 {
+                    (current_index + 1).min(visible_nodes.len() - 1)
+                } else {
+                    current_index.saturating_sub(1)
+                }
+            }
+            None => {
+                if direction > 0 {
+                    0
+                } else {
+                    visible_nodes.len() - 1
+                }
+            }
+        };
+
+        self.select_only(&visible_nodes[target_index].path);
+    }
+
+    fn selected_visible_node_or_first(&mut self) -> Option<VisibleNode> {
+        let visible_nodes = self.visible_nodes();
+        if visible_nodes.is_empty() {
+            return None;
+        }
+
+        if let Some(selected_path) = self.selected_path()
+            && let Some(node) = visible_nodes
+                .iter()
+                .find(|candidate| candidate.path == selected_path)
+        {
+            return Some(node.clone());
+        }
+
+        let first = visible_nodes[0].clone();
+        self.select_only(&first.path);
+        Some(first)
+    }
+
+    fn select_only(&mut self, relative_path: &str) {
+        for root in &mut self.roots {
+            select_only_node(root, relative_path);
+        }
+    }
+
+    fn selected_path(&self) -> Option<String> {
+        self.roots
+            .iter()
+            .find_map(find_selected_node_path)
+            .map(ToString::to_string)
+    }
+
+    fn visible_nodes(&self) -> Vec<VisibleNode> {
+        let mut visible_nodes = Vec::new();
+        for root in &self.roots {
+            collect_visible_nodes(root, None, &mut visible_nodes);
+        }
+        visible_nodes
+    }
 }
 
 /// 递归切换目录节点的展开态。返回值表示是否命中目标节点。
@@ -87,6 +227,50 @@ fn activate_file_node(node: &mut FileTreeNode, relative_path: &str) -> bool {
     }
 
     contains_target
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct VisibleNode {
+    path: String,
+    kind: FileTreeNodeKind,
+    parent_path: Option<String>,
+    is_expanded: bool,
+    first_child_path: Option<String>,
+}
+
+fn collect_visible_nodes(
+    node: &FileTreeNode,
+    parent_path: Option<&str>,
+    visible_nodes: &mut Vec<VisibleNode>,
+) {
+    visible_nodes.push(VisibleNode {
+        path: node.path.clone(),
+        kind: node.kind,
+        parent_path: parent_path.map(ToString::to_string),
+        is_expanded: node.is_expanded,
+        first_child_path: node.children.first().map(|child| child.path.clone()),
+    });
+
+    if matches!(node.kind, FileTreeNodeKind::Directory) && node.is_expanded {
+        for child in &node.children {
+            collect_visible_nodes(child, Some(&node.path), visible_nodes);
+        }
+    }
+}
+
+fn select_only_node(node: &mut FileTreeNode, relative_path: &str) {
+    node.is_selected = node.path == relative_path;
+    for child in &mut node.children {
+        select_only_node(child, relative_path);
+    }
+}
+
+fn find_selected_node_path(node: &FileTreeNode) -> Option<&str> {
+    if node.is_selected {
+        return Some(&node.path);
+    }
+
+    node.children.iter().find_map(find_selected_node_path)
 }
 
 #[cfg(test)]
@@ -135,6 +319,101 @@ mod tests {
         assert!(root.children[1].is_expanded);
         assert!(root.children[1].children[0].is_active);
         assert!(root.children[1].children[0].is_selected);
+    }
+
+    #[test]
+    fn keyboard_navigation_moves_selection_between_visible_nodes() {
+        let mut tree = FileTreeState {
+            title: "EXPLORER".into(),
+            roots: vec![directory(
+                "root",
+                "root",
+                true,
+                vec![file("a.rs", "root/a.rs"), file("b.rs", "root/b.rs")],
+            )],
+        };
+
+        tree.select_next_visible();
+        assert_eq!(
+            tree.selected_node(),
+            Some(("root".to_string(), FileTreeNodeKind::Directory))
+        );
+
+        tree.select_next_visible();
+        assert_eq!(
+            tree.selected_node(),
+            Some(("root/a.rs".to_string(), FileTreeNodeKind::File))
+        );
+
+        tree.select_prev_visible();
+        assert_eq!(
+            tree.selected_node(),
+            Some(("root".to_string(), FileTreeNodeKind::Directory))
+        );
+    }
+
+    #[test]
+    fn keyboard_expand_and_collapse_operates_on_selected_directory() {
+        let mut tree = FileTreeState {
+            title: "EXPLORER".into(),
+            roots: vec![directory(
+                "root",
+                "root",
+                false,
+                vec![file("a.rs", "root/a.rs"), file("b.rs", "root/b.rs")],
+            )],
+        };
+
+        tree.select_next_visible();
+        tree.expand_or_descend_selected();
+        assert!(tree.roots[0].is_expanded);
+
+        tree.collapse_or_ascend_selected();
+        assert!(!tree.roots[0].is_expanded);
+    }
+
+    #[test]
+    fn ensure_selection_selects_first_visible_node_when_none_selected() {
+        let mut tree = FileTreeState {
+            title: "EXPLORER".into(),
+            roots: vec![directory(
+                "root",
+                "root",
+                true,
+                vec![file("a.rs", "root/a.rs"), file("b.rs", "root/b.rs")],
+            )],
+        };
+
+        assert!(tree.ensure_selection());
+        assert_eq!(
+            tree.selected_node(),
+            Some(("root".to_string(), FileTreeNodeKind::Directory))
+        );
+    }
+
+    #[test]
+    fn ensure_selection_reselects_when_current_selection_is_not_visible() {
+        let mut tree = FileTreeState {
+            title: "EXPLORER".into(),
+            roots: vec![directory(
+                "root",
+                "root",
+                true,
+                vec![directory(
+                    "src",
+                    "root/src",
+                    false,
+                    vec![file("main.rs", "root/src/main.rs")],
+                )],
+            )],
+        };
+        tree.roots[0].children[0].children[0].is_selected = true;
+
+        assert!(tree.ensure_selection());
+        assert_eq!(
+            tree.selected_node(),
+            Some(("root".to_string(), FileTreeNodeKind::Directory))
+        );
     }
 
     fn directory(

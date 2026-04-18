@@ -21,7 +21,7 @@ impl PaneView {
         Self { state }
     }
 
-    /// 覆盖 Pane 状态，用于响应外部交互（例如文件树点击）。
+    /// 覆盖 Pane 状态，用于响应外部交互（例如文件树激活）。
     pub fn set_state(&mut self, state: PaneState, cx: &mut Context<Self>) {
         self.state = state;
         cx.notify();

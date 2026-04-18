@@ -8,4 +8,4 @@ pub(super) const FILE_TREE_INDENT_STEP: f32 = GAP_2;
 mod row;
 mod view;
 
-pub(crate) use view::{FileTreeNodeClicked, FileTreePanel};
+pub(crate) use view::FileTreePanel;

@@ -5,16 +5,14 @@ mod assets;
 mod chrome;
 mod components;
 mod theme;
-use components::{
-    file_tree::{FileTreeNodeClicked, FileTreePanel},
-    title_bar, tool_bar,
-};
+use components::{file_tree::FileTreePanel, title_bar, tool_bar};
 
 use gpui::{
     App, Application, Bounds, Context, Entity, TitlebarOptions, Window, WindowBounds,
     WindowOptions, div, prelude::*, px, rgb, size,
 };
 use zom_app::state::DesktopAppState;
+use zom_core::Command;
 
 use crate::{
     components::{pane::PaneView, title_bar::traffic_lights},
@@ -60,37 +58,32 @@ pub struct ZomRootView {
     file_tree_panel: Entity<FileTreePanel>,
     /// Pane 视图
     pane_view: Entity<PaneView>,
+    /// 启动后是否已把焦点给到文件树。
+    has_focused_file_tree: bool,
 }
 
 impl ZomRootView {
     /// 用应用状态创建根视图。
     pub fn new(state: DesktopAppState, cx: &mut Context<Self>) -> Self {
-        let file_tree_panel = cx.new(|_| FileTreePanel::new(state.file_tree.clone()));
+        let file_tree_panel = cx.new(|cx| FileTreePanel::new(state.file_tree.clone(), cx));
         let pane_view = cx.new(|_| PaneView::new(state.pane.clone()));
 
-        cx.subscribe(
-            &file_tree_panel,
-            |this, _, event: &FileTreeNodeClicked, cx| {
-                this.handle_file_tree_node_clicked(event, cx);
-            },
-        )
+        cx.subscribe(&file_tree_panel, |this, _, command: &Command, cx| {
+            this.handle_command_requested(command, cx);
+        })
         .detach();
 
         Self {
             state,
             file_tree_panel,
             pane_view,
+            has_focused_file_tree: false,
         }
     }
 
-    /// 响应文件树点击，驱动应用层状态并同步子视图。
-    fn handle_file_tree_node_clicked(
-        &mut self,
-        event: &FileTreeNodeClicked,
-        cx: &mut Context<Self>,
-    ) {
-        self.state
-            .handle_file_tree_node_click(&event.relative_path, event.kind);
+    /// 响应命令请求，驱动应用层状态并同步子视图。
+    fn handle_command_requested(&mut self, command: &Command, cx: &mut Context<Self>) {
+        self.state.handle_command(command.clone());
         self.sync_child_views(cx);
     }
 
@@ -110,7 +103,16 @@ impl ZomRootView {
 }
 
 impl Render for ZomRootView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.has_focused_file_tree {
+            let selection_initialized = self.state.ensure_file_tree_selection();
+            if selection_initialized {
+                self.sync_child_views(cx);
+            }
+            cx.focus_view(&self.file_tree_panel, window);
+            self.has_focused_file_tree = true;
+        }
+
         div()
             .size_full()
             .flex()

@@ -1,4 +1,7 @@
-use zom_core::BufferId;
+use zom_core::{
+    BufferId, Command,
+    command::{FileTreeCommand, WorkspaceCommand},
+};
 
 use crate::{
     state::{FileTreeNodeKind, FileTreeState, PaneState, TabState, TitleBarState, ToolBarState},
@@ -21,13 +24,57 @@ pub struct DesktopAppState {
 }
 
 impl DesktopAppState {
-    /// 处理文件树节点点击，并同步工作区状态。
-    pub fn handle_file_tree_node_click(&mut self, relative_path: &str, kind: FileTreeNodeKind) {
+    /// 确保文件树存在初始选中项（用于首次获取键盘焦点前）。
+    pub fn ensure_file_tree_selection(&mut self) -> bool {
+        self.file_tree.ensure_selection()
+    }
+
+    /// 处理文件树节点激活，并同步工作区状态。
+    pub fn handle_file_tree_node_activate(&mut self, relative_path: &str, kind: FileTreeNodeKind) {
         match kind {
             FileTreeNodeKind::Directory => self.file_tree.toggle_directory(relative_path),
             FileTreeNodeKind::File => {
                 self.file_tree.activate_file(relative_path);
                 self.open_file_in_pane(relative_path);
+            }
+        }
+    }
+
+    /// 统一处理顶层命令，并分发到对应领域。
+    pub fn handle_command(&mut self, command: Command) {
+        match command {
+            Command::Workspace(command) => self.handle_workspace_command(command),
+            Command::Editor(_command) => {
+                // TODO: 编辑器命令分发接入后在此处理。
+            }
+        }
+    }
+
+    /// 处理工作台命令，并分发到细分子域。
+    fn handle_workspace_command(&mut self, command: WorkspaceCommand) {
+        match command {
+            WorkspaceCommand::FileTree(command) => self.handle_file_tree_command(command),
+            WorkspaceCommand::FocusFileTree
+            | WorkspaceCommand::FocusCommandPalette
+            | WorkspaceCommand::Tab(_) => {
+                // TODO: 工作台聚焦与标签页命令接入后在此处理。
+            }
+        }
+    }
+
+    /// 处理文件树命令，并同步工作区状态。
+    fn handle_file_tree_command(&mut self, command: FileTreeCommand) {
+        match command {
+            FileTreeCommand::SelectPrev => self.file_tree.select_prev_visible(),
+            FileTreeCommand::SelectNext => self.file_tree.select_next_visible(),
+            FileTreeCommand::ExpandOrDescend => self.file_tree.expand_or_descend_selected(),
+            FileTreeCommand::CollapseOrAscend => self.file_tree.collapse_or_ascend_selected(),
+            FileTreeCommand::ActivateSelection => {
+                if let Some((relative_path, kind)) = self.file_tree.selected_node() {
+                    self.handle_file_tree_node_activate(&relative_path, kind);
+                } else {
+                    self.file_tree.select_next_visible();
+                }
             }
         }
     }
@@ -74,15 +121,17 @@ impl DesktopAppState {
 
 #[cfg(test)]
 mod tests {
+    use zom_core::{Command, command::FileTreeCommand};
+
     use super::DesktopAppState;
     use crate::state::FileTreeNodeKind;
 
     #[test]
-    fn clicking_file_tree_file_opens_tab_and_activates_it() {
+    fn activating_file_tree_file_opens_tab_and_activates_it() {
         let mut state = DesktopAppState::sample();
         let before_len = state.pane.tabs.len();
 
-        state.handle_file_tree_node_click("crates/zom-app/src/lib.rs", FileTreeNodeKind::File);
+        state.handle_file_tree_node_activate("crates/zom-app/src/lib.rs", FileTreeNodeKind::File);
 
         assert_eq!(state.pane.tabs.len(), before_len + 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
@@ -91,15 +140,17 @@ mod tests {
     }
 
     #[test]
-    fn clicking_file_tree_directory_toggles_expand_state() {
+    fn keyboard_select_and_activate_opens_file_in_pane() {
         let mut state = DesktopAppState::sample();
 
-        state.handle_file_tree_node_click("crates", FileTreeNodeKind::Directory);
-        let is_expanded_after_first_click = state.file_tree.roots[0].children[2].is_expanded;
-        assert!(!is_expanded_after_first_click);
+        state.file_tree.activate_file("crates/zom-app/src/lib.rs");
+        state.pane.tabs.clear();
+        state.pane.active_tab_index = None;
 
-        state.handle_file_tree_node_click("crates", FileTreeNodeKind::Directory);
-        let is_expanded_after_second_click = state.file_tree.roots[0].children[2].is_expanded;
-        assert!(is_expanded_after_second_click);
+        state.handle_command(Command::from(FileTreeCommand::ActivateSelection));
+
+        assert_eq!(state.pane.tabs.len(), 1);
+        let active_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(active_tab.relative_path, "crates/zom-app/src/lib.rs");
     }
 }
