@@ -3,7 +3,7 @@ mod file_tree;
 mod pane;
 mod title_bar;
 mod tool_bar;
-pub use desktop_app::DesktopAppState;
+pub use desktop_app::{DesktopAppState, DesktopUiAction};
 pub use file_tree::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 pub use pane::{PaneState, TabState};
 pub use title_bar::{TitleBarIcon, TitleBarState};

@@ -12,6 +12,15 @@ use crate::{
     utils,
 };
 
+/// 需要在 UI 层执行的副作用动作。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DesktopUiAction {
+    /// 打开项目目录选择器。
+    OpenProjectPicker,
+    /// 打开设置入口。
+    OpenSettings,
+}
+
 /// 桌面端根界面使用的应用状态。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DesktopAppState {
@@ -33,6 +42,8 @@ pub struct DesktopAppState {
     pub project_root: PathBuf,
     /// 下一帧需要应用的焦点请求（仅应用层内部可写）。
     pub(crate) pending_focus_target: Option<FocusTarget>,
+    /// 下一帧需要由 UI 层执行的一次性动作。
+    pub(crate) pending_ui_action: Option<DesktopUiAction>,
 }
 
 impl DesktopAppState {
@@ -78,6 +89,11 @@ impl DesktopAppState {
         self.pending_focus_target.take()
     }
 
+    /// 消费一次待处理 UI 动作（供 UI 层在下一帧应用）。
+    pub fn take_pending_ui_action(&mut self) -> Option<DesktopUiAction> {
+        self.pending_ui_action.take()
+    }
+
     /// 处理文件树节点激活，并同步工作区状态。
     pub fn handle_file_tree_node_activate(&mut self, relative_path: &str, kind: FileTreeNodeKind) {
         match kind {
@@ -105,6 +121,18 @@ impl DesktopAppState {
         match command {
             WorkspaceCommand::FocusPanel(target) => self.focus_panel(target),
             WorkspaceCommand::TogglePanel(target) => self.toggle_panel(target),
+            WorkspaceCommand::OpenProjectPicker => {
+                self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
+            }
+            WorkspaceCommand::OpenSettings => {
+                self.pending_ui_action = Some(DesktopUiAction::OpenSettings);
+            }
+            WorkspaceCommand::OpenCodeActions => {
+                // TODO: 代码动作入口接入后在这里打开。
+            }
+            WorkspaceCommand::StartDebugging => {
+                // TODO: 调试入口接入后在这里触发。
+            }
             WorkspaceCommand::FileTree(command) => self.handle_file_tree_command(command),
             WorkspaceCommand::Tab(_) => {
                 // TODO: 工作台聚焦与标签页命令接入后在此处理。
@@ -230,7 +258,7 @@ mod tests {
         command::{FileTreeCommand, WorkspaceCommand},
     };
 
-    use super::DesktopAppState;
+    use super::{DesktopAppState, DesktopUiAction};
     use crate::state::FileTreeNodeKind;
 
     #[test]
@@ -358,6 +386,23 @@ mod tests {
         assert_eq!(
             state.take_pending_focus_target(),
             Some(FocusTarget::FileTreePanel)
+        );
+    }
+
+    #[test]
+    fn keyboard_shortcut_can_request_open_project_picker_ui_action() {
+        let mut state = DesktopAppState::from_current_workspace();
+        let keystroke = Keystroke::new(
+            zom_core::KeyCode::Char('p'),
+            zom_core::Modifiers::new(false, false, true, true),
+        );
+
+        let handled = state.handle_keystroke(&keystroke);
+
+        assert!(handled);
+        assert_eq!(
+            state.take_pending_ui_action(),
+            Some(DesktopUiAction::OpenProjectPicker)
         );
     }
 
