@@ -18,7 +18,7 @@ pub struct Modifiers {
 
 impl Modifiers {
     /// 构造一组显式的修饰键状态。
-    pub fn new(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Self {
+    pub const fn new(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Self {
         Self {
             has_ctrl: ctrl,
             has_alt: alt,
@@ -34,7 +34,7 @@ impl Modifiers {
 }
 
 /// 与平台无关的按键编码。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KeyCode {
     /// 可见字符键。
     Char(char),
@@ -69,7 +69,7 @@ pub enum KeyCode {
 }
 
 /// 一次完整的按键输入，由按键本体和修饰键组成。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Keystroke {
     /// 被触发的主按键。
     pub key: KeyCode,
@@ -79,7 +79,7 @@ pub struct Keystroke {
 
 impl Keystroke {
     /// 用按键和修饰键构造一次按键输入。
-    pub fn new(key: KeyCode, modifiers: Modifiers) -> Self {
+    pub const fn new(key: KeyCode, modifiers: Modifiers) -> Self {
         Self { key, modifiers }
     }
 }

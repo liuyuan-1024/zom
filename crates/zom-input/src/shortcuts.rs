@@ -1,17 +1,9 @@
 use zom_core::{
-    Command, InputResolution, KeyCode, Keystroke,
-    command::{
-        ShortcutPlatform as CoreShortcutPlatform, ShortcutScope as CoreShortcutScope,
-        ShortcutWhen as CoreShortcutWhen,
-    },
+    Command, InputResolution, KeyCode, Keystroke, command::ShortcutScope as CoreShortcutScope,
 };
 
 /// 快捷键作用域（源自 `zom-core::command::ShortcutScope`）。
 pub type ShortcutScope = CoreShortcutScope;
-/// 快捷键触发条件（源自 `zom-core::command::ShortcutWhen`）。
-pub type ShortcutWhen = CoreShortcutWhen;
-/// 快捷键平台（源自 `zom-core::command::ShortcutPlatform`）。
-pub type ShortcutPlatform = CoreShortcutPlatform;
 
 /// 快捷键绑定契约（不含运行时解析结果）。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,10 +12,6 @@ pub struct ShortcutBindingSpec {
     pub command: Command,
     /// 按键定义。
     pub keystroke: Keystroke,
-    /// 额外触发条件。
-    pub when: ShortcutWhen,
-    /// 适用平台。
-    pub platform: ShortcutPlatform,
     /// 冲突处理优先级（越大越优先）。
     pub priority: u8,
 }
@@ -34,22 +22,8 @@ impl ShortcutBindingSpec {
         Self {
             command,
             keystroke,
-            when: ShortcutWhen::Always,
-            platform: ShortcutPlatform::Any,
             priority: 0,
         }
-    }
-
-    /// 设置额外触发条件。
-    pub fn with_when(mut self, when: ShortcutWhen) -> Self {
-        self.when = when;
-        self
-    }
-
-    /// 设置适用平台。
-    pub fn with_platform(mut self, platform: ShortcutPlatform) -> Self {
-        self.platform = platform;
-        self
     }
 
     /// 设置绑定优先级。
@@ -68,10 +42,6 @@ pub struct ShortcutBinding {
     pub scope: ShortcutScope,
     /// 按键定义。
     pub keystroke: Keystroke,
-    /// 额外触发条件。
-    pub when: ShortcutWhen,
-    /// 适用平台。
-    pub platform: ShortcutPlatform,
     /// 冲突处理优先级（越大越优先）。
     pub priority: u8,
     /// 解析后的执行结果。
@@ -88,8 +58,6 @@ impl ShortcutBinding {
             command: spec.command,
             scope,
             keystroke: spec.keystroke,
-            when: spec.when,
-            platform: spec.platform,
             priority: spec.priority,
             resolution,
         }

@@ -23,8 +23,9 @@ Axis
 2. 命令模型
 Command、EditorCommand、WorkspaceCommand、可能还有 GlobalCommand。因为这些是全系统共享协议。
 另外，`command::catalog` 负责维护命令目录（Command Catalog），统一提供：
-- 命令稳定 ID（`CommandId`）
-- 命令描述（`CommandDescriptor`）
+- 单一声明源（`CommandSpec`）
+- 命令稳定键（`CommandKey`）与稳定字符串标识（`CommandId`）
+- 命令元信息（`CommandMeta`）
 - 默认快捷键元数据（`default_shortcut_bindings`）
 
 3. 输入协议模型
@@ -48,7 +49,7 @@ BufferId
 PaneId
 TabId
 WorkspaceId
-CommandId
+CommandKey
 这些类型最好做成强类型，不要满地 u64 和 String。
 
 5. 通用结果与能力描述

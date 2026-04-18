@@ -20,10 +20,8 @@ fn register_shortcut(
     command: zom_core::Command,
     shortcut: CommandShortcut,
 ) {
-    let spec = ShortcutBindingSpec::new(command, shortcut.keystroke)
-        .with_when(shortcut.when)
-        .with_platform(shortcut.platform)
-        .with_priority(shortcut.priority);
+    let spec =
+        ShortcutBindingSpec::new(command, shortcut.keystroke).with_priority(shortcut.priority);
     let resolution = crate::command(spec.command.clone());
     registry.register(ShortcutBinding::from_spec(spec, shortcut.scope, resolution));
 }

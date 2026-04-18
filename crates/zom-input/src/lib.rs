@@ -6,10 +6,7 @@ use std::sync::LazyLock;
 
 use defaults::build_default_shortcut_registry;
 pub use keymap::Keymap;
-pub use shortcuts::{
-    ShortcutBinding, ShortcutBindingSpec, ShortcutPlatform, ShortcutRegistry, ShortcutScope,
-    ShortcutWhen,
-};
+pub use shortcuts::{ShortcutBinding, ShortcutBindingSpec, ShortcutRegistry, ShortcutScope};
 use zom_core::{Command, InputContext, InputResolution, Keystroke};
 
 pub fn command(command: Command) -> InputResolution {
@@ -42,8 +39,7 @@ pub fn resolve_default(input: &Keystroke, context: &InputContext) -> InputResolu
 #[cfg(test)]
 mod tests {
     use super::{
-        Keymap, ShortcutPlatform, ShortcutScope, ShortcutWhen, command, default_keymap,
-        default_shortcut_registry, shortcut_hint,
+        Keymap, ShortcutScope, command, default_keymap, default_shortcut_registry, shortcut_hint,
     };
     use zom_core::{
         Command, EditorCommand, EditorInputContext, FocusTarget, InputContext, InputResolution,
@@ -275,8 +271,7 @@ mod tests {
             .find(|binding| binding.command == focus_panel_command(FocusTarget::FileTreePanel))
             .expect("file tree focus binding should exist");
 
-        assert_eq!(file_tree_focus.when, ShortcutWhen::Always);
-        assert_eq!(file_tree_focus.platform, ShortcutPlatform::Any);
+        assert_eq!(file_tree_focus.scope, ShortcutScope::Global);
         assert_eq!(file_tree_focus.priority, 100);
     }
 }

@@ -1,5 +1,5 @@
 /// 编辑器领域的命令语义。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EditorCommand {
     /// 插入一段文本。
     InsertText(String),

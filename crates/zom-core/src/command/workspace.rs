@@ -1,7 +1,7 @@
 use crate::FocusTarget;
 
 /// 工作台领域的命令语义。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WorkspaceCommand {
     /// 聚焦到指定面板
     FocusPanel(FocusTarget),
@@ -25,7 +25,7 @@ pub enum WorkspaceCommand {
 }
 
 /// 标签页命令语义。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TabCommand {
     /// 关闭当前激活标签页。
     CloseActiveTab,
@@ -36,7 +36,7 @@ pub enum TabCommand {
 }
 
 /// 文件树命令语义。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FileTreeCommand {
     /// 选中上一条可见节点。
     SelectPrev,

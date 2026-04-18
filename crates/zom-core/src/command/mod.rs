@@ -6,15 +6,15 @@ mod editor;
 mod workspace;
 
 pub use catalog::{
-    CommandCatalogEntry, CommandDescriptor, CommandId, CommandShortcut, ShortcutPlatform,
-    ShortcutScope, ShortcutWhen, command_catalog, command_descriptor, command_id,
-    default_shortcut_bindings, default_shortcuts,
+    CommandId, CommandKey, CommandMeta, CommandShortcut, CommandSpec, ShortcutScope,
+    command_from_key, command_id, command_key, command_meta, command_spec, command_spec_by_id,
+    command_spec_by_key, command_specs, default_shortcut_bindings, default_shortcuts,
 };
 pub use editor::EditorCommand;
 pub use workspace::{FileTreeCommand, TabCommand, WorkspaceCommand};
 
 /// 跨系统共享的顶层命令。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Command {
     /// 作用于文本编辑器的命令。
     Editor(EditorCommand),
