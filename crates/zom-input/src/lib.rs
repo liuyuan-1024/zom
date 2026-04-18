@@ -76,14 +76,7 @@ fn bind_workspace_defaults(keymap: &mut Keymap) {
             Modifiers::new(false, false, false, true),
         ),
     );
-    bind_panel_toggle_shortcut(
-        keymap,
-        FocusTarget::FileTreePanel,
-        Keystroke::new(
-            KeyCode::Char('b'),
-            Modifiers::new(false, false, false, true),
-        ),
-    );
+    bind_panel_close_shortcuts(keymap);
 }
 
 fn bind_file_tree_defaults(keymap: &mut Keymap) {
@@ -110,11 +103,19 @@ fn bind_panel_focus_shortcut(keymap: &mut Keymap, target: FocusTarget, key: Keys
     );
 }
 
-fn bind_panel_toggle_shortcut(keymap: &mut Keymap, target: FocusTarget, key: Keystroke) {
-    keymap.bind_global(
-        key,
-        command(Command::from(WorkspaceCommand::TogglePanel(target))),
+fn bind_panel_close_shortcuts(keymap: &mut Keymap) {
+    let close_shortcut = Keystroke::new(
+        KeyCode::Char('w'),
+        Modifiers::new(false, false, false, true),
     );
+
+    for panel in FocusTarget::VISIBILITY_MANAGED_PANELS {
+        keymap.bind_for_focus(
+            panel,
+            close_shortcut.clone(),
+            command(Command::from(WorkspaceCommand::TogglePanel(panel))),
+        );
+    }
 }
 
 static DEFAULT_KEYMAP: LazyLock<Keymap> = LazyLock::new(default_keymap);
@@ -193,13 +194,30 @@ mod tests {
     }
 
     #[test]
-    fn default_keymap_resolves_global_file_tree_toggle() {
+    fn default_keymap_resolves_global_file_tree_focus() {
         let keymap = default_keymap();
         let key = Keystroke::new(
             KeyCode::Char('b'),
             Modifiers::new(false, false, false, true),
         );
         let context = InputContext::new(FocusTarget::Editor);
+
+        assert_eq!(
+            keymap.resolve(&key, &context),
+            InputResolution::Command(Command::from(WorkspaceCommand::FocusPanel(
+                FocusTarget::FileTreePanel,
+            )))
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_panel_close_shortcut_for_focused_file_tree() {
+        let keymap = default_keymap();
+        let key = Keystroke::new(
+            KeyCode::Char('w'),
+            Modifiers::new(false, false, false, true),
+        );
+        let context = InputContext::new(FocusTarget::FileTreePanel);
 
         assert_eq!(
             keymap.resolve(&key, &context),

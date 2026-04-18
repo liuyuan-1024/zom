@@ -85,6 +85,7 @@ impl DesktopAppState {
             FileTreeNodeKind::File => {
                 self.file_tree.activate_file(relative_path);
                 self.open_file_in_pane(relative_path);
+                self.focus_editor();
             }
         }
     }
@@ -142,16 +143,19 @@ impl DesktopAppState {
         self.set_panel_visible(target, !is_visible);
 
         if is_visible {
-            if self.focused_target == target {
-                self.focused_target = FocusTarget::Editor;
-                self.pending_focus_target = Some(FocusTarget::Editor);
-            }
+            // 面板被隐藏后，统一把焦点回到 Pane（即使当前没有激活标签页，也有可聚焦的空态容器）。
+            self.focus_editor();
             return;
         }
 
         self.focused_target = target;
         self.pending_focus_target = Some(target);
         self.prepare_panel_focus(target);
+    }
+
+    fn focus_editor(&mut self) {
+        self.focused_target = FocusTarget::Editor;
+        self.pending_focus_target = Some(FocusTarget::Editor);
     }
 
     /// 在面板接收焦点前执行必要的准备动作。
@@ -240,6 +244,8 @@ mod tests {
         let active_tab = state.pane.active_tab().expect("active tab should exist");
         assert_eq!(active_tab.relative_path, "crates/zom-app/src/lib.rs");
         assert!(!active_tab.buffer_lines.is_empty());
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
     }
 
     #[test]
@@ -302,6 +308,41 @@ mod tests {
     }
 
     #[test]
+    fn toggle_panel_hides_file_tree_with_empty_pane_and_focuses_editor() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.focused_target = FocusTarget::Editor;
+        state.visible_panels.insert(FocusTarget::FileTreePanel);
+        state.pane.tabs.clear();
+        state.pane.active_tab_index = None;
+
+        state.handle_command(Command::from(WorkspaceCommand::TogglePanel(
+            FocusTarget::FileTreePanel,
+        )));
+
+        assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
+    }
+
+    #[test]
+    fn toggle_panel_shows_file_tree_and_focuses_it() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.focused_target = FocusTarget::Editor;
+        state.visible_panels.remove(&FocusTarget::FileTreePanel);
+
+        state.handle_command(Command::from(WorkspaceCommand::TogglePanel(
+            FocusTarget::FileTreePanel,
+        )));
+
+        assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert_eq!(state.focused_target, FocusTarget::FileTreePanel);
+        assert_eq!(
+            state.take_pending_focus_target(),
+            Some(FocusTarget::FileTreePanel)
+        );
+    }
+
+    #[test]
     fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command() {
         let mut state = DesktopAppState::from_current_workspace();
         let keystroke = Keystroke::new(
@@ -312,7 +353,12 @@ mod tests {
         let handled = state.handle_keystroke(&keystroke);
 
         assert!(handled);
-        assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert_eq!(state.focused_target, FocusTarget::FileTreePanel);
+        assert_eq!(
+            state.take_pending_focus_target(),
+            Some(FocusTarget::FileTreePanel)
+        );
     }
 
     #[test]

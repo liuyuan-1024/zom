@@ -60,8 +60,6 @@ pub struct ZomRootView {
     file_tree_panel: Entity<FileTreePanel>,
     /// Pane 视图
     pane_view: Entity<PaneView>,
-    /// 启动后是否已把焦点给到文件树。
-    has_focused_file_tree: bool,
 }
 
 impl ZomRootView {
@@ -74,14 +72,7 @@ impl ZomRootView {
             state,
             file_tree_panel,
             pane_view,
-            has_focused_file_tree: false,
         }
-    }
-
-    /// 响应命令请求，驱动应用层状态并同步子视图。
-    fn dispatch_command(&mut self, command: Command, cx: &mut Context<Self>) {
-        self.state.handle_command(command);
-        self.sync_child_views(cx);
     }
 
     fn apply_focus_target(
@@ -143,7 +134,7 @@ impl ZomRootView {
                     this.state.switch_project(project_root);
                     this.state
                         .handle_command(Command::from(WorkspaceCommand::FocusPanel(
-                            FocusTarget::FileTreePanel,
+                            FocusTarget::Editor,
                         )));
                     this.sync_child_views(cx);
                 })
@@ -155,14 +146,6 @@ impl ZomRootView {
 
 impl Render for ZomRootView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.has_focused_file_tree {
-            self.dispatch_command(
-                Command::from(WorkspaceCommand::FocusPanel(FocusTarget::FileTreePanel)),
-                cx,
-            );
-            self.has_focused_file_tree = true;
-        }
-
         if let Some(target) = self.state.take_pending_focus_target() {
             self.apply_focus_target(target, window, cx);
         }
