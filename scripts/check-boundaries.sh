@@ -27,7 +27,7 @@ allowed_deps_for() {
     zom-editor) echo "zom-core zom-text" ;;
     zom-workspace) echo "zom-core zom-text zom-editor" ;;
     zom-platform) echo "zom-core" ;;
-    zom-app) echo "zom-core zom-text zom-editor zom-workspace zom-platform" ;;
+    zom-app) echo "zom-core zom-text zom-input zom-editor zom-workspace zom-platform" ;;
     zom-gpui) echo "zom-core zom-app" ;;
     zom-desktop) echo "zom-app zom-gpui" ;;
     *) return 1 ;;
