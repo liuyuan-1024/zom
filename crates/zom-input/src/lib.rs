@@ -9,7 +9,7 @@ use zom_core::{
 pub struct Keymap {
     /// 全局快捷键
     global: HashMap<Keystroke, InputResolution>,
-    /// 焦点目标的快捷键
+    /// 焦点作用域快捷键
     scoped: HashMap<FocusTarget, HashMap<Keystroke, InputResolution>>,
 }
 
