@@ -1,12 +1,11 @@
 //! 文件树组件视图。
 
 use gpui::{
-    AnyElement, App, Context, CursorStyle, EventEmitter, FocusHandle, Focusable,
-    InteractiveElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    ParentElement, Render, Styled, Window, div, prelude::*, px, rgb,
+    AnyElement, App, Context, CursorStyle, FocusHandle, Focusable, InteractiveElement, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Render, Styled, Window, div,
+    prelude::*, px, rgb,
 };
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
-use zom_core::{Command, command::FileTreeCommand};
 
 use super::{FILE_TREE_INDENT_STEP, row};
 use crate::theme::{color, size};
@@ -18,8 +17,6 @@ pub struct FileTreePanel {
     is_dragging: bool,
     focus_handle: FocusHandle,
 }
-
-impl EventEmitter<Command> for FileTreePanel {}
 
 impl FileTreePanel {
     /// 创建一个新的文件树面板。
@@ -56,25 +53,7 @@ impl Render for FileTreePanel {
             .flex()
             .flex_row()
             .track_focus(&self.focus_handle)
-            .tab_index(0)
-            .on_key_down(cx.listener(|_, event: &KeyDownEvent, _window, cx| {
-                if has_any_modifier(&event.keystroke.modifiers) {
-                    return;
-                }
-
-                let command = match event.keystroke.key.as_str() {
-                    "up" => Command::from(FileTreeCommand::SelectPrev),
-                    "down" => Command::from(FileTreeCommand::SelectNext),
-                    "right" => Command::from(FileTreeCommand::ExpandOrDescend),
-                    "left" => Command::from(FileTreeCommand::CollapseOrAscend),
-                    "enter" => Command::from(FileTreeCommand::ActivateSelection),
-                    _ => return,
-                };
-
-                cx.emit(command);
-                cx.stop_propagation();
-                cx.notify();
-            }));
+            .tab_index(0);
 
         // 左侧实际文件树内容
         let tree_content = div()
@@ -113,11 +92,10 @@ impl Render for FileTreePanel {
             container = container.child(
                 div()
                     .absolute()
-                    // TODO: 消除硬编码
-                    .top(px(-2000.0))
-                    .left(px(-2000.0))
-                    .w(px(10000.0))
-                    .h(px(10000.0))
+                    .top(px(-size::DRAG_CAPTURE_OFFSET))
+                    .left(px(-size::DRAG_CAPTURE_OFFSET))
+                    .w(px(size::DRAG_CAPTURE_SPAN))
+                    .h(px(size::DRAG_CAPTURE_SPAN))
                     .cursor(CursorStyle::ResizeLeftRight)
                     .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
                         let mut new_width: f32 = event.position.x.into();
@@ -170,12 +148,4 @@ fn render_node(node: &FileTreeNode) -> AnyElement {
     } else {
         container.into_any_element()
     }
-}
-
-fn has_any_modifier(modifiers: &gpui::Modifiers) -> bool {
-    modifiers.control
-        || modifiers.alt
-        || modifiers.shift
-        || modifiers.platform
-        || modifiers.function
 }

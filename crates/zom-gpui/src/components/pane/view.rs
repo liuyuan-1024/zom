@@ -1,12 +1,12 @@
 use gpui::{
-    Context, InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement,
-    Styled, Window, div, px, rgb,
+    App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement, Render,
+    StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
 use zom_app::state::PaneState;
 
 use crate::{
     components::pane::tab_bar,
-    theme::{color, size::GAP_3},
+    theme::{color, size},
 };
 
 /// 查看器模式下的软换行阈值（按字符数近似）。
@@ -14,11 +14,15 @@ const SOFT_WRAP_MAX_CHARS: usize = 120;
 
 pub struct PaneView {
     state: PaneState,
+    focus_handle: FocusHandle,
 }
 
 impl PaneView {
-    pub fn new(state: PaneState) -> Self {
-        Self { state }
+    pub fn new(state: PaneState, cx: &mut Context<Self>) -> Self {
+        Self {
+            state,
+            focus_handle: cx.focus_handle(),
+        }
     }
 
     /// 覆盖 Pane 状态，用于响应外部交互（例如文件树激活）。
@@ -28,9 +32,17 @@ impl PaneView {
     }
 }
 
+impl Focusable for PaneView {
+    fn focus_handle(&self, _: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
+
 impl Render for PaneView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
+            .track_focus(&self.focus_handle)
+            .tab_index(0)
             .flex()
             .flex_col()
             .flex_1()
@@ -85,12 +97,12 @@ impl PaneView {
                             .w_full()
                             .flex()
                             .flex_row()
-                            .gap(px(GAP_3))
+                            .gap(px(size::GAP_3))
                             // 顶部对齐：确保长文本软换行时，行号停留在第一行的高度
                             .items_start()
                             .child(
                                 div()
-                                    .w(px(40.0))
+                                    .w(px(size::GUTTER_MD))
                                     .flex_shrink_0()
                                     .text_right()
                                     .text_sm()
@@ -117,7 +129,7 @@ impl PaneView {
             .flex_1()
             .w_full()
             .bg(rgb(color::COLOR_BG_APP))
-            .p(px(8.0))
+            .p(px(size::PADDING_SM))
             .overflow_scroll()
             .children(line_elements)
     }

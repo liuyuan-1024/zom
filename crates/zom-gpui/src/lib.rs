@@ -4,15 +4,16 @@
 mod assets;
 mod chrome;
 mod components;
+mod input;
 mod theme;
 use components::{file_tree::FileTreePanel, title_bar, tool_bar};
 
 use gpui::{
-    App, Application, Bounds, Context, Entity, TitlebarOptions, Window, WindowBounds,
-    WindowOptions, div, prelude::*, px, rgb, size,
+    App, Application, Bounds, Context, Entity, InteractiveElement, ParentElement, Render, Styled,
+    TitlebarOptions, Window, WindowBounds, WindowOptions, div, prelude::*, px, rgb, size,
 };
 use zom_app::state::DesktopAppState;
-use zom_core::Command;
+use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
 
 use crate::{
     components::{pane::PaneView, title_bar::traffic_lights},
@@ -66,12 +67,7 @@ impl ZomRootView {
     /// 用应用状态创建根视图。
     pub fn new(state: DesktopAppState, cx: &mut Context<Self>) -> Self {
         let file_tree_panel = cx.new(|cx| FileTreePanel::new(state.file_tree.clone(), cx));
-        let pane_view = cx.new(|_| PaneView::new(state.pane.clone()));
-
-        cx.subscribe(&file_tree_panel, |this, _, command: &Command, cx| {
-            this.handle_command_requested(command, cx);
-        })
-        .detach();
+        let pane_view = cx.new(|cx| PaneView::new(state.pane.clone(), cx));
 
         Self {
             state,
@@ -82,9 +78,28 @@ impl ZomRootView {
     }
 
     /// 响应命令请求，驱动应用层状态并同步子视图。
-    fn handle_command_requested(&mut self, command: &Command, cx: &mut Context<Self>) {
-        self.state.handle_command(command.clone());
+    fn dispatch_command(&mut self, command: Command, cx: &mut Context<Self>) {
+        self.state.handle_command(command);
         self.sync_child_views(cx);
+    }
+
+    fn apply_focus_target(
+        &mut self,
+        target: FocusTarget,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match target {
+            FocusTarget::FileTreePanel
+                if self.state.is_panel_visible(FocusTarget::FileTreePanel) =>
+            {
+                cx.focus_view(&self.file_tree_panel, window);
+            }
+            FocusTarget::Editor => {
+                cx.focus_view(&self.pane_view, window);
+            }
+            _ => {}
+        }
     }
 
     /// 将最新应用状态同步到文件树和窗格视图。
@@ -105,29 +120,46 @@ impl ZomRootView {
 impl Render for ZomRootView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.has_focused_file_tree {
-            let selection_initialized = self.state.ensure_file_tree_selection();
-            if selection_initialized {
-                self.sync_child_views(cx);
-            }
-            cx.focus_view(&self.file_tree_panel, window);
+            self.dispatch_command(
+                Command::from(WorkspaceCommand::FocusPanel(FocusTarget::FileTreePanel)),
+                cx,
+            );
             self.has_focused_file_tree = true;
         }
+
+        if let Some(target) = self.state.take_pending_focus_target() {
+            self.apply_focus_target(target, window, cx);
+        }
+
+        let workspace_row = {
+            let row = div().flex().flex_1().overflow_hidden();
+            let row = if self.state.is_panel_visible(FocusTarget::FileTreePanel) {
+                row.child(self.file_tree_panel.clone())
+            } else {
+                row
+            };
+            row.child(self.pane_view.clone())
+        };
 
         div()
             .size_full()
             .flex()
             .flex_col()
+            .on_key_down(cx.listener(|this, event, _window, cx| {
+                let Some(keystroke) = input::to_core_keystroke(event) else {
+                    return;
+                };
+                if !this.state.handle_keystroke(&keystroke) {
+                    return;
+                }
+                this.sync_child_views(cx);
+                cx.stop_propagation();
+                cx.notify();
+            }))
             .bg(rgb(color::COLOR_BG_APP))
             .text_color(rgb(color::COLOR_FG_PRIMARY))
             .child(title_bar::render(&self.state))
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .overflow_hidden()
-                    .child(self.file_tree_panel.clone())
-                    .child(self.pane_view.clone()),
-            )
+            .child(workspace_row)
             .child(tool_bar::render(&self.state))
     }
 }
