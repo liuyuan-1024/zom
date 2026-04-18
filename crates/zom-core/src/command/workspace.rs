@@ -1,10 +1,12 @@
+use crate::FocusTarget;
+
 /// 工作台领域的命令语义。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkspaceCommand {
-    /// 将焦点切到文件树。
-    FocusFileTree,
-    /// 将焦点切到命令面板。
-    FocusCommandPalette,
+    /// 聚焦到指定面板
+    FocusPanel(FocusTarget),
+    /// 显示或隐藏指定面板。
+    TogglePanel(FocusTarget),
 
     /// 作用于文件树的命令。
     FileTree(FileTreeCommand),

@@ -7145,6 +7145,7 @@ name = "zom-app"
 version = "0.1.0"
 dependencies = [
  "zom-core",
+ "zom-input",
  "zom-text",
 ]
 

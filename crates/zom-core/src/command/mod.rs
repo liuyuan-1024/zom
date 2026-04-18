@@ -66,12 +66,14 @@ impl From<TabCommand> for Command {
 
 #[cfg(test)]
 mod tests {
+    use crate::FocusTarget;
+
     use super::{Command, EditorCommand, FileTreeCommand, TabCommand, WorkspaceCommand};
 
     #[test]
     fn command_kind_helpers_match_the_payload() {
         let editor = Command::from(EditorCommand::Undo);
-        let workspace = Command::from(WorkspaceCommand::FocusCommandPalette);
+        let workspace = Command::from(WorkspaceCommand::FocusPanel(FocusTarget::Palette));
 
         assert!(editor.is_editor());
         assert!(!editor.is_workspace());

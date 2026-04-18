@@ -1,7 +1,10 @@
+use std::collections::HashSet;
+
 use zom_core::{
-    BufferId, Command,
+    BufferId, Command, FocusTarget, InputContext, InputResolution, Keystroke,
     command::{FileTreeCommand, WorkspaceCommand},
 };
+use zom_input::resolve_default;
 
 use crate::{
     state::{FileTreeNodeKind, FileTreeState, PaneState, TabState, TitleBarState, ToolBarState},
@@ -19,14 +22,44 @@ pub struct DesktopAppState {
     pub file_tree: FileTreeState,
     /// 窗格
     pub pane: PaneState,
+    /// 当前聚焦目标。
+    pub focused_target: FocusTarget,
+    /// 当前可见的工作台面板集合。
+    pub visible_panels: HashSet<FocusTarget>,
     /// 当前打开项目的名称。
     pub project_name: String,
+    /// 下一帧需要应用的焦点请求（仅应用层内部可写）。
+    pub(crate) pending_focus_target: Option<FocusTarget>,
 }
 
 impl DesktopAppState {
     /// 确保文件树存在初始选中项（用于首次获取键盘焦点前）。
     pub fn ensure_file_tree_selection(&mut self) -> bool {
         self.file_tree.ensure_selection()
+    }
+
+    /// 处理一个键盘输入，解析成命令后统一交给应用层分发。
+    pub fn handle_keystroke(&mut self, keystroke: &Keystroke) -> bool {
+        let context = InputContext::new(self.focused_target);
+        let resolution = resolve_default(keystroke, &context);
+        let InputResolution::Command(command) = resolution else {
+            return false;
+        };
+        self.handle_command(command);
+        true
+    }
+
+    /// 返回指定面板当前是否可见。
+    pub fn is_panel_visible(&self, target: FocusTarget) -> bool {
+        if !target.is_visibility_managed_panel() {
+            return true;
+        }
+        self.visible_panels.contains(&target)
+    }
+
+    /// 消费一次待处理的焦点目标（供 UI 层在下一帧应用）。
+    pub fn take_pending_focus_target(&mut self) -> Option<FocusTarget> {
+        self.pending_focus_target.take()
     }
 
     /// 处理文件树节点激活，并同步工作区状态。
@@ -53,10 +86,10 @@ impl DesktopAppState {
     /// 处理工作台命令，并分发到细分子域。
     fn handle_workspace_command(&mut self, command: WorkspaceCommand) {
         match command {
+            WorkspaceCommand::FocusPanel(target) => self.focus_panel(target),
+            WorkspaceCommand::TogglePanel(target) => self.toggle_panel(target),
             WorkspaceCommand::FileTree(command) => self.handle_file_tree_command(command),
-            WorkspaceCommand::FocusFileTree
-            | WorkspaceCommand::FocusCommandPalette
-            | WorkspaceCommand::Tab(_) => {
+            WorkspaceCommand::Tab(_) => {
                 // TODO: 工作台聚焦与标签页命令接入后在此处理。
             }
         }
@@ -76,6 +109,51 @@ impl DesktopAppState {
                     self.file_tree.select_next_visible();
                 }
             }
+        }
+    }
+
+    /// 聚焦到指定面板：若面板当前隐藏，则先显示后聚焦。
+    fn focus_panel(&mut self, target: FocusTarget) {
+        self.set_panel_visible(target, true);
+        self.focused_target = target;
+        self.pending_focus_target = Some(target);
+        self.prepare_panel_focus(target);
+    }
+
+    /// 切换指定面板显示状态，并维护焦点回退规则。
+    fn toggle_panel(&mut self, target: FocusTarget) {
+        let is_visible = self.is_panel_visible(target);
+        self.set_panel_visible(target, !is_visible);
+
+        if is_visible {
+            if self.focused_target == target {
+                self.focused_target = FocusTarget::Editor;
+                self.pending_focus_target = Some(FocusTarget::Editor);
+            }
+            return;
+        }
+
+        self.focused_target = target;
+        self.pending_focus_target = Some(target);
+        self.prepare_panel_focus(target);
+    }
+
+    /// 在面板接收焦点前执行必要的准备动作。
+    fn prepare_panel_focus(&mut self, target: FocusTarget) {
+        if target == FocusTarget::FileTreePanel {
+            self.ensure_file_tree_selection();
+        }
+    }
+
+    fn set_panel_visible(&mut self, target: FocusTarget, visible: bool) {
+        if !target.is_visibility_managed_panel() {
+            return;
+        }
+
+        if visible {
+            self.visible_panels.insert(target);
+        } else {
+            self.visible_panels.remove(&target);
         }
     }
 
@@ -121,7 +199,10 @@ impl DesktopAppState {
 
 #[cfg(test)]
 mod tests {
-    use zom_core::{Command, command::FileTreeCommand};
+    use zom_core::{
+        Command, FocusTarget, Keystroke,
+        command::{FileTreeCommand, WorkspaceCommand},
+    };
 
     use super::DesktopAppState;
     use crate::state::FileTreeNodeKind;
@@ -152,5 +233,56 @@ mod tests {
         assert_eq!(state.pane.tabs.len(), 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
         assert_eq!(active_tab.relative_path, "crates/zom-app/src/lib.rs");
+    }
+
+    #[test]
+    fn focus_panel_shows_file_tree_and_requests_focus() {
+        let mut state = DesktopAppState::sample();
+        state.visible_panels.remove(&FocusTarget::FileTreePanel);
+        state.file_tree.roots[0].is_selected = false;
+
+        state.handle_command(Command::from(WorkspaceCommand::FocusPanel(
+            FocusTarget::FileTreePanel,
+        )));
+
+        assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert_eq!(state.focused_target, FocusTarget::FileTreePanel);
+        assert_eq!(
+            state.take_pending_focus_target(),
+            Some(FocusTarget::FileTreePanel)
+        );
+        assert_eq!(
+            state.file_tree.selected_node().map(|(path, _)| path),
+            Some("".to_string())
+        );
+    }
+
+    #[test]
+    fn toggle_panel_hides_focused_file_tree_and_falls_back_to_editor() {
+        let mut state = DesktopAppState::sample();
+        state.focused_target = FocusTarget::FileTreePanel;
+        state.visible_panels.insert(FocusTarget::FileTreePanel);
+
+        state.handle_command(Command::from(WorkspaceCommand::TogglePanel(
+            FocusTarget::FileTreePanel,
+        )));
+
+        assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
+    }
+
+    #[test]
+    fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command() {
+        let mut state = DesktopAppState::sample();
+        let keystroke = Keystroke::new(
+            zom_core::KeyCode::Char('b'),
+            zom_core::Modifiers::new(false, false, false, true),
+        );
+
+        let handled = state.handle_keystroke(&keystroke);
+
+        assert!(handled);
+        assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
     }
 }

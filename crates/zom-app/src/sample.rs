@@ -1,4 +1,6 @@
-use zom_core::PaneId;
+use std::collections::HashSet;
+
+use zom_core::{FocusTarget, PaneId};
 
 use crate::{
     state::{
@@ -127,8 +129,19 @@ impl DesktopAppState {
                 tabs: Vec::new(),
                 active_tab_index: None,
             },
+            focused_target: FocusTarget::Editor,
+            visible_panels: default_visible_panels(),
+            pending_focus_target: None,
         }
     }
+}
+
+/// 构造工作台默认可见面板集合。
+fn default_visible_panels() -> HashSet<FocusTarget> {
+    FocusTarget::VISIBILITY_MANAGED_PANELS
+        .into_iter()
+        .filter(|target| target.is_visible_by_default())
+        .collect()
 }
 
 /// 构造目录节点，简化示例文件树的声明。
