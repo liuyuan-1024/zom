@@ -8,22 +8,22 @@ pub struct ToolBarEntry {
 /// 工具栏使用的图标语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolBarIcon {
-    /// 文件树入口。
-    Files,
-    /// Git 入口。
+    /// 文件树
+    FileTree,
+    /// Git
     GitBranch,
-    /// Outline 入口。
+    /// 大纲
     Outline,
-    /// 搜索入口。
-    Search,
-    /// LSP 入口。
-    LanguageServer,
-    /// 终端入口。
+    /// 全局搜索
+    ProjectSearch,
+    /// LSP
+    LSP,
+    /// 终端
     Terminal,
-    /// 调试入口。
+    /// 调试
     Debug,
-    /// 通知入口。
-    Notifications,
+    /// 通知
+    Notification,
 }
 
 /// 工具栏展示信息。

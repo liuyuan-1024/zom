@@ -16,9 +16,9 @@ pub(super) struct ToolBarIconSpec {
 /// 将应用层语义映射为底部工具栏自身维护的展示规格。
 pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
     match icon {
-        ToolBarIcon::Files => ToolBarIconSpec {
+        ToolBarIcon::FileTree => ToolBarIconSpec {
             path: "icons/tool_bar/tool_file_tree.svg",
-            label: "Explorer",
+            label: "文件树",
             shortcut: Some("Cmd+Shift+E"),
         },
         ToolBarIcon::GitBranch => ToolBarIconSpec {
@@ -31,12 +31,12 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
             label: "Outline",
             shortcut: Some("Cmd+Shift+O"),
         },
-        ToolBarIcon::Search => ToolBarIconSpec {
+        ToolBarIcon::ProjectSearch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_search.svg",
             label: "Search",
             shortcut: Some("Cmd+Shift+F"),
         },
-        ToolBarIcon::LanguageServer => ToolBarIconSpec {
+        ToolBarIcon::LSP => ToolBarIconSpec {
             path: "icons/tool_bar/tool_bolt_outlined.svg",
             label: "Code Actions",
             shortcut: Some("Cmd+."),
@@ -51,7 +51,7 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
             label: "Debug",
             shortcut: Some("F5"),
         },
-        ToolBarIcon::Notifications => ToolBarIconSpec {
+        ToolBarIcon::Notification => ToolBarIconSpec {
             path: "icons/tool_bar/tool_notification.svg",
             label: "Notifications",
             shortcut: Some("Cmd+Shift+N"),

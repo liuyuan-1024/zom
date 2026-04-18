@@ -20,7 +20,7 @@ impl DesktopAppState {
             tool_bar: ToolBarState {
                 left_tools: vec![
                     ToolBarEntry {
-                        icon: ToolBarIcon::Files,
+                        icon: ToolBarIcon::FileTree,
                     },
                     ToolBarEntry {
                         icon: ToolBarIcon::GitBranch,
@@ -29,10 +29,10 @@ impl DesktopAppState {
                         icon: ToolBarIcon::Outline,
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::Search,
+                        icon: ToolBarIcon::ProjectSearch,
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::LanguageServer,
+                        icon: ToolBarIcon::LSP,
                     },
                 ],
                 cursor: "1:1".into(),
@@ -47,7 +47,7 @@ impl DesktopAppState {
                         icon: ToolBarIcon::Debug,
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::Notifications,
+                        icon: ToolBarIcon::Notification,
                     },
                 ],
             },
