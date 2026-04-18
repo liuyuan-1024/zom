@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use zom_core::{
     BufferId, Command, FocusTarget, InputContext, InputResolution, Keystroke,
-    command::{FileTreeCommand, WorkspaceCommand},
+    command::{FileTreeCommand, TabCommand, WorkspaceCommand},
 };
 use zom_input::resolve_default;
 
@@ -120,7 +120,7 @@ impl DesktopAppState {
     fn handle_workspace_command(&mut self, command: WorkspaceCommand) {
         match command {
             WorkspaceCommand::FocusPanel(target) => self.focus_panel(target),
-            WorkspaceCommand::TogglePanel(target) => self.toggle_panel(target),
+            WorkspaceCommand::CloseFocused => self.close_focused(),
             WorkspaceCommand::OpenProjectPicker => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
             }
@@ -134,9 +134,7 @@ impl DesktopAppState {
                 // TODO: 调试入口接入后在这里触发。
             }
             WorkspaceCommand::FileTree(command) => self.handle_file_tree_command(command),
-            WorkspaceCommand::Tab(_) => {
-                // TODO: 工作台聚焦与标签页命令接入后在此处理。
-            }
+            WorkspaceCommand::Tab(command) => self.handle_tab_command(command),
         }
     }
 
@@ -165,20 +163,51 @@ impl DesktopAppState {
         self.prepare_panel_focus(target);
     }
 
-    /// 切换指定面板显示状态，并维护焦点回退规则。
-    fn toggle_panel(&mut self, target: FocusTarget) {
-        let is_visible = self.is_panel_visible(target);
-        self.set_panel_visible(target, !is_visible);
-
-        if is_visible {
-            // 面板被隐藏后，统一把焦点回到 Pane（即使当前没有激活标签页，也有可聚焦的空态容器）。
+    /// 关闭当前聚焦组件：优先关闭焦点面板，其次关闭当前标签页。
+    fn close_focused(&mut self) {
+        if self.focused_target.is_visibility_managed_panel()
+            && self.is_panel_visible(self.focused_target)
+        {
+            self.set_panel_visible(self.focused_target, false);
             self.focus_editor();
             return;
         }
 
-        self.focused_target = target;
-        self.pending_focus_target = Some(target);
-        self.prepare_panel_focus(target);
+        if self.focused_target == FocusTarget::Editor {
+            self.handle_tab_command(TabCommand::CloseActiveTab);
+        }
+    }
+
+    /// 处理标签页命令。
+    fn handle_tab_command(&mut self, command: TabCommand) {
+        match command {
+            TabCommand::CloseActiveTab => self.close_active_tab(),
+            TabCommand::ActivatePrevTab => {
+                // TODO: 标签页切换接入后在此处理。
+            }
+            TabCommand::ActivateNextTab => {
+                // TODO: 标签页切换接入后在此处理。
+            }
+        }
+    }
+
+    fn close_active_tab(&mut self) {
+        let Some(active_index) = self.pane.active_tab_index else {
+            return;
+        };
+        if active_index >= self.pane.tabs.len() {
+            self.pane.active_tab_index = None;
+            return;
+        }
+
+        self.pane.tabs.remove(active_index);
+        if self.pane.tabs.is_empty() {
+            self.pane.active_tab_index = None;
+            return;
+        }
+
+        let next_index = active_index.min(self.pane.tabs.len() - 1);
+        self.pane.active_tab_index = Some(next_index);
     }
 
     fn focus_editor(&mut self) {
@@ -321,14 +350,12 @@ mod tests {
     }
 
     #[test]
-    fn toggle_panel_hides_focused_file_tree_and_falls_back_to_editor() {
+    fn close_focused_hides_focused_file_tree_and_falls_back_to_editor() {
         let mut state = DesktopAppState::from_current_workspace();
         state.focused_target = FocusTarget::FileTreePanel;
         state.visible_panels.insert(FocusTarget::FileTreePanel);
 
-        state.handle_command(Command::from(WorkspaceCommand::TogglePanel(
-            FocusTarget::FileTreePanel,
-        )));
+        state.handle_command(Command::from(WorkspaceCommand::CloseFocused));
 
         assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
         assert_eq!(state.focused_target, FocusTarget::Editor);
@@ -336,38 +363,17 @@ mod tests {
     }
 
     #[test]
-    fn toggle_panel_hides_file_tree_with_empty_pane_and_focuses_editor() {
+    fn close_focused_closes_active_tab_when_editor_is_focused() {
         let mut state = DesktopAppState::from_current_workspace();
         state.focused_target = FocusTarget::Editor;
-        state.visible_panels.insert(FocusTarget::FileTreePanel);
-        state.pane.tabs.clear();
-        state.pane.active_tab_index = None;
+        state.pane.tabs = vec![zom_app_test_tab("a.rs"), zom_app_test_tab("b.rs")];
+        state.pane.active_tab_index = Some(1);
 
-        state.handle_command(Command::from(WorkspaceCommand::TogglePanel(
-            FocusTarget::FileTreePanel,
-        )));
+        state.handle_command(Command::from(WorkspaceCommand::CloseFocused));
 
-        assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
-        assert_eq!(state.focused_target, FocusTarget::Editor);
-        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
-    }
-
-    #[test]
-    fn toggle_panel_shows_file_tree_and_focuses_it() {
-        let mut state = DesktopAppState::from_current_workspace();
-        state.focused_target = FocusTarget::Editor;
-        state.visible_panels.remove(&FocusTarget::FileTreePanel);
-
-        state.handle_command(Command::from(WorkspaceCommand::TogglePanel(
-            FocusTarget::FileTreePanel,
-        )));
-
-        assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
-        assert_eq!(state.focused_target, FocusTarget::FileTreePanel);
-        assert_eq!(
-            state.take_pending_focus_target(),
-            Some(FocusTarget::FileTreePanel)
-        );
+        assert_eq!(state.pane.tabs.len(), 1);
+        assert_eq!(state.pane.tabs[0].relative_path, "a.rs");
+        assert_eq!(state.pane.active_tab_index, Some(0));
     }
 
     #[test]

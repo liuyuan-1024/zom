@@ -24,7 +24,7 @@ pub enum CommandKey {
     EditorSelectAll,
 
     WorkspaceFocusPanel(FocusTarget),
-    WorkspaceTogglePanel(FocusTarget),
+    WorkspaceCloseFocused,
     WorkspaceOpenProjectPicker,
     WorkspaceOpenSettings,
     WorkspaceOpenCodeActions,

@@ -1,7 +1,7 @@
 //! Pane 专属的图标定义与渲染。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
-use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
+use zom_core::{Command, command::WorkspaceCommand};
 use zom_input::shortcut_hint;
 
 /// Pane 内部使用的图标语义。
@@ -21,9 +21,7 @@ pub(super) fn spec(icon: PaneIcon) -> PaneIconSpec {
         PaneIcon::Close => PaneIconSpec {
             path: "icons/tab/close.svg",
             label: "Close",
-            shortcut: shortcut_hint(&Command::from(WorkspaceCommand::TogglePanel(
-                FocusTarget::FileTreePanel,
-            ))),
+            shortcut: shortcut_hint(&Command::from(WorkspaceCommand::CloseFocused)),
         },
     }
 }

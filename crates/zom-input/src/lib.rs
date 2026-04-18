@@ -187,9 +187,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(Command::from(WorkspaceCommand::TogglePanel(
-                FocusTarget::FileTreePanel,
-            )))
+            InputResolution::Command(Command::from(WorkspaceCommand::CloseFocused))
         );
     }
 
@@ -255,9 +253,7 @@ mod tests {
             Some("Cmd+Shift+N".to_string())
         );
         assert_eq!(
-            shortcut_hint(&Command::from(WorkspaceCommand::TogglePanel(
-                FocusTarget::FileTreePanel,
-            ))),
+            shortcut_hint(&Command::from(WorkspaceCommand::CloseFocused)),
             Some("Cmd+W".to_string())
         );
     }

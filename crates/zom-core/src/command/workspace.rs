@@ -3,10 +3,11 @@ use crate::FocusTarget;
 /// 工作台领域的命令语义。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WorkspaceCommand {
-    /// 聚焦到指定面板
+    /// 聚焦到并显示指定面板
     FocusPanel(FocusTarget),
-    /// 显示或隐藏指定面板。
-    TogglePanel(FocusTarget),
+    /// 关闭当前聚焦组件（如面板、标签页等）
+    CloseFocused,
+
     /// 打开项目目录选择器。
     OpenProjectPicker,
     /// 打开设置入口。
