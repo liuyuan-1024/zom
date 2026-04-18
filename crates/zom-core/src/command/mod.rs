@@ -1,9 +1,15 @@
 //! 命令协议层。
 //! 这里表达的是“用户想做什么”，而不是“具体如何执行”。
 
+mod catalog;
 mod editor;
 mod workspace;
 
+pub use catalog::{
+    CommandCatalogEntry, CommandDescriptor, CommandId, CommandShortcut, ShortcutPlatform,
+    ShortcutScope, ShortcutWhen, command_catalog, command_descriptor, command_id,
+    default_shortcut_bindings, default_shortcuts,
+};
 pub use editor::EditorCommand;
 pub use workspace::{FileTreeCommand, TabCommand, WorkspaceCommand};
 

@@ -22,6 +22,10 @@ Axis
 
 2. 命令模型
 Command、EditorCommand、WorkspaceCommand、可能还有 GlobalCommand。因为这些是全系统共享协议。
+另外，`command::catalog` 负责维护命令目录（Command Catalog），统一提供：
+- 命令稳定 ID（`CommandId`）
+- 命令描述（`CommandDescriptor`）
+- 默认快捷键元数据（`default_shortcut_bindings`）
 
 3. 输入协议模型
 注意，是输入协议，不是输入解析实现。
@@ -103,7 +107,7 @@ zom-core
   - 管理 UI 结构（但不直接画 UI）
   - 决定谁是 active
 
-命令语义是“意图”，编辑器行为是“对文本的实现”，工作台行为是“对环境的实现”。
+命令语义是“意图源”，编辑器行为是“对文本的实现”，工作台行为是“对环境的实现”。
 
 # 正确的数据流
 Key Event (GPUI)

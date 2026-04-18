@@ -24,6 +24,20 @@ pub enum FocusTarget {
 }
 
 impl FocusTarget {
+    /// 所有焦点目标。
+    pub const ALL: [Self; 10] = [
+        Self::Editor,
+        Self::Palette,
+        Self::FileTreePanel,
+        Self::GitPanel,
+        Self::OutlinePanel,
+        Self::ProjectSearch,
+        Self::LanguageServers,
+        Self::Terminal,
+        Self::DebugPanel,
+        Self::Notification,
+    ];
+
     /// 所有受工作台显隐策略管理的面板目标。
     pub const VISIBILITY_MANAGED_PANELS: [Self; 8] = [
         Self::FileTreePanel,

@@ -19,7 +19,11 @@ pub mod range;
 pub mod selection;
 
 /// 统一导出命令协议。
-pub use command::{Command, EditorCommand, WorkspaceCommand};
+pub use command::{
+    Command, CommandCatalogEntry, CommandDescriptor, CommandId, CommandShortcut, EditorCommand,
+    ShortcutPlatform, ShortcutScope, ShortcutWhen, WorkspaceCommand, command_catalog,
+    command_descriptor, command_id, default_shortcut_bindings, default_shortcuts,
+};
 /// 统一导出方向类型。
 pub use direction::{Axis, Direction};
 /// 统一导出焦点目标

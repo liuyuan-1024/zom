@@ -7,11 +7,21 @@ pub enum WorkspaceCommand {
     FocusPanel(FocusTarget),
     /// 显示或隐藏指定面板。
     TogglePanel(FocusTarget),
+    /// 打开项目目录选择器。
+    OpenProjectPicker,
+    /// 打开设置入口。
+    OpenSettings,
 
     /// 作用于文件树的命令。
     FileTree(FileTreeCommand),
     /// 作用于标签页的命令。
     Tab(TabCommand),
+
+    // === 与语言服务器相关（暂未实现） ===
+    /// 打开代码动作入口。
+    OpenCodeActions,
+    /// 打开调试入口。
+    StartDebugging,
 }
 
 /// 标签页命令语义。
