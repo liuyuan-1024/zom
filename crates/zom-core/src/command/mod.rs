@@ -5,7 +5,7 @@ mod editor;
 mod workspace;
 
 pub use editor::EditorCommand;
-pub use workspace::WorkspaceCommand;
+pub use workspace::{FileTreeCommand, TabCommand, WorkspaceCommand};
 
 /// 跨系统共享的顶层命令。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,9 +40,33 @@ impl From<WorkspaceCommand> for Command {
     }
 }
 
+impl From<FileTreeCommand> for WorkspaceCommand {
+    fn from(command: FileTreeCommand) -> Self {
+        Self::FileTree(command)
+    }
+}
+
+impl From<TabCommand> for WorkspaceCommand {
+    fn from(command: TabCommand) -> Self {
+        Self::Tab(command)
+    }
+}
+
+impl From<FileTreeCommand> for Command {
+    fn from(command: FileTreeCommand) -> Self {
+        Self::Workspace(WorkspaceCommand::from(command))
+    }
+}
+
+impl From<TabCommand> for Command {
+    fn from(command: TabCommand) -> Self {
+        Self::Workspace(WorkspaceCommand::from(command))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Command, EditorCommand, WorkspaceCommand};
+    use super::{Command, EditorCommand, FileTreeCommand, TabCommand, WorkspaceCommand};
 
     #[test]
     fn command_kind_helpers_match_the_payload() {
@@ -53,5 +77,20 @@ mod tests {
         assert!(!editor.is_workspace());
         assert!(workspace.is_workspace());
         assert!(!workspace.is_editor());
+    }
+
+    #[test]
+    fn file_tree_and_tab_commands_are_promoted_to_top_level_command() {
+        let file_tree = Command::from(FileTreeCommand::SelectNext);
+        let tab = Command::from(TabCommand::CloseActiveTab);
+
+        assert_eq!(
+            file_tree,
+            Command::Workspace(WorkspaceCommand::FileTree(FileTreeCommand::SelectNext))
+        );
+        assert_eq!(
+            tab,
+            Command::Workspace(WorkspaceCommand::Tab(TabCommand::CloseActiveTab))
+        );
     }
 }
