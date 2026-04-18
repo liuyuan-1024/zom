@@ -1,123 +1,34 @@
-use std::{collections::HashMap, sync::LazyLock};
+mod defaults;
+mod keymap;
+mod shortcuts;
 
-use zom_core::{
-    Command, FocusTarget, InputContext, InputResolution, KeyCode, Keystroke, Modifiers,
-    command::{FileTreeCommand, WorkspaceCommand},
-};
+use std::sync::LazyLock;
 
-#[derive(Debug, Clone, Default)]
-pub struct Keymap {
-    /// 全局快捷键
-    global: HashMap<Keystroke, InputResolution>,
-    /// 焦点作用域快捷键
-    scoped: HashMap<FocusTarget, HashMap<Keystroke, InputResolution>>,
-}
-
-impl Keymap {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn bind_global(&mut self, key: Keystroke, resolution: InputResolution) {
-        self.global.insert(key, resolution);
-    }
-
-    pub fn bind_for_focus(
-        &mut self,
-        focus: FocusTarget,
-        key: Keystroke,
-        resolution: InputResolution,
-    ) {
-        self.scoped
-            .entry(focus)
-            .or_default()
-            .insert(key, resolution);
-    }
-
-    pub fn bind_editor(&mut self, key: Keystroke, resolution: InputResolution) {
-        self.bind_for_focus(FocusTarget::Editor, key, resolution);
-    }
-
-    pub fn bind_file_tree(&mut self, key: Keystroke, resolution: InputResolution) {
-        self.bind_for_focus(FocusTarget::FileTreePanel, key, resolution);
-    }
-
-    pub fn resolve(&self, input: &Keystroke, context: &InputContext) -> InputResolution {
-        if let Some(by_focus) = self.scoped.get(&context.focus)
-            && let Some(resolution) = by_focus.get(input)
-        {
-            return resolution.clone();
-        }
-
-        self.global
-            .get(input)
-            .cloned()
-            .unwrap_or(InputResolution::Noop)
-    }
-}
+use defaults::build_default_shortcut_registry;
+pub use keymap::Keymap;
+pub use shortcuts::{ShortcutAction, ShortcutBinding, ShortcutRegistry, ShortcutScope};
+use zom_core::{Command, InputContext, InputResolution, Keystroke};
 
 pub fn command(command: Command) -> InputResolution {
     InputResolution::Command(command)
 }
 
+/// 读取默认快捷键注册表（单例）。
+pub fn default_shortcut_registry() -> &'static ShortcutRegistry {
+    &DEFAULT_SHORTCUT_REGISTRY
+}
+
+/// 读取某个语义动作对应的默认快捷键文案。
+pub fn shortcut_hint(action: ShortcutAction) -> Option<String> {
+    default_shortcut_registry().shortcut_hint(action)
+}
+
 pub fn default_keymap() -> Keymap {
-    let mut keymap = Keymap::new();
-    bind_workspace_defaults(&mut keymap);
-    bind_file_tree_defaults(&mut keymap);
-    keymap
+    Keymap::from_shortcut_registry(default_shortcut_registry())
 }
 
-fn bind_workspace_defaults(keymap: &mut Keymap) {
-    bind_panel_focus_shortcut(
-        keymap,
-        FocusTarget::FileTreePanel,
-        Keystroke::new(
-            KeyCode::Char('e'),
-            Modifiers::new(false, false, false, true),
-        ),
-    );
-    bind_panel_close_shortcuts(keymap);
-}
-
-fn bind_file_tree_defaults(keymap: &mut Keymap) {
-    let file_tree_bindings = [
-        (KeyCode::Up, FileTreeCommand::SelectPrev),
-        (KeyCode::Down, FileTreeCommand::SelectNext),
-        (KeyCode::Right, FileTreeCommand::ExpandOrDescend),
-        (KeyCode::Left, FileTreeCommand::CollapseOrAscend),
-        (KeyCode::Enter, FileTreeCommand::ActivateSelection),
-    ];
-
-    for (key, file_tree_command) in file_tree_bindings {
-        keymap.bind_file_tree(
-            Keystroke::new(key, Modifiers::default()),
-            command(Command::from(file_tree_command)),
-        );
-    }
-}
-
-fn bind_panel_focus_shortcut(keymap: &mut Keymap, target: FocusTarget, key: Keystroke) {
-    keymap.bind_global(
-        key,
-        command(Command::from(WorkspaceCommand::FocusPanel(target))),
-    );
-}
-
-fn bind_panel_close_shortcuts(keymap: &mut Keymap) {
-    let close_shortcut = Keystroke::new(
-        KeyCode::Char('w'),
-        Modifiers::new(false, false, false, true),
-    );
-
-    for panel in FocusTarget::VISIBILITY_MANAGED_PANELS {
-        keymap.bind_for_focus(
-            panel,
-            close_shortcut.clone(),
-            command(Command::from(WorkspaceCommand::TogglePanel(panel))),
-        );
-    }
-}
-
+static DEFAULT_SHORTCUT_REGISTRY: LazyLock<ShortcutRegistry> =
+    LazyLock::new(build_default_shortcut_registry);
 static DEFAULT_KEYMAP: LazyLock<Keymap> = LazyLock::new(default_keymap);
 
 /// 使用默认键位方案解析一次输入。
@@ -127,7 +38,10 @@ pub fn resolve_default(input: &Keystroke, context: &InputContext) -> InputResolu
 
 #[cfg(test)]
 mod tests {
-    use super::{Keymap, command, default_keymap};
+    use super::{
+        Keymap, ShortcutAction, ShortcutScope, command, default_keymap, default_shortcut_registry,
+        shortcut_hint,
+    };
     use zom_core::{
         Command, EditorCommand, EditorInputContext, FocusTarget, InputContext, InputResolution,
         KeyCode, Keystroke, Modifiers,
@@ -224,6 +138,61 @@ mod tests {
             InputResolution::Command(Command::from(WorkspaceCommand::TogglePanel(
                 FocusTarget::FileTreePanel,
             )))
+        );
+    }
+
+    #[test]
+    fn default_shortcut_registry_contains_file_tree_focus_shortcut() {
+        let registry = default_shortcut_registry();
+        let binding = registry
+            .bindings()
+            .iter()
+            .find(|binding| binding.action == ShortcutAction::FocusFileTreePanel)
+            .expect("file tree focus shortcut should exist");
+
+        assert_eq!(binding.scope, ShortcutScope::Global);
+        assert_eq!(
+            binding.keystroke,
+            Keystroke::new(
+                KeyCode::Char('b'),
+                Modifiers::new(false, false, false, true),
+            )
+        );
+    }
+
+    #[test]
+    fn shortcut_hint_uses_registry_definition() {
+        assert_eq!(
+            shortcut_hint(ShortcutAction::FocusFileTreePanel),
+            Some("Cmd+B".to_string())
+        );
+        assert_eq!(
+            shortcut_hint(ShortcutAction::FocusGitPanel),
+            Some("Cmd+Shift+G".to_string())
+        );
+        assert_eq!(
+            shortcut_hint(ShortcutAction::FocusOutlinePanel),
+            Some("Cmd+Shift+O".to_string())
+        );
+        assert_eq!(
+            shortcut_hint(ShortcutAction::FocusProjectSearchPanel),
+            Some("Cmd+Shift+F".to_string())
+        );
+        assert_eq!(
+            shortcut_hint(ShortcutAction::FocusTerminalPanel),
+            Some("Ctrl+`".to_string())
+        );
+        assert_eq!(
+            shortcut_hint(ShortcutAction::OpenProjectFromTitleBar),
+            Some("Cmd+Shift+P".to_string())
+        );
+        assert_eq!(
+            shortcut_hint(ShortcutAction::OpenSettingsFromTitleBar),
+            Some("Cmd+,".to_string())
+        );
+        assert_eq!(
+            shortcut_hint(ShortcutAction::HideFocusedPanel),
+            Some("Cmd+W".to_string())
         );
     }
 }

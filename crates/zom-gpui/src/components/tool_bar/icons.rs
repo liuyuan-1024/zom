@@ -2,6 +2,7 @@
 
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_app::state::ToolBarIcon;
+use zom_input::{ShortcutAction, shortcut_hint};
 
 /// 底部工具栏图标的展示规格。
 pub(super) struct ToolBarIconSpec {
@@ -10,7 +11,7 @@ pub(super) struct ToolBarIconSpec {
     /// 悬停时显示的名称。
     pub label: &'static str,
     /// 悬停时显示的快捷键。
-    pub shortcut: Option<&'static str>,
+    pub shortcut: Option<String>,
 }
 
 /// 将应用层语义映射为底部工具栏自身维护的展示规格。
@@ -19,42 +20,42 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         ToolBarIcon::FileTree => ToolBarIconSpec {
             path: "icons/tool_bar/tool_file_tree.svg",
             label: "文件树",
-            shortcut: Some("Cmd+Shift+E"),
+            shortcut: shortcut_hint(ShortcutAction::FocusFileTreePanel),
         },
         ToolBarIcon::GitBranch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_git_branch_alt.svg",
             label: "Git",
-            shortcut: Some("Cmd+Shift+G"),
+            shortcut: shortcut_hint(ShortcutAction::FocusGitPanel),
         },
         ToolBarIcon::Outline => ToolBarIconSpec {
             path: "icons/tool_bar/tool_list_tree.svg",
             label: "Outline",
-            shortcut: Some("Cmd+Shift+O"),
+            shortcut: shortcut_hint(ShortcutAction::FocusOutlinePanel),
         },
         ToolBarIcon::ProjectSearch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_search.svg",
             label: "Search",
-            shortcut: Some("Cmd+Shift+F"),
+            shortcut: shortcut_hint(ShortcutAction::FocusProjectSearchPanel),
         },
         ToolBarIcon::LSP => ToolBarIconSpec {
             path: "icons/tool_bar/tool_bolt_outlined.svg",
             label: "Code Actions",
-            shortcut: Some("Cmd+."),
+            shortcut: Some("Cmd+.".into()),
         },
         ToolBarIcon::Terminal => ToolBarIconSpec {
             path: "icons/tool_bar/tool_terminal.svg",
             label: "Terminal",
-            shortcut: Some("Ctrl+`"),
+            shortcut: shortcut_hint(ShortcutAction::FocusTerminalPanel),
         },
         ToolBarIcon::Debug => ToolBarIconSpec {
             path: "icons/tool_bar/tool_debug.svg",
             label: "Debug",
-            shortcut: Some("F5"),
+            shortcut: Some("F5".into()),
         },
         ToolBarIcon::Notification => ToolBarIconSpec {
             path: "icons/tool_bar/tool_notification.svg",
             label: "Notifications",
-            shortcut: Some("Cmd+Shift+N"),
+            shortcut: Some("Cmd+Shift+N".into()),
         },
     }
 }

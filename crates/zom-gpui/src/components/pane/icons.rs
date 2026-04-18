@@ -1,6 +1,7 @@
 //! Pane 专属的图标定义与渲染。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
+use zom_input::{ShortcutAction, shortcut_hint};
 
 /// Pane 内部使用的图标语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,7 +12,7 @@ pub(crate) enum PaneIcon {
 pub(super) struct PaneIconSpec {
     pub path: &'static str,
     pub label: &'static str,
-    pub shortcut: Option<&'static str>,
+    pub shortcut: Option<String>,
 }
 
 pub(super) fn spec(icon: PaneIcon) -> PaneIconSpec {
@@ -19,7 +20,7 @@ pub(super) fn spec(icon: PaneIcon) -> PaneIconSpec {
         PaneIcon::Close => PaneIconSpec {
             path: "icons/tab/close.svg",
             label: "Close",
-            shortcut: Some("Cmd+W"),
+            shortcut: shortcut_hint(ShortcutAction::HideFocusedPanel),
         },
     }
 }

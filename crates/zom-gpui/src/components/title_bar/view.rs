@@ -2,6 +2,7 @@
 
 use gpui::{App, ClickEvent, Window, div, prelude::*, px, rgb};
 use zom_app::state::{DesktopAppState, TitleBarIcon};
+use zom_input::{ShortcutAction, shortcut_hint};
 
 use super::icons;
 use crate::chrome;
@@ -21,7 +22,10 @@ pub(crate) fn render(
             chrome::group().pl(px(traffic_lights::slot_width())).child(
                 chip::interactive_chip(
                     "title-bar-project_name",
-                    chip::TooltipSpec::new(format!("选择项目"), Some("Cmd+Shift+P")),
+                    chip::TooltipSpec::new(
+                        format!("选择项目"),
+                        shortcut_hint(ShortcutAction::OpenProjectFromTitleBar),
+                    ),
                 )
                 .on_click(on_project_click)
                 .child(

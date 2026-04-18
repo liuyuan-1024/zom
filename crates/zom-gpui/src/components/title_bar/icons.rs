@@ -2,6 +2,7 @@
 
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_app::state::TitleBarIcon;
+use zom_input::{ShortcutAction, shortcut_hint};
 
 /// 标题栏图标的展示规格。
 pub(super) struct TitleBarIconSpec {
@@ -10,7 +11,7 @@ pub(super) struct TitleBarIconSpec {
     /// 悬停时显示的名称。
     pub label: &'static str,
     /// 悬停时显示的快捷键。
-    pub shortcut: Option<&'static str>,
+    pub shortcut: Option<String>,
 }
 
 /// 将应用层语义映射为标题栏自身维护的展示规格。
@@ -19,7 +20,7 @@ pub(super) fn spec(icon: TitleBarIcon) -> TitleBarIconSpec {
         TitleBarIcon::Settings => TitleBarIconSpec {
             path: "icons/title_bar/title_settings.svg",
             label: "Settings",
-            shortcut: Some("Cmd+,"),
+            shortcut: shortcut_hint(ShortcutAction::OpenSettingsFromTitleBar),
         },
     }
 }
