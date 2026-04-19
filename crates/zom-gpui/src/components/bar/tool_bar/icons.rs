@@ -61,6 +61,20 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
     }
 }
 
+/// 返回工具图标对应的面板目标（用于显隐态高亮）。
+pub(super) fn panel_target(icon: ToolBarIcon) -> Option<FocusTarget> {
+    match icon {
+        ToolBarIcon::FileTree => Some(FocusTarget::FileTreePanel),
+        ToolBarIcon::GitBranch => Some(FocusTarget::GitPanel),
+        ToolBarIcon::Outline => Some(FocusTarget::OutlinePanel),
+        ToolBarIcon::ProjectSearch => Some(FocusTarget::ProjectSearchPanel),
+        ToolBarIcon::LSP => Some(FocusTarget::LanguageServersPanel),
+        ToolBarIcon::Terminal => Some(FocusTarget::TerminalPanel),
+        ToolBarIcon::Debug => Some(FocusTarget::DebugPanel),
+        ToolBarIcon::Notification => Some(FocusTarget::NotificationPanel),
+    }
+}
+
 fn focus_panel_shortcut(target: FocusTarget) -> Option<String> {
     workspace_shortcut(WorkspaceAction::FocusPanel(target))
 }
@@ -80,4 +94,33 @@ pub(super) fn render(icon: ToolBarIcon, size: f32, color: impl Into<Hsla>) -> im
         .items_center()
         .justify_center()
         .child(svg().path(spec.path).size(px(size)).text_color(color))
+}
+
+#[cfg(test)]
+mod tests {
+    use zom_app::state::ToolBarIcon;
+    use zom_core::FocusTarget;
+
+    use super::panel_target;
+
+    #[test]
+    fn panel_tools_map_to_visibility_managed_targets() {
+        let mapped = [
+            ToolBarIcon::FileTree,
+            ToolBarIcon::GitBranch,
+            ToolBarIcon::Outline,
+            ToolBarIcon::ProjectSearch,
+            ToolBarIcon::LSP,
+            ToolBarIcon::Terminal,
+            ToolBarIcon::Debug,
+            ToolBarIcon::Notification,
+        ]
+        .into_iter()
+        .map(|icon| panel_target(icon).expect("tool should map to panel"));
+
+        for target in mapped {
+            assert!(target.is_visibility_managed_panel());
+            assert_ne!(target, FocusTarget::Editor);
+        }
+    }
 }

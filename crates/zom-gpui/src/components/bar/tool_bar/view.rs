@@ -23,7 +23,7 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                         .left_tools
                         .iter()
                         .enumerate()
-                        .map(|(index, item)| render_tool("tool-bar-left", index, item)),
+                        .map(|(index, item)| render_tool(state, "tool-bar-left", index, item)),
                 ),
             ),
         )
@@ -56,25 +56,34 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                             .right_tools
                             .iter()
                             .enumerate()
-                            .map(|(index, item)| render_tool("tool-bar-right", index, item)),
+                            .map(|(index, item)| render_tool(state, "tool-bar-right", index, item)),
                     ),
                 ),
         )
 }
 
 /// 渲染工具栏中的单个图标入口。
-fn render_tool(group: &'static str, index: usize, item: &ToolBarEntry) -> impl IntoElement {
+fn render_tool(
+    state: &DesktopAppState,
+    group: &'static str,
+    index: usize,
+    item: &ToolBarEntry,
+) -> impl IntoElement {
     let spec = icons::spec(item.icon);
+    let is_active = icons::panel_target(item.icon)
+        .map(|target| state.is_panel_visible(target))
+        .unwrap_or(false);
+    let icon_color = if is_active {
+        rgb(color::COLOR_FG_PRIMARY)
+    } else {
+        rgb(color::COLOR_FG_MUTED)
+    };
 
     chip::interactive_icon_chip(
         (group, index),
         chip::TooltipSpec::new(spec.label, spec.shortcut),
     )
-    .child(icons::render(
-        item.icon,
-        size::ICON_MD,
-        rgb(color::COLOR_FG_MUTED),
-    ))
+    .child(icons::render(item.icon, size::ICON_MD, icon_color))
 }
 
 /// 渲染工具栏中的与当前活动文本有关的工具。
