@@ -39,7 +39,7 @@ fn focus_emphasis_visible(node: &FileTreeNode, panel_has_focus: bool) -> bool {
 
 /// 行背景色
 fn row_background_color(node: &FileTreeNode) -> Option<u32> {
-    // 当前打开文件始终高亮；导航选中仅在文件树拥有焦点时高亮。
+    // 当前打开文件始终高亮；导航的单一选中不再使用背景色，由焦点外框表达。
     if node.is_active {
         Some(color::COLOR_BG_ACTIVE)
     } else {
@@ -122,10 +122,9 @@ mod tests {
     }
 
     #[test]
-    fn selected_node_only_highlights_when_panel_has_focus() {
+    fn selected_node_uses_no_background_even_when_panel_has_focus() {
         let selected = node(true, false);
 
-        assert_eq!(row_background_color(&selected), Some(color::COLOR_BG_HOVER));
         assert_eq!(row_background_color(&selected), None);
     }
 
@@ -133,7 +132,6 @@ mod tests {
     fn active_node_stays_highlighted_without_panel_focus() {
         let active = node(true, true);
 
-        assert_eq!(row_background_color(&active), Some(color::COLOR_BG_ACTIVE));
         assert_eq!(row_background_color(&active), Some(color::COLOR_BG_ACTIVE));
     }
 
