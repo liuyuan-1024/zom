@@ -1,7 +1,7 @@
 //! 输入协议模型。
 //! 这里只描述输入世界长什么样，具体解析逻辑放在 `zom-input`。
 
-use crate::{Command, FocusTarget};
+use crate::{CommandInvocation, FocusTarget};
 
 /// 键盘修饰键状态。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
@@ -153,7 +153,7 @@ impl EditorInputContext {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InputResolution {
     /// 解析成一个抽象命令。
-    Command(Command),
+    Command(CommandInvocation),
     /// 解析成直接插入的文本。
     InsertText(String),
     /// 当前输入没有匹配任何行为。
@@ -162,7 +162,7 @@ pub enum InputResolution {
 
 impl InputResolution {
     /// 用命令结果构造输入解析结果。
-    pub fn command(command: Command) -> Self {
+    pub fn command(command: CommandInvocation) -> Self {
         Self::Command(command)
     }
 
@@ -179,7 +179,7 @@ impl InputResolution {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Command, EditorCommand};
+    use crate::{CommandInvocation, EditorAction};
 
     use super::{
         EditorInputContext, FocusTarget, InputContext, InputResolution, KeyCode, Keystroke,
@@ -209,7 +209,7 @@ mod tests {
     #[test]
     fn keystroke_and_input_resolution_have_convenient_constructors() {
         let keystroke = Keystroke::new(KeyCode::Enter, Modifiers::default());
-        let resolution = InputResolution::command(Command::from(EditorCommand::Undo));
+        let resolution = InputResolution::command(CommandInvocation::from(EditorAction::Undo));
         let text = InputResolution::insert_text("x");
 
         assert_eq!(keystroke.key, KeyCode::Enter);

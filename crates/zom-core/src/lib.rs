@@ -20,10 +20,11 @@ pub mod selection;
 
 /// 统一导出命令协议。
 pub use command::{
-    Command, CommandId, CommandKey, CommandMeta, CommandShortcut, CommandSpec, EditorCommand,
-    ShortcutScope, WorkspaceCommand, command_from_key, command_id, command_key, command_meta,
-    command_spec, command_spec_by_id, command_spec_by_key, command_specs,
-    default_shortcut_bindings, default_shortcuts,
+    Buildability, CommandInvocation, CommandKind, CommandKindId, CommandKindSpec, CommandMeta,
+    CommandShortcut, EditorAction, EditorInvocation, FileTreeAction, ShortcutScope, TabAction,
+    WorkspaceAction, command_kind, command_kind_id, command_kind_spec, command_kind_spec_by_id,
+    command_kind_spec_by_kind, command_kind_specs, command_meta, default_shortcut_bindings,
+    default_shortcuts, invocation_from_kind,
 };
 /// 统一导出方向类型。
 pub use direction::{Axis, Direction};

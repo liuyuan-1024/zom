@@ -14,7 +14,7 @@ use gpui::{
     prelude::*, px, rgb, size,
 };
 use zom_app::state::{DesktopAppState, DesktopUiAction};
-use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
+use zom_core::{CommandInvocation, FocusTarget, WorkspaceAction};
 
 use crate::{
     components::{pane::PaneView, title_bar::traffic_lights},
@@ -146,10 +146,9 @@ impl ZomRootView {
 
                 this.update(cx, |this, cx| {
                     this.state.switch_project(project_root);
-                    this.state
-                        .handle_command(Command::from(WorkspaceCommand::FocusPanel(
-                            FocusTarget::Editor,
-                        )));
+                    this.state.handle_command(CommandInvocation::from(
+                        WorkspaceAction::FocusPanel(FocusTarget::Editor),
+                    ));
                     this.sync_child_views(cx);
                 })
                 .ok();

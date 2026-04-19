@@ -1,5 +1,6 @@
 use zom_core::{
-    Command, InputResolution, KeyCode, Keystroke, command::ShortcutScope as CoreShortcutScope,
+    CommandInvocation, InputResolution, KeyCode, Keystroke,
+    command::ShortcutScope as CoreShortcutScope,
 };
 
 /// 快捷键作用域（源自 `zom-core::command::ShortcutScope`）。
@@ -9,7 +10,7 @@ pub type ShortcutScope = CoreShortcutScope;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShortcutBindingSpec {
     /// 语义命令。
-    pub command: Command,
+    pub command: CommandInvocation,
     /// 按键定义。
     pub keystroke: Keystroke,
     /// 冲突处理优先级（越大越优先）。
@@ -18,7 +19,7 @@ pub struct ShortcutBindingSpec {
 
 impl ShortcutBindingSpec {
     /// 创建一个默认绑定契约。
-    pub fn new(command: Command, keystroke: Keystroke) -> Self {
+    pub fn new(command: CommandInvocation, keystroke: Keystroke) -> Self {
         Self {
             command,
             keystroke,
@@ -37,7 +38,7 @@ impl ShortcutBindingSpec {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShortcutBinding {
     /// 语义命令。
-    pub command: Command,
+    pub command: CommandInvocation,
     /// 作用域。
     pub scope: ShortcutScope,
     /// 按键定义。
@@ -87,7 +88,7 @@ impl ShortcutRegistry {
     }
 
     /// 读取某个命令对应的默认快捷键文案。
-    pub fn shortcut_hint(&self, command: &Command) -> Option<String> {
+    pub fn shortcut_hint(&self, command: &CommandInvocation) -> Option<String> {
         self.bindings
             .iter()
             .find(|binding| &binding.command == command)

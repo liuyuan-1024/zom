@@ -7,9 +7,9 @@ use std::sync::LazyLock;
 use defaults::build_default_shortcut_registry;
 pub use keymap::Keymap;
 pub use shortcuts::{ShortcutBinding, ShortcutBindingSpec, ShortcutRegistry, ShortcutScope};
-use zom_core::{Command, InputContext, InputResolution, Keystroke};
+use zom_core::{CommandInvocation, InputContext, InputResolution, Keystroke};
 
-pub fn command(command: Command) -> InputResolution {
+pub fn command(command: CommandInvocation) -> InputResolution {
     InputResolution::Command(command)
 }
 
@@ -19,7 +19,7 @@ pub fn default_shortcut_registry() -> &'static ShortcutRegistry {
 }
 
 /// 读取某个命令对应的默认快捷键文案。
-pub fn shortcut_hint(command: &Command) -> Option<String> {
+pub fn shortcut_hint(command: &CommandInvocation) -> Option<String> {
     default_shortcut_registry().shortcut_hint(command)
 }
 
@@ -42,9 +42,9 @@ mod tests {
         Keymap, ShortcutScope, command, default_keymap, default_shortcut_registry, shortcut_hint,
     };
     use zom_core::{
-        Command, EditorCommand, EditorInputContext, FocusTarget, InputContext, InputResolution,
-        KeyCode, Keystroke, Modifiers,
-        command::{FileTreeCommand, WorkspaceCommand},
+        CommandInvocation, EditorAction, EditorInputContext, FocusTarget, InputContext,
+        InputResolution, KeyCode, Keystroke, Modifiers,
+        command::{FileTreeAction, WorkspaceAction},
     };
 
     fn editor_context() -> InputContext {
@@ -60,8 +60,8 @@ mod tests {
         }
     }
 
-    fn focus_panel_command(target: FocusTarget) -> Command {
-        Command::from(WorkspaceCommand::FocusPanel(target))
+    fn focus_panel_command(target: FocusTarget) -> CommandInvocation {
+        CommandInvocation::from(WorkspaceAction::FocusPanel(target))
     }
 
     #[test]
@@ -75,12 +75,12 @@ mod tests {
         keymap.bind_global(key.clone(), InputResolution::InsertText("global".into()));
         keymap.bind_editor(
             key.clone(),
-            command(zom_core::Command::Editor(EditorCommand::DeleteBackward)),
+            command(CommandInvocation::from(EditorAction::DeleteBackward)),
         );
 
         assert_eq!(
             keymap.resolve(&key, &editor_context()),
-            InputResolution::Command(zom_core::Command::Editor(EditorCommand::DeleteBackward))
+            InputResolution::Command(CommandInvocation::from(EditorAction::DeleteBackward))
         );
     }
 
@@ -106,7 +106,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(Command::from(FileTreeCommand::SelectNext))
+            InputResolution::Command(CommandInvocation::from(FileTreeAction::SelectNext))
         );
     }
 
@@ -133,7 +133,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(Command::from(WorkspaceCommand::OpenProjectPicker))
+            InputResolution::Command(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
         );
     }
 
@@ -148,7 +148,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(Command::from(WorkspaceCommand::OpenSettings))
+            InputResolution::Command(CommandInvocation::from(WorkspaceAction::OpenSettings))
         );
     }
 
@@ -160,7 +160,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(Command::from(WorkspaceCommand::StartDebugging))
+            InputResolution::Command(CommandInvocation::from(WorkspaceAction::StartDebugging))
         );
     }
 
@@ -172,7 +172,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(focus_panel_command(FocusTarget::Notification))
+            InputResolution::Command(focus_panel_command(FocusTarget::NotificationPanel))
         );
     }
 
@@ -187,7 +187,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(Command::from(WorkspaceCommand::CloseFocused))
+            InputResolution::Command(CommandInvocation::from(WorkspaceAction::CloseFocused))
         );
     }
 
@@ -225,35 +225,35 @@ mod tests {
             Some("Cmd+Shift+O".to_string())
         );
         assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::ProjectSearch)),
+            shortcut_hint(&focus_panel_command(FocusTarget::ProjectSearchPane)),
             Some("Cmd+Shift+F".to_string())
         );
         assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::Terminal)),
+            shortcut_hint(&focus_panel_command(FocusTarget::TerminalPanel)),
             Some("Ctrl+`".to_string())
         );
         assert_eq!(
-            shortcut_hint(&Command::from(WorkspaceCommand::OpenProjectPicker)),
+            shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenProjectPicker)),
             Some("Cmd+Shift+P".to_string())
         );
         assert_eq!(
-            shortcut_hint(&Command::from(WorkspaceCommand::OpenSettings)),
+            shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenSettings)),
             Some("Cmd+,".to_string())
         );
         assert_eq!(
-            shortcut_hint(&Command::from(WorkspaceCommand::OpenCodeActions)),
+            shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenCodeActions)),
             Some("Cmd+.".to_string())
         );
         assert_eq!(
-            shortcut_hint(&Command::from(WorkspaceCommand::StartDebugging)),
+            shortcut_hint(&CommandInvocation::from(WorkspaceAction::StartDebugging)),
             Some("F5".to_string())
         );
         assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::Notification)),
+            shortcut_hint(&focus_panel_command(FocusTarget::NotificationPanel)),
             Some("Cmd+Shift+N".to_string())
         );
         assert_eq!(
-            shortcut_hint(&Command::from(WorkspaceCommand::CloseFocused)),
+            shortcut_hint(&CommandInvocation::from(WorkspaceAction::CloseFocused)),
             Some("Cmd+W".to_string())
         );
     }

@@ -1,9 +1,9 @@
 mod editor;
 mod workspace;
 
-use crate::command::catalog::CommandSpec;
+use crate::command::kind::CommandKindSpec;
 
-pub(super) fn collect_specs() -> Vec<CommandSpec> {
+pub(super) fn collect_specs() -> Vec<CommandKindSpec> {
     let mut specs = Vec::new();
     specs.extend_from_slice(editor::SPECS);
     specs.extend_from_slice(workspace::panels::SPECS);

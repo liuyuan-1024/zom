@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use zom_core::{
-    BufferId, Command, FocusTarget, InputContext, InputResolution, Keystroke,
-    command::{FileTreeCommand, TabCommand, WorkspaceCommand},
+    BufferId, CommandInvocation, FocusTarget, InputContext, InputResolution, Keystroke,
+    command::{FileTreeAction, TabAction, WorkspaceAction},
 };
 use zom_input::resolve_default;
 
@@ -107,45 +107,45 @@ impl DesktopAppState {
     }
 
     /// 统一处理顶层命令，并分发到对应领域。
-    pub fn handle_command(&mut self, command: Command) {
+    pub fn handle_command(&mut self, command: CommandInvocation) {
         match command {
-            Command::Workspace(command) => self.handle_workspace_command(command),
-            Command::Editor(_command) => {
+            CommandInvocation::Workspace(command) => self.handle_workspace_command(command),
+            CommandInvocation::Editor(_command) => {
                 // TODO: 编辑器命令分发接入后在此处理。
             }
         }
     }
 
     /// 处理工作台命令，并分发到细分子域。
-    fn handle_workspace_command(&mut self, command: WorkspaceCommand) {
+    fn handle_workspace_command(&mut self, command: WorkspaceAction) {
         match command {
-            WorkspaceCommand::FocusPanel(target) => self.focus_panel(target),
-            WorkspaceCommand::CloseFocused => self.close_focused(),
-            WorkspaceCommand::OpenProjectPicker => {
+            WorkspaceAction::FocusPanel(target) => self.focus_panel(target),
+            WorkspaceAction::CloseFocused => self.close_focused(),
+            WorkspaceAction::OpenProjectPicker => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
             }
-            WorkspaceCommand::OpenSettings => {
+            WorkspaceAction::OpenSettings => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenSettings);
             }
-            WorkspaceCommand::OpenCodeActions => {
+            WorkspaceAction::OpenCodeActions => {
                 // TODO: 代码动作入口接入后在这里打开。
             }
-            WorkspaceCommand::StartDebugging => {
+            WorkspaceAction::StartDebugging => {
                 // TODO: 调试入口接入后在这里触发。
             }
-            WorkspaceCommand::FileTree(command) => self.handle_file_tree_command(command),
-            WorkspaceCommand::Tab(command) => self.handle_tab_command(command),
+            WorkspaceAction::FileTree(command) => self.handle_file_tree_command(command),
+            WorkspaceAction::Tab(command) => self.handle_tab_command(command),
         }
     }
 
     /// 处理文件树命令，并同步工作区状态。
-    fn handle_file_tree_command(&mut self, command: FileTreeCommand) {
+    fn handle_file_tree_command(&mut self, command: FileTreeAction) {
         match command {
-            FileTreeCommand::SelectPrev => self.file_tree.select_prev_visible(),
-            FileTreeCommand::SelectNext => self.file_tree.select_next_visible(),
-            FileTreeCommand::ExpandOrDescend => self.file_tree.expand_or_descend_selected(),
-            FileTreeCommand::CollapseOrAscend => self.file_tree.collapse_or_ascend_selected(),
-            FileTreeCommand::ActivateSelection => {
+            FileTreeAction::SelectPrev => self.file_tree.select_prev_visible(),
+            FileTreeAction::SelectNext => self.file_tree.select_next_visible(),
+            FileTreeAction::ExpandOrDescend => self.file_tree.expand_or_descend_selected(),
+            FileTreeAction::CollapseOrAscend => self.file_tree.collapse_or_ascend_selected(),
+            FileTreeAction::ActivateSelection => {
                 if let Some((relative_path, kind)) = self.file_tree.selected_node() {
                     self.handle_file_tree_node_activate(&relative_path, kind);
                 } else {
@@ -174,18 +174,18 @@ impl DesktopAppState {
         }
 
         if self.focused_target == FocusTarget::Editor {
-            self.handle_tab_command(TabCommand::CloseActiveTab);
+            self.handle_tab_command(TabAction::CloseActiveTab);
         }
     }
 
     /// 处理标签页命令。
-    fn handle_tab_command(&mut self, command: TabCommand) {
+    fn handle_tab_command(&mut self, command: TabAction) {
         match command {
-            TabCommand::CloseActiveTab => self.close_active_tab(),
-            TabCommand::ActivatePrevTab => {
+            TabAction::CloseActiveTab => self.close_active_tab(),
+            TabAction::ActivatePrevTab => {
                 // TODO: 标签页切换接入后在此处理。
             }
-            TabCommand::ActivateNextTab => {
+            TabAction::ActivateNextTab => {
                 // TODO: 标签页切换接入后在此处理。
             }
         }
@@ -283,8 +283,8 @@ mod tests {
     };
 
     use zom_core::{
-        Command, FocusTarget, Keystroke,
-        command::{FileTreeCommand, WorkspaceCommand},
+        CommandInvocation, FocusTarget, Keystroke,
+        command::{FileTreeAction, WorkspaceAction},
     };
 
     use super::{DesktopAppState, DesktopUiAction};
@@ -318,7 +318,7 @@ mod tests {
         state.pane.tabs.clear();
         state.pane.active_tab_index = None;
 
-        state.handle_command(Command::from(FileTreeCommand::ActivateSelection));
+        state.handle_command(CommandInvocation::from(FileTreeAction::ActivateSelection));
 
         assert_eq!(state.pane.tabs.len(), 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
@@ -333,7 +333,7 @@ mod tests {
         state.visible_panels.remove(&FocusTarget::FileTreePanel);
         state.file_tree.roots[0].is_selected = false;
 
-        state.handle_command(Command::from(WorkspaceCommand::FocusPanel(
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
             FocusTarget::FileTreePanel,
         )));
 
@@ -355,7 +355,7 @@ mod tests {
         state.focused_target = FocusTarget::FileTreePanel;
         state.visible_panels.insert(FocusTarget::FileTreePanel);
 
-        state.handle_command(Command::from(WorkspaceCommand::CloseFocused));
+        state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
 
         assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
         assert_eq!(state.focused_target, FocusTarget::Editor);
@@ -369,7 +369,7 @@ mod tests {
         state.pane.tabs = vec![zom_app_test_tab("a.rs"), zom_app_test_tab("b.rs")];
         state.pane.active_tab_index = Some(1);
 
-        state.handle_command(Command::from(WorkspaceCommand::CloseFocused));
+        state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
 
         assert_eq!(state.pane.tabs.len(), 1);
         assert_eq!(state.pane.tabs[0].relative_path, "a.rs");

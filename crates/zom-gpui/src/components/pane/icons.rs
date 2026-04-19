@@ -2,7 +2,7 @@
 
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_app::projection::shortcut_hint;
-use zom_core::{Command, command::WorkspaceCommand};
+use zom_core::{CommandInvocation, WorkspaceAction};
 
 /// Pane 内部使用的图标语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,7 +21,7 @@ pub(super) fn spec(icon: PaneIcon) -> PaneIconSpec {
         PaneIcon::Close => PaneIconSpec {
             path: "icons/tab/close.svg",
             label: "Close",
-            shortcut: shortcut_hint(&Command::from(WorkspaceCommand::CloseFocused)),
+            shortcut: shortcut_hint(&CommandInvocation::from(WorkspaceAction::CloseFocused)),
         },
     }
 }

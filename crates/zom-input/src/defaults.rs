@@ -17,7 +17,7 @@ fn register_catalog_shortcuts(registry: &mut ShortcutRegistry) {
 
 fn register_shortcut(
     registry: &mut ShortcutRegistry,
-    command: zom_core::Command,
+    command: zom_core::CommandInvocation,
     shortcut: CommandShortcut,
 ) {
     let spec =

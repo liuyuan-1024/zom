@@ -3,7 +3,7 @@
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_app::projection::shortcut_hint;
 use zom_app::state::ToolBarIcon;
-use zom_core::{Command, FocusTarget, command::WorkspaceCommand};
+use zom_core::{CommandInvocation, FocusTarget, WorkspaceAction};
 
 /// 底部工具栏图标的展示规格。
 pub(super) struct ToolBarIconSpec {
@@ -36,37 +36,37 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         ToolBarIcon::ProjectSearch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_search.svg",
             label: "Search",
-            shortcut: focus_panel_shortcut(FocusTarget::ProjectSearch),
+            shortcut: focus_panel_shortcut(FocusTarget::ProjectSearchPane),
         },
         ToolBarIcon::LSP => ToolBarIconSpec {
             path: "icons/tool_bar/tool_bolt_outlined.svg",
             label: "Code Actions",
-            shortcut: workspace_shortcut(WorkspaceCommand::OpenCodeActions),
+            shortcut: workspace_shortcut(WorkspaceAction::OpenCodeActions),
         },
         ToolBarIcon::Terminal => ToolBarIconSpec {
             path: "icons/tool_bar/tool_terminal.svg",
             label: "Terminal",
-            shortcut: focus_panel_shortcut(FocusTarget::Terminal),
+            shortcut: focus_panel_shortcut(FocusTarget::TerminalPanel),
         },
         ToolBarIcon::Debug => ToolBarIconSpec {
             path: "icons/tool_bar/tool_debug.svg",
             label: "Debug",
-            shortcut: workspace_shortcut(WorkspaceCommand::StartDebugging),
+            shortcut: workspace_shortcut(WorkspaceAction::StartDebugging),
         },
         ToolBarIcon::Notification => ToolBarIconSpec {
             path: "icons/tool_bar/tool_notification.svg",
             label: "Notifications",
-            shortcut: focus_panel_shortcut(FocusTarget::Notification),
+            shortcut: focus_panel_shortcut(FocusTarget::NotificationPanel),
         },
     }
 }
 
 fn focus_panel_shortcut(target: FocusTarget) -> Option<String> {
-    workspace_shortcut(WorkspaceCommand::FocusPanel(target))
+    workspace_shortcut(WorkspaceAction::FocusPanel(target))
 }
 
-fn workspace_shortcut(command: WorkspaceCommand) -> Option<String> {
-    shortcut_hint(&Command::from(command))
+fn workspace_shortcut(command: WorkspaceAction) -> Option<String> {
+    shortcut_hint(&CommandInvocation::from(command))
 }
 
 /// 渲染工具栏中的单色 SVG 图标

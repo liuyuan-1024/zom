@@ -3,24 +3,28 @@
 pub enum FocusTarget {
     /// 编辑器
     Editor,
-    /// 命令面板
+
+    /// 命令
     Palette,
-    /// 文件树
+    /// 设置
+    Setting,
+
+    /// 文件树面板
     FileTreePanel,
-    /// Git
+    /// Git 面板
     GitPanel,
-    /// 大纲
+    /// 大纲面板
     OutlinePanel,
-    /// 全局搜索
-    ProjectSearch,
+    /// 全局搜索窗格
+    ProjectSearchPane,
     /// 语言服务器
     LanguageServers,
-    /// 终端
-    Terminal,
-    /// Debug Panel
+    /// 终端面板
+    TerminalPanel,
+    /// Debug 面板
     DebugPanel,
-    /// 通知
-    Notification,
+    /// 通知面板
+    NotificationPanel,
 }
 
 impl FocusTarget {
@@ -31,11 +35,11 @@ impl FocusTarget {
         Self::FileTreePanel,
         Self::GitPanel,
         Self::OutlinePanel,
-        Self::ProjectSearch,
+        Self::ProjectSearchPane,
         Self::LanguageServers,
-        Self::Terminal,
+        Self::TerminalPanel,
         Self::DebugPanel,
-        Self::Notification,
+        Self::NotificationPanel,
     ];
 
     /// 所有受工作台显隐策略管理的面板目标。
@@ -43,11 +47,11 @@ impl FocusTarget {
         Self::FileTreePanel,
         Self::GitPanel,
         Self::OutlinePanel,
-        Self::ProjectSearch,
+        Self::ProjectSearchPane,
         Self::LanguageServers,
-        Self::Terminal,
+        Self::TerminalPanel,
         Self::DebugPanel,
-        Self::Notification,
+        Self::NotificationPanel,
     ];
 
     /// 判断当前目标是否属于“可显隐管理”的工作台面板。
@@ -57,11 +61,11 @@ impl FocusTarget {
             Self::FileTreePanel
                 | Self::GitPanel
                 | Self::OutlinePanel
-                | Self::ProjectSearch
+                | Self::ProjectSearchPane
                 | Self::LanguageServers
-                | Self::Terminal
+                | Self::TerminalPanel
                 | Self::DebugPanel
-                | Self::Notification
+                | Self::NotificationPanel
         )
     }
 

@@ -1,10 +1,10 @@
 use std::fmt;
 
-use crate::{FocusTarget, KeyCode, Keystroke, Modifiers};
+use crate::{CommandInvocation, FocusTarget, KeyCode, Keystroke, Modifiers};
 
-/// 命令的稳定语义键（无 UI / 输入细节）。
+/// 命令的稳定语义族（无 UI / 输入细节）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CommandKey {
+pub enum CommandKind {
     EditorInsertText,
     EditorInsertNewline,
     EditorMoveLeft,
@@ -25,35 +25,39 @@ pub enum CommandKey {
 
     WorkspaceFocusPanel(FocusTarget),
     WorkspaceCloseFocused,
+
     WorkspaceOpenProjectPicker,
     WorkspaceOpenSettings,
+
     WorkspaceOpenCodeActions,
     WorkspaceStartDebugging,
+
     WorkspaceFileTreeSelectPrev,
     WorkspaceFileTreeSelectNext,
     WorkspaceFileTreeExpandOrDescend,
     WorkspaceFileTreeCollapseOrAscend,
     WorkspaceFileTreeActivateSelection,
+
     WorkspaceTabCloseActive,
     WorkspaceTabActivatePrev,
     WorkspaceTabActivateNext,
 }
 
-/// 命令的稳定字符串 ID，供跨层引用与文档检索。
+/// 命令语义族的稳定字符串 ID，供跨层引用与文档检索。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CommandId(pub &'static str);
+pub struct CommandKindId(pub &'static str);
 
-impl fmt::Display for CommandId {
+impl fmt::Display for CommandKindId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.0)
     }
 }
 
-/// 命令的基础元信息（纯描述，不含行为）。
+/// 命令元信息（纯描述，不含行为）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CommandMeta {
     /// 稳定 ID，供跨层引用与文档检索。
-    pub id: CommandId,
+    pub id: CommandKindId,
     /// 简短标题。
     pub title: &'static str,
     /// 语义说明。
@@ -97,50 +101,68 @@ impl CommandShortcut {
     }
 }
 
-/// 从命令声明反向构造可执行命令的函数签名。
-pub type CommandFactory = fn() -> Option<super::Command>;
+/// 由语义族声明反向构造运行时调用的函数签名。
+pub type InvocationBuilder = fn() -> CommandInvocation;
 
-/// 命令统一声明结构。
+/// 语义族是否可从 Kind 直接构造运行时调用。
+#[derive(Clone, Copy)]
+pub enum Buildability {
+    /// 可直接构造（无动态参数）。
+    Static(InvocationBuilder),
+    /// 需要动态参数，不能直接构造。
+    RequiresArgs,
+}
+
+impl fmt::Debug for Buildability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Static(_) => f.write_str("Static(..)"),
+            Self::RequiresArgs => f.write_str("RequiresArgs"),
+        }
+    }
+}
+
+/// 命令语义族统一声明结构。
 #[derive(Debug, Clone, Copy)]
-pub struct CommandSpec {
-    /// 稳定语义键。
-    pub key: CommandKey,
+pub struct CommandKindSpec {
+    /// 稳定语义族。
+    pub kind: CommandKind,
     /// 只读元信息（UI 文案 / 文档引用）。
     pub meta: CommandMeta,
-    /// 由声明投影出来的“Key -> Command”构造函数。
-    pub factory: CommandFactory,
+    /// 该语义族的构造能力。
+    pub buildability: Buildability,
     /// 默认快捷键集合（可为空）。
     pub default_shortcuts: &'static [CommandShortcut],
 }
 
-impl CommandSpec {
-    /// 创建一条命令声明。
+impl CommandKindSpec {
+    /// 创建一条命令语义族声明。
     pub const fn new(
-        key: CommandKey,
+        kind: CommandKind,
         id: &'static str,
         title: &'static str,
         description: &'static str,
-        factory: CommandFactory,
+        buildability: Buildability,
         default_shortcuts: &'static [CommandShortcut],
     ) -> Self {
         Self {
-            key,
+            kind,
             meta: CommandMeta {
-                id: CommandId(id),
+                id: CommandKindId(id),
                 title,
                 description,
             },
-            factory,
+            buildability,
             default_shortcuts,
         }
     }
 }
 
-/// 一条“命令 + 默认快捷键”绑定。
+/// 一条“命令调用 + 默认快捷键”绑定。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DefaultShortcutBinding {
-    /// 命令语义。
-    pub command: super::Command,
+    /// 命令调用。
+    pub command: CommandInvocation,
     /// 对应快捷键。
     pub shortcut: CommandShortcut,
 }

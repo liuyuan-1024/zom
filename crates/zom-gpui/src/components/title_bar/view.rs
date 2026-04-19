@@ -3,7 +3,7 @@
 use gpui::{App, ClickEvent, Window, div, prelude::*, px, rgb};
 use zom_app::projection::shortcut_hint;
 use zom_app::state::{DesktopAppState, TitleBarIcon};
-use zom_core::{Command, command::WorkspaceCommand};
+use zom_core::{CommandInvocation, WorkspaceAction};
 
 use super::icons;
 use crate::chrome;
@@ -25,7 +25,7 @@ pub(crate) fn render(
                     "title-bar-project_name",
                     chip::TooltipSpec::new(
                         format!("选择项目"),
-                        shortcut_hint(&Command::from(WorkspaceCommand::OpenProjectPicker)),
+                        shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenProjectPicker)),
                     ),
                 )
                 .on_click(on_project_click)

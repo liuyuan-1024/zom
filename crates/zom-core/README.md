@@ -21,10 +21,10 @@ Axis
 这些类型的特点是：语义清晰、不依赖具体实现、在 editor 和 UI 之间都成立。
 
 2. 命令模型
-Command、EditorCommand、WorkspaceCommand、可能还有 GlobalCommand。因为这些是全系统共享协议。
-另外，`command::catalog` 负责维护命令目录（Command Catalog），统一提供：
-- 单一声明源（`CommandSpec`）
-- 命令稳定键（`CommandKey`）与稳定字符串标识（`CommandId`）
+CommandKind、CommandInvocation、EditorInvocation/EditorAction、WorkspaceAction。因为这些是全系统共享协议。
+另外，`command::kind` 负责维护命令目录（Command Catalog），统一提供：
+- 单一声明源（`CommandKindSpec`）
+- 命令稳定键（`CommandKind`）与稳定字符串标识（`CommandKindId`）
 - 命令元信息（`CommandMeta`）
 - 默认快捷键元数据（`default_shortcut_bindings`）
 
@@ -49,7 +49,7 @@ BufferId
 PaneId
 TabId
 WorkspaceId
-CommandKey
+CommandKind
 这些类型最好做成强类型，不要满地 u64 和 String。
 
 5. 通用结果与能力描述
@@ -72,7 +72,7 @@ zom-core
 ├── ids           // 强类型 ID
 └── state         // 少量通用状态类型
 
-# 命令语义（Command）
+# 命令语义（CommandKind + CommandInvocation）
 本质: 描述“用户想干嘛”
 特点: 
   - 与输入无关（快捷键 / 菜单 / palette 都能触发）
@@ -115,7 +115,7 @@ Key Event (GPUI)
    ↓
 zom-input
    ↓
-Command
+CommandInvocation
    ↓
 Command Dispatcher
    ↓
