@@ -28,8 +28,8 @@ pub use command::{
 };
 /// 统一导出方向类型。
 pub use direction::{Axis, Direction};
-/// 统一导出焦点目标
-pub use focus::FocusTarget;
+/// 统一导出焦点与悬浮层目标
+pub use focus::{FocusTarget, OverlayTarget};
 /// 统一导出强类型 ID。
 pub use ids::{BufferId, PaneId, WorkspaceId};
 /// 统一导出输入协议类型。

@@ -57,22 +57,24 @@ pub const SPECS: &[CommandKindSpec] = &[
         &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('o')).with_priority(80)],
     ),
     CommandKindSpec::new(
-        CommandKind::WorkspaceFocusPanel(FocusTarget::ProjectSearchPane),
+        CommandKind::WorkspaceFocusPanel(FocusTarget::ProjectSearchPanel),
         "workspace.focus_panel.project_search",
         "Focus Project Search Panel",
         "Show project search panel and move focus to it.",
         Buildability::Static(|| {
-            CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::ProjectSearchPane))
+            CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::ProjectSearchPanel))
         }),
         &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('f')).with_priority(80)],
     ),
     CommandKindSpec::new(
-        CommandKind::WorkspaceFocusPanel(FocusTarget::LanguageServers),
+        CommandKind::WorkspaceFocusPanel(FocusTarget::LanguageServersPanel),
         "workspace.focus_panel.language_servers",
         "Focus Language Servers Panel",
         "Show language servers panel and move focus to it.",
         Buildability::Static(|| {
-            CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::LanguageServers))
+            CommandInvocation::from(WorkspaceAction::FocusPanel(
+                FocusTarget::LanguageServersPanel,
+            ))
         }),
         &[],
     ),

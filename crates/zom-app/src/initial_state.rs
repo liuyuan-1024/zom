@@ -64,6 +64,7 @@ impl DesktopAppState {
             },
             focused_target: FocusTarget::Editor,
             visible_panels: default_visible_panels(),
+            active_overlay: None,
             pending_focus_target: None,
             pending_ui_action: None,
         }

@@ -36,7 +36,7 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         ToolBarIcon::ProjectSearch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_search.svg",
             label: "Search",
-            shortcut: focus_panel_shortcut(FocusTarget::ProjectSearchPane),
+            shortcut: focus_panel_shortcut(FocusTarget::ProjectSearchPanel),
         },
         ToolBarIcon::LSP => ToolBarIconSpec {
             path: "icons/tool_bar/tool_bolt_outlined.svg",

@@ -143,7 +143,7 @@ fn build_command_kind_lookup() -> HashMap<CommandInvocation, CommandKind> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CommandInvocation, FocusTarget, WorkspaceAction};
+    use crate::{CommandInvocation, FocusTarget, OverlayTarget, WorkspaceAction};
 
     use super::{
         CommandKind, CommandKindId, command_kind_spec_by_id, command_kind_spec_by_kind,
@@ -170,10 +170,13 @@ mod tests {
 
     #[test]
     fn command_specs_are_queryable_by_id() {
-        let spec = command_kind_spec_by_id(CommandKindId("workspace.open_settings"))
-            .expect("open settings should be declared");
+        let spec = command_kind_spec_by_id(CommandKindId("workspace.focus_overlay.settings"))
+            .expect("focus settings overlay should be declared");
 
-        assert_eq!(spec.kind, CommandKind::WorkspaceOpenSettings);
+        assert_eq!(
+            spec.kind,
+            CommandKind::WorkspaceFocusOverlay(OverlayTarget::Settings)
+        );
     }
 
     #[test]
@@ -183,7 +186,8 @@ mod tests {
             binding.command == CommandInvocation::from(WorkspaceAction::OpenProjectPicker)
         });
         let has_settings = bindings.iter().any(|binding| {
-            binding.command == CommandInvocation::from(WorkspaceAction::OpenSettings)
+            binding.command
+                == CommandInvocation::from(WorkspaceAction::FocusOverlay(OverlayTarget::Settings))
         });
 
         assert!(has_project_picker);
@@ -202,6 +206,9 @@ mod tests {
     #[test]
     fn invocation_from_kind_returns_none_for_dynamic_payload_commands() {
         assert!(invocation_from_kind(CommandKind::EditorInsertText).is_none());
-        assert!(invocation_from_kind(CommandKind::WorkspaceOpenSettings).is_some());
+        assert!(
+            invocation_from_kind(CommandKind::WorkspaceFocusOverlay(OverlayTarget::Settings))
+                .is_some()
+        );
     }
 }

@@ -1,0 +1,15 @@
+use crate::command::kind::{
+    Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope, types::meta_char,
+};
+use crate::{CommandInvocation, OverlayTarget, WorkspaceAction};
+
+pub const SPECS: &[CommandKindSpec] = &[CommandKindSpec::new(
+    CommandKind::WorkspaceFocusOverlay(OverlayTarget::Settings),
+    "workspace.focus_overlay.settings",
+    "Focus Settings Overlay",
+    "Show settings overlay and move focus to it.",
+    Buildability::Static(|| {
+        CommandInvocation::from(WorkspaceAction::FocusOverlay(OverlayTarget::Settings))
+    }),
+    &[CommandShortcut::new(ShortcutScope::Global, meta_char(',')).with_priority(80)],
+)];

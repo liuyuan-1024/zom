@@ -43,7 +43,7 @@ mod tests {
     };
     use zom_core::{
         CommandInvocation, EditorAction, EditorInputContext, FocusTarget, InputContext,
-        InputResolution, KeyCode, Keystroke, Modifiers,
+        InputResolution, KeyCode, Keystroke, Modifiers, OverlayTarget,
         command::{FileTreeAction, WorkspaceAction},
     };
 
@@ -62,6 +62,10 @@ mod tests {
 
     fn focus_panel_command(target: FocusTarget) -> CommandInvocation {
         CommandInvocation::from(WorkspaceAction::FocusPanel(target))
+    }
+
+    fn focus_settings_overlay_command() -> CommandInvocation {
+        CommandInvocation::from(WorkspaceAction::FocusOverlay(OverlayTarget::Settings))
     }
 
     #[test]
@@ -138,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn default_keymap_resolves_open_settings_shortcut() {
+    fn default_keymap_resolves_focus_settings_overlay_shortcut() {
         let keymap = default_keymap();
         let key = Keystroke::new(
             KeyCode::Char(','),
@@ -148,7 +152,7 @@ mod tests {
 
         assert_eq!(
             keymap.resolve(&key, &context),
-            InputResolution::Command(CommandInvocation::from(WorkspaceAction::OpenSettings))
+            InputResolution::Command(focus_settings_overlay_command())
         );
     }
 
@@ -225,7 +229,7 @@ mod tests {
             Some("Cmd+Shift+O".to_string())
         );
         assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::ProjectSearchPane)),
+            shortcut_hint(&focus_panel_command(FocusTarget::ProjectSearchPanel)),
             Some("Cmd+Shift+F".to_string())
         );
         assert_eq!(
@@ -237,7 +241,7 @@ mod tests {
             Some("Cmd+Shift+P".to_string())
         );
         assert_eq!(
-            shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenSettings)),
+            shortcut_hint(&focus_settings_overlay_command()),
             Some("Cmd+,".to_string())
         );
         assert_eq!(

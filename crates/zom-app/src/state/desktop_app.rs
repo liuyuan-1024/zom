@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use zom_core::{
     BufferId, CommandInvocation, FocusTarget, InputContext, InputResolution, Keystroke,
+    OverlayTarget,
     command::{FileTreeAction, TabAction, WorkspaceAction},
 };
 use zom_input::resolve_default;
@@ -17,8 +18,6 @@ use crate::{
 pub enum DesktopUiAction {
     /// 打开项目目录选择器。
     OpenProjectPicker,
-    /// 打开设置入口。
-    OpenSettings,
 }
 
 /// 桌面端根界面使用的应用状态。
@@ -36,6 +35,8 @@ pub struct DesktopAppState {
     pub focused_target: FocusTarget,
     /// 当前可见的工作台面板集合。
     pub visible_panels: HashSet<FocusTarget>,
+    /// 当前可见的悬浮层。
+    pub active_overlay: Option<OverlayTarget>,
     /// 当前打开项目的名称。
     pub project_name: String,
     /// 当前打开项目的根目录绝对路径。
@@ -120,12 +121,10 @@ impl DesktopAppState {
     fn handle_workspace_command(&mut self, command: WorkspaceAction) {
         match command {
             WorkspaceAction::FocusPanel(target) => self.focus_panel(target),
+            WorkspaceAction::FocusOverlay(target) => self.focus_overlay(target),
             WorkspaceAction::CloseFocused => self.close_focused(),
             WorkspaceAction::OpenProjectPicker => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
-            }
-            WorkspaceAction::OpenSettings => {
-                self.pending_ui_action = Some(DesktopUiAction::OpenSettings);
             }
             WorkspaceAction::OpenCodeActions => {
                 // TODO: 代码动作入口接入后在这里打开。
@@ -158,13 +157,27 @@ impl DesktopAppState {
     /// 聚焦到指定面板：若面板当前隐藏，则先显示后聚焦。
     fn focus_panel(&mut self, target: FocusTarget) {
         self.set_panel_visible(target, true);
+        self.active_overlay = None;
         self.focused_target = target;
         self.pending_focus_target = Some(target);
         self.prepare_panel_focus(target);
     }
 
-    /// 关闭当前聚焦组件：优先关闭焦点面板，其次关闭当前标签页。
+    /// 聚焦到指定悬浮层：显示并聚焦。
+    fn focus_overlay(&mut self, target: OverlayTarget) {
+        self.active_overlay = Some(target);
+        self.focused_target = target.into();
+        self.pending_focus_target = Some(self.focused_target);
+    }
+
+    /// 关闭当前聚焦组件：优先关闭焦点悬浮层，其次关闭焦点面板，最后关闭当前标签页。
     fn close_focused(&mut self) {
+        if self.focused_target.is_overlay() && self.active_overlay.is_some() {
+            self.active_overlay = None;
+            self.focus_editor();
+            return;
+        }
+
         if self.focused_target.is_visibility_managed_panel()
             && self.is_panel_visible(self.focused_target)
         {
@@ -283,7 +296,7 @@ mod tests {
     };
 
     use zom_core::{
-        CommandInvocation, FocusTarget, Keystroke,
+        CommandInvocation, FocusTarget, Keystroke, OverlayTarget,
         command::{FileTreeAction, WorkspaceAction},
     };
 
@@ -410,6 +423,26 @@ mod tests {
             state.take_pending_ui_action(),
             Some(DesktopUiAction::OpenProjectPicker)
         );
+    }
+
+    #[test]
+    fn keyboard_shortcut_can_focus_settings_overlay() {
+        let mut state = DesktopAppState::from_current_workspace();
+        let keystroke = Keystroke::new(
+            zom_core::KeyCode::Char(','),
+            zom_core::Modifiers::new(false, false, false, true),
+        );
+
+        let handled = state.handle_keystroke(&keystroke);
+
+        assert!(handled);
+        assert_eq!(state.active_overlay, Some(OverlayTarget::Settings));
+        assert_eq!(state.focused_target, FocusTarget::SettingsOverlay);
+        assert_eq!(
+            state.take_pending_focus_target(),
+            Some(FocusTarget::SettingsOverlay)
+        );
+        assert_eq!(state.take_pending_ui_action(), None);
     }
 
     #[test]

@@ -14,14 +14,6 @@ pub const SPECS: &[CommandKindSpec] = &[
         &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('p')).with_priority(80)],
     ),
     CommandKindSpec::new(
-        CommandKind::WorkspaceOpenSettings,
-        "workspace.open_settings",
-        "Open Settings",
-        "Open application settings.",
-        Buildability::Static(|| CommandInvocation::from(WorkspaceAction::OpenSettings)),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char(',')).with_priority(80)],
-    ),
-    CommandKindSpec::new(
         CommandKind::WorkspaceOpenCodeActions,
         "workspace.open_code_actions",
         "Open Code Actions",

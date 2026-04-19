@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{CommandInvocation, FocusTarget, KeyCode, Keystroke, Modifiers};
+use crate::{CommandInvocation, FocusTarget, KeyCode, Keystroke, Modifiers, OverlayTarget};
 
 /// 命令的稳定语义族（无 UI / 输入细节）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,10 +24,10 @@ pub enum CommandKind {
     EditorSelectAll,
 
     WorkspaceFocusPanel(FocusTarget),
+    WorkspaceFocusOverlay(OverlayTarget),
     WorkspaceCloseFocused,
 
     WorkspaceOpenProjectPicker,
-    WorkspaceOpenSettings,
 
     WorkspaceOpenCodeActions,
     WorkspaceStartDebugging,

@@ -1,4 +1,4 @@
-use crate::FocusTarget;
+use crate::{FocusTarget, OverlayTarget};
 
 /// 标签页动作语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,13 +31,13 @@ pub enum FileTreeAction {
 pub enum WorkspaceAction {
     /// 聚焦到并显示指定面板。
     FocusPanel(FocusTarget),
-    /// 关闭当前聚焦组件（如面板、标签页等）。
+    /// 聚焦到并显示指定悬浮层。
+    FocusOverlay(OverlayTarget),
+    /// 关闭当前聚焦组件如悬浮层、面板、标签页等）。
     CloseFocused,
 
     /// 打开项目目录选择器。
     OpenProjectPicker,
-    /// 打开设置入口。
-    OpenSettings,
 
     /// 作用于文件树的动作。
     FileTree(FileTreeAction),

@@ -6,8 +6,8 @@ pub enum FocusTarget {
 
     /// 命令
     Palette,
-    /// 设置
-    Setting,
+    /// 设置悬浮层
+    SettingsOverlay,
 
     /// 文件树面板
     FileTreePanel,
@@ -15,10 +15,10 @@ pub enum FocusTarget {
     GitPanel,
     /// 大纲面板
     OutlinePanel,
-    /// 全局搜索窗格
-    ProjectSearchPane,
-    /// 语言服务器
-    LanguageServers,
+    /// 全局搜索面板
+    ProjectSearchPanel,
+    /// 语言服务器面板
+    LanguageServersPanel,
     /// 终端面板
     TerminalPanel,
     /// Debug 面板
@@ -29,14 +29,15 @@ pub enum FocusTarget {
 
 impl FocusTarget {
     /// 所有焦点目标。
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Editor,
         Self::Palette,
+        Self::SettingsOverlay,
         Self::FileTreePanel,
         Self::GitPanel,
         Self::OutlinePanel,
-        Self::ProjectSearchPane,
-        Self::LanguageServers,
+        Self::ProjectSearchPanel,
+        Self::LanguageServersPanel,
         Self::TerminalPanel,
         Self::DebugPanel,
         Self::NotificationPanel,
@@ -47,8 +48,8 @@ impl FocusTarget {
         Self::FileTreePanel,
         Self::GitPanel,
         Self::OutlinePanel,
-        Self::ProjectSearchPane,
-        Self::LanguageServers,
+        Self::ProjectSearchPanel,
+        Self::LanguageServersPanel,
         Self::TerminalPanel,
         Self::DebugPanel,
         Self::NotificationPanel,
@@ -61,17 +62,37 @@ impl FocusTarget {
             Self::FileTreePanel
                 | Self::GitPanel
                 | Self::OutlinePanel
-                | Self::ProjectSearchPane
-                | Self::LanguageServers
+                | Self::ProjectSearchPanel
+                | Self::LanguageServersPanel
                 | Self::TerminalPanel
                 | Self::DebugPanel
                 | Self::NotificationPanel
         )
     }
 
+    /// 判断当前目标是否属于悬浮层焦点。
+    pub const fn is_overlay(self) -> bool {
+        matches!(self, Self::SettingsOverlay)
+    }
+
     /// 判断当前面板在应用启动时是否默认可见。
     pub const fn is_visible_by_default(self) -> bool {
         matches!(self, Self::FileTreePanel)
+    }
+}
+
+/// 工作台悬浮层身份。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OverlayTarget {
+    /// 设置悬浮层。
+    Settings,
+}
+
+impl From<OverlayTarget> for FocusTarget {
+    fn from(target: OverlayTarget) -> Self {
+        match target {
+            OverlayTarget::Settings => FocusTarget::SettingsOverlay,
+        }
     }
 }
 

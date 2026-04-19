@@ -102,9 +102,6 @@ impl ZomRootView {
     ) {
         match action {
             DesktopUiAction::OpenProjectPicker => self.open_project_from_title_bar(window, cx),
-            DesktopUiAction::OpenSettings => {
-                // TODO: 设置页接入后在这里打开设置界面。
-            }
         }
     }
 
