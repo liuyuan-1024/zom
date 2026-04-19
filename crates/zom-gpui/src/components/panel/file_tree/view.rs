@@ -52,7 +52,9 @@ impl Focusable for FileTreePanel {
 }
 
 impl Render for FileTreePanel {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let panel_has_focus = self.focus_handle.contains_focused(window, cx);
+
         // 基础容器
         let mut container = div()
             .id("file-tree-container")
@@ -87,7 +89,11 @@ impl Render for FileTreePanel {
             .border_r_1()
             .border_color(rgb(color::COLOR_BORDER))
             .px(px(size::GAP_1))
-            .children(visible_rows.iter().map(render_visible_row));
+            .children(
+                visible_rows
+                    .iter()
+                    .map(|row| render_visible_row(row, panel_has_focus)),
+            );
 
         // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
         let splitter = div()
@@ -168,12 +174,12 @@ fn collect_visible_rows_inner<'a>(
     }
 }
 
-fn render_visible_row(row: &VisibleRow<'_>) -> AnyElement {
+fn render_visible_row(row: &VisibleRow<'_>, panel_has_focus: bool) -> AnyElement {
     let node = row.node;
     let node_id = gpui::SharedString::from(format!("tree-node-{}", node.path));
     div()
         .id(node_id)
-        .child(row::render(node, row.depth))
+        .child(row::render(node, row.depth, panel_has_focus))
         .into_any_element()
 }
 
