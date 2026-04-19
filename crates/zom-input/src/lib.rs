@@ -157,18 +157,6 @@ mod tests {
     }
 
     #[test]
-    fn default_keymap_resolves_start_debugging_shortcut() {
-        let keymap = default_keymap();
-        let key = Keystroke::new(KeyCode::F(5), Modifiers::default());
-        let context = InputContext::new(FocusTarget::Editor);
-
-        assert_eq!(
-            keymap.resolve(&key, &context),
-            InputResolution::Command(CommandInvocation::from(WorkspaceAction::StartDebugging))
-        );
-    }
-
-    #[test]
     fn default_keymap_resolves_notification_focus_shortcut() {
         let keymap = default_keymap();
         let key = Keystroke::new(KeyCode::Char('n'), Modifiers::new(false, false, true, true));
@@ -243,14 +231,6 @@ mod tests {
         assert_eq!(
             shortcut_hint(&focus_settings_overlay_command()),
             Some("Cmd+,".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenCodeActions)),
-            Some("Cmd+.".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&CommandInvocation::from(WorkspaceAction::StartDebugging)),
-            Some("F5".to_string())
         );
         assert_eq!(
             shortcut_hint(&focus_panel_command(FocusTarget::NotificationPanel)),

@@ -43,12 +43,6 @@ pub enum WorkspaceAction {
     FileTree(FileTreeAction),
     /// 作用于标签页的动作。
     Tab(TabAction),
-
-    // === 与语言服务器相关（暂未实现） ===
-    /// 打开代码动作入口。
-    OpenCodeActions,
-    /// 打开调试入口。
-    StartDebugging,
 }
 
 impl From<FileTreeAction> for WorkspaceAction {

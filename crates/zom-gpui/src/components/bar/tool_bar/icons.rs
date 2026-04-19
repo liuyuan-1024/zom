@@ -40,8 +40,8 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         },
         ToolBarIcon::LSP => ToolBarIconSpec {
             path: "icons/tool_bar/tool_bolt_outlined.svg",
-            label: "Code Actions",
-            shortcut: workspace_shortcut(WorkspaceAction::OpenCodeActions),
+            label: "Language Servers",
+            shortcut: focus_panel_shortcut(FocusTarget::LanguageServersPanel),
         },
         ToolBarIcon::Terminal => ToolBarIconSpec {
             path: "icons/tool_bar/tool_terminal.svg",
@@ -51,7 +51,7 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         ToolBarIcon::Debug => ToolBarIconSpec {
             path: "icons/tool_bar/tool_debug.svg",
             label: "Debug",
-            shortcut: workspace_shortcut(WorkspaceAction::StartDebugging),
+            shortcut: focus_panel_shortcut(FocusTarget::DebugPanel),
         },
         ToolBarIcon::Notification => ToolBarIconSpec {
             path: "icons/tool_bar/tool_notification.svg",

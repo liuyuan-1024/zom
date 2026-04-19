@@ -126,12 +126,6 @@ impl DesktopAppState {
             WorkspaceAction::OpenProjectPicker => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
             }
-            WorkspaceAction::OpenCodeActions => {
-                // TODO: 代码动作入口接入后在这里打开。
-            }
-            WorkspaceAction::StartDebugging => {
-                // TODO: 调试入口接入后在这里触发。
-            }
             WorkspaceAction::FileTree(command) => self.handle_file_tree_command(command),
             WorkspaceAction::Tab(command) => self.handle_tab_command(command),
         }

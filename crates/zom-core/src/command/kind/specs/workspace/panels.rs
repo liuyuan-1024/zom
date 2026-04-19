@@ -1,3 +1,5 @@
+//！ 聚焦并显示指定面板的命令元信息
+
 use crate::FocusTarget;
 use crate::command::kind::{
     Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope,
@@ -29,18 +31,18 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::FileTreePanel),
         "workspace.focus_panel.file_tree",
-        "Focus File Tree Panel",
-        "Show file tree panel and move focus to it.",
+        "聚焦文件树面板",
+        "显示并聚焦文件树面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::FileTreePanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char('b')).with_priority(100)],
+        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('e')).with_priority(100)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::GitPanel),
         "workspace.focus_panel.git",
-        "Focus Git Panel",
-        "Show Git panel and move focus to it.",
+        "聚焦 Git 面板",
+        "显示并聚焦 Git 面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::GitPanel))
         }),
@@ -49,8 +51,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::OutlinePanel),
         "workspace.focus_panel.outline",
-        "Focus Outline Panel",
-        "Show outline panel and move focus to it.",
+        "聚焦大纲面板",
+        "显示并聚焦大纲面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::OutlinePanel))
         }),
@@ -59,8 +61,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::ProjectSearchPanel),
         "workspace.focus_panel.project_search",
-        "Focus Project Search Panel",
-        "Show project search panel and move focus to it.",
+        "聚焦项目搜索面板",
+        "显示并聚焦项目搜索面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::ProjectSearchPanel))
         }),
@@ -69,8 +71,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::LanguageServersPanel),
         "workspace.focus_panel.language_servers",
-        "Focus Language Servers Panel",
-        "Show language servers panel and move focus to it.",
+        "聚焦语言服务器面板",
+        "显示并聚焦语言服务器面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(
                 FocusTarget::LanguageServersPanel,
@@ -81,8 +83,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::TerminalPanel),
         "workspace.focus_panel.terminal",
-        "Focus Terminal Panel",
-        "Show terminal panel and move focus to it.",
+        "聚焦终端面板",
+        "显示并聚焦终端面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::TerminalPanel))
         }),
@@ -91,18 +93,18 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::DebugPanel),
         "workspace.focus_panel.debug",
-        "Focus Debug Panel",
-        "Show debug panel and move focus to it.",
+        "聚焦调试面板",
+        "显示并聚焦调试面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::DebugPanel))
         }),
-        &[],
+        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('d')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::NotificationPanel),
         "workspace.focus_panel.notification",
-        "Focus Notification Panel",
-        "Show notification panel and move focus to it.",
+        "聚焦通知面板",
+        "显示并聚焦通知面板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::NotificationPanel))
         }),
