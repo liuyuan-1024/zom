@@ -5,10 +5,11 @@ use zom_app::projection::shortcut_hint;
 use zom_app::state::{DesktopAppState, TitleBarIcon};
 use zom_core::{CommandInvocation, WorkspaceAction};
 
+use super::super::bar;
 use super::icons;
-use crate::chrome;
+use super::traffic_lights;
+use crate::components::bar::group;
 use crate::components::chip;
-use crate::components::title_bar::traffic_lights;
 use crate::theme::{color, size};
 
 /// 渲染顶栏，表达当前工作区。
@@ -16,11 +17,11 @@ pub(crate) fn render(
     state: &DesktopAppState,
     on_project_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
-    chrome::bar()
+    bar()
         .border_b_1()
         .border_color(rgb(color::COLOR_BORDER))
         .child(
-            chrome::group().pl(px(traffic_lights::slot_width())).child(
+            group().pl(px(traffic_lights::slot_width())).child(
                 chip::interactive_chip(
                     "title-bar-project_name",
                     chip::TooltipSpec::new(
@@ -39,7 +40,7 @@ pub(crate) fn render(
             ),
         )
         .child(
-            chrome::group().children(
+            group().children(
                 state
                     .title_bar
                     .right_icons

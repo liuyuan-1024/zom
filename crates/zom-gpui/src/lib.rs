@@ -2,22 +2,20 @@
 //! 当前阶段先提供一个最小可运行的编辑器壳子。
 
 mod assets;
-mod chrome;
 mod components;
 mod input;
 mod theme;
-use components::{file_tree::FileTreePanel, title_bar, tool_bar};
 
 use gpui::{
-    App, Application, Bounds, Context, Entity, InteractiveElement, ParentElement,
-    PathPromptOptions, Render, Styled, TitlebarOptions, Window, WindowBounds, WindowOptions, div,
-    prelude::*, px, rgb, size,
+    App, Application, Bounds, Context, Entity, InteractiveElement, MouseButton, MouseDownEvent,
+    ParentElement, PathPromptOptions, Render, Styled, TitlebarOptions, Window, WindowBounds,
+    WindowOptions, div, prelude::*, px, rgb, size,
 };
 use zom_app::state::{DesktopAppState, DesktopUiAction};
-use zom_core::{CommandInvocation, FocusTarget, WorkspaceAction};
+use zom_core::{CommandInvocation, FocusTarget, OverlayTarget, WorkspaceAction};
 
 use crate::{
-    components::{pane::PaneView, title_bar::traffic_lights},
+    components::{settings_overlay, title_bar, tool_bar, FileTreePanel, PaneView},
     theme::{color, size},
 };
 
@@ -38,7 +36,7 @@ pub fn run() {
                     titlebar: Some(TitlebarOptions {
                         title: Some("Zom".into()),
                         appears_transparent: true,
-                        traffic_light_position: Some(traffic_lights::position()),
+                        traffic_light_position: Some(title_bar::traffic_lights::position()),
                         ..Default::default()
                     }),
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -174,7 +172,8 @@ impl Render for ZomRootView {
             row.child(self.pane_view.clone())
         };
 
-        div()
+        let mut root = div()
+            .relative()
             .size_full()
             .flex()
             .flex_col()
@@ -198,6 +197,67 @@ impl Render for ZomRootView {
                 }),
             ))
             .child(workspace_row)
-            .child(tool_bar::render(&self.state))
+            .child(tool_bar::render(&self.state));
+
+        if matches!(self.state.active_overlay, Some(OverlayTarget::Settings)) {
+            root = root.child(
+                div()
+                    .id("settings-overlay-layer")
+                    .absolute()
+                    .top(px(0.0))
+                    .left(px(0.0))
+                    .w_full()
+                    .h_full()
+                    .child(
+                        div()
+                            .id("settings-overlay-mask")
+                            .absolute()
+                            .top(px(0.0))
+                            .left(px(0.0))
+                            .w_full()
+                            .h_full()
+                            .bg(rgb(color::COLOR_BG_APP))
+                            .opacity(0.72)
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                    this.state.handle_command(CommandInvocation::from(
+                                        WorkspaceAction::CloseFocused,
+                                    ));
+                                    this.sync_child_views(cx);
+                                    cx.stop_propagation();
+                                    cx.notify();
+                                }),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("settings-overlay-center")
+                            .absolute()
+                            .top(px(0.0))
+                            .left(px(0.0))
+                            .w_full()
+                            .h_full()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                                    .child(
+                                        div()
+                                            .id("settings-overlay-card-container")
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(
+                                            |_this, _event: &MouseDownEvent, _window, cx| {
+                                                cx.stop_propagation();
+                                            },
+                                        ),
+                                    )
+                                    .child(settings_overlay::panel()),
+                            ),
+                    ),
+            );
+        }
+
+        root
     }
 }

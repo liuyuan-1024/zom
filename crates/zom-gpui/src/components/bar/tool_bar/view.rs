@@ -4,19 +4,19 @@ use gpui::{div, prelude::*, px, rgb};
 use zom_app::state::{DesktopAppState, ToolBarEntry};
 
 use super::icons;
-use crate::chrome;
+use crate::components::bar::{bar, group};
 use crate::components::chip;
 use crate::theme::{color, size};
 
 /// 渲染底部工具栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
-    chrome::bar()
+    bar()
         .border_t_1()
         .border_color(rgb(color::COLOR_BORDER))
         .text_xs()
         .text_color(rgb(color::COLOR_FG_MUTED))
         .child(
-            chrome::group().child(
+            group().child(
                 div().flex().items_center().gap(px(size::GAP_1_5)).children(
                     state
                         .tool_bar
@@ -28,7 +28,7 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
             ),
         )
         .child(
-            chrome::group()
+            group()
                 .child(render_value(
                     "tb-cursor",
                     &state.tool_bar.cursor,

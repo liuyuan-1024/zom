@@ -446,6 +446,25 @@ mod tests {
     }
 
     #[test]
+    fn close_focused_closes_active_settings_overlay_first() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusOverlay(
+            OverlayTarget::Settings,
+        )));
+
+        let close = Keystroke::new(
+            zom_core::KeyCode::Char('w'),
+            zom_core::Modifiers::new(false, false, false, true),
+        );
+        let handled = state.handle_keystroke(&close);
+
+        assert!(handled);
+        assert_eq!(state.active_overlay, None);
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
+    }
+
+    #[test]
     fn switch_project_reloads_real_file_tree_and_clears_tabs() {
         let workspace = create_temp_workspace("switch-project-tree");
         fs::create_dir_all(workspace.join("src")).expect("create src directory");

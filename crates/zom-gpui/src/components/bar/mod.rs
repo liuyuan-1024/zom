@@ -1,5 +1,9 @@
 //! window chrome 的 bar 布局原语。
-//! 这里集中维护顶栏、底栏共享的节奏、尺寸和容器样式。
+//! 集中维护顶栏、底栏共享的节奏、尺寸和容器样式。
+//! 负责汇总 bar 布局与原生红绿灯布局能力，并对外暴露稳定入口。
+
+pub(crate) mod title_bar;
+pub(crate) mod tool_bar;
 
 use gpui::{Div, div, prelude::*, px, rgb};
 
