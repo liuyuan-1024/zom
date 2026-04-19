@@ -387,8 +387,8 @@ mod tests {
     fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command() {
         let mut state = DesktopAppState::from_current_workspace();
         let keystroke = Keystroke::new(
-            zom_core::KeyCode::Char('b'),
-            zom_core::Modifiers::new(false, false, false, true),
+            zom_core::KeyCode::Char('e'),
+            zom_core::Modifiers::new(false, false, true, true),
         );
 
         let handled = state.handle_keystroke(&keystroke);

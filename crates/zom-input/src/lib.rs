@@ -118,8 +118,8 @@ mod tests {
     fn default_keymap_resolves_global_file_tree_focus() {
         let keymap = default_keymap();
         let key = Keystroke::new(
-            KeyCode::Char('b'),
-            Modifiers::new(false, false, false, true),
+            KeyCode::Char('e'),
+            Modifiers::new(false, false, true, true),
         );
         let context = InputContext::new(FocusTarget::Editor);
 
@@ -196,8 +196,8 @@ mod tests {
         assert_eq!(
             binding.keystroke,
             Keystroke::new(
-                KeyCode::Char('b'),
-                Modifiers::new(false, false, false, true),
+                KeyCode::Char('e'),
+                Modifiers::new(false, false, true, true),
             )
         );
     }
@@ -206,7 +206,7 @@ mod tests {
     fn shortcut_hint_uses_registry_definition() {
         assert_eq!(
             shortcut_hint(&focus_panel_command(FocusTarget::FileTreePanel)),
-            Some("Cmd+B".to_string())
+            Some("Cmd+Shift+E".to_string())
         );
         assert_eq!(
             shortcut_hint(&focus_panel_command(FocusTarget::GitPanel)),
