@@ -1,3 +1,5 @@
+//! 桌面应用状态与命令分发主状态机。
+
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -9,7 +11,10 @@ use zom_core::{
 use zom_input::resolve_default;
 
 use crate::{
-    state::{FileTreeNodeKind, FileTreeState, PaneState, TabState, TitleBarState, ToolBarState},
+    state::{
+        FileTreeNodeKind, FileTreeState, PaneState, PanelDock, TabState, TitleBarState,
+        ToolBarState, dock_targets, panel_dock,
+    },
     utils,
 };
 
@@ -85,6 +90,27 @@ impl DesktopAppState {
         self.visible_panels.contains(&target)
     }
 
+    /// 返回指定停靠区域当前可见的面板目标。
+    pub fn visible_panel_in_dock(&self, dock: PanelDock) -> Option<FocusTarget> {
+        dock_targets(dock)
+            .iter()
+            .copied()
+            .find(|target| self.is_panel_visible(*target))
+    }
+
+    /// 隐藏指定停靠区域当前可见面板。
+    /// 若该面板当前持有焦点，会自动回退焦点到编辑区。
+    pub fn hide_visible_panel_in_dock(&mut self, dock: PanelDock) -> bool {
+        let Some(target) = self.visible_panel_in_dock(dock) else {
+            return false;
+        };
+        self.set_panel_visible(target, false);
+        if self.focused_target == target {
+            self.focus_editor();
+        }
+        true
+    }
+
     /// 消费一次待处理的焦点目标（供 UI 层在下一帧应用）。
     pub fn take_pending_focus_target(&mut self) -> Option<FocusTarget> {
         self.pending_focus_target.take()
@@ -150,6 +176,7 @@ impl DesktopAppState {
 
     /// 聚焦到指定面板：若面板当前隐藏，则先显示后聚焦。
     fn focus_panel(&mut self, target: FocusTarget) {
+        self.hide_panels_in_same_dock(target);
         self.set_panel_visible(target, true);
         self.active_overlay = None;
         self.focused_target = target;
@@ -241,6 +268,14 @@ impl DesktopAppState {
         }
     }
 
+    fn hide_panels_in_same_dock(&mut self, target: FocusTarget) {
+        let Some(dock) = panel_dock(target) else {
+            return;
+        };
+        self.visible_panels
+            .retain(|panel| panel_dock(*panel) != Some(dock));
+    }
+
     /// 在当前 Pane 打开文件：已打开则切换并刷新内容，未打开则新增标签页。
     fn open_file_in_pane(&mut self, relative_path: &str) {
         let absolute_path = utils::workspace_file_absolute_path(&self.project_root, relative_path);
@@ -295,7 +330,7 @@ mod tests {
     };
 
     use super::{DesktopAppState, DesktopUiAction};
-    use crate::state::FileTreeNodeKind;
+    use crate::state::{FileTreeNodeKind, PanelDock};
 
     #[test]
     fn activating_file_tree_file_opens_tab_and_activates_it() {
@@ -400,6 +435,145 @@ mod tests {
             state.take_pending_focus_target(),
             Some(FocusTarget::FileTreePanel)
         );
+    }
+
+    #[test]
+    fn keyboard_shortcut_can_focus_and_close_git_panel() {
+        let mut state = DesktopAppState::from_current_workspace();
+        let focus_git = Keystroke::new(
+            zom_core::KeyCode::Char('g'),
+            zom_core::Modifiers::new(false, false, true, true),
+        );
+
+        let handled_focus = state.handle_keystroke(&focus_git);
+
+        assert!(handled_focus);
+        assert!(state.is_panel_visible(FocusTarget::GitPanel));
+        assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert_eq!(state.focused_target, FocusTarget::GitPanel);
+        assert_eq!(
+            state.take_pending_focus_target(),
+            Some(FocusTarget::GitPanel)
+        );
+
+        let close = Keystroke::new(
+            zom_core::KeyCode::Char('w'),
+            zom_core::Modifiers::new(false, false, false, true),
+        );
+        let handled_close = state.handle_keystroke(&close);
+
+        assert!(handled_close);
+        assert!(!state.is_panel_visible(FocusTarget::GitPanel));
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
+    }
+
+    #[test]
+    fn focus_panel_replaces_existing_left_slot_panel() {
+        let mut state = DesktopAppState::from_current_workspace();
+        assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
+
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::OutlinePanel,
+        )));
+
+        assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
+        assert!(state.is_panel_visible(FocusTarget::OutlinePanel));
+        assert_eq!(state.focused_target, FocusTarget::OutlinePanel);
+    }
+
+    #[test]
+    fn focus_panel_replaces_existing_bottom_dock_panel() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::TerminalPanel,
+        )));
+        assert!(state.is_panel_visible(FocusTarget::TerminalPanel));
+
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::DebugPanel,
+        )));
+
+        assert!(!state.is_panel_visible(FocusTarget::TerminalPanel));
+        assert!(state.is_panel_visible(FocusTarget::DebugPanel));
+        assert_eq!(state.focused_target, FocusTarget::DebugPanel);
+    }
+
+    #[test]
+    fn right_and_bottom_docks_can_stay_visible_together() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::NotificationPanel,
+        )));
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::TerminalPanel,
+        )));
+
+        assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
+        assert!(state.is_panel_visible(FocusTarget::TerminalPanel));
+    }
+
+    #[test]
+    fn close_focused_bottom_panel_keeps_right_panel_visible() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::NotificationPanel,
+        )));
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::TerminalPanel,
+        )));
+
+        state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
+
+        assert!(!state.is_panel_visible(FocusTarget::TerminalPanel));
+        assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+    }
+
+    #[test]
+    fn hide_visible_panel_in_dock_hides_target_and_falls_back_to_editor() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::GitPanel,
+        )));
+        assert_eq!(state.focused_target, FocusTarget::GitPanel);
+
+        let hidden = state.hide_visible_panel_in_dock(PanelDock::Left);
+
+        assert!(hidden);
+        assert!(!state.is_panel_visible(FocusTarget::GitPanel));
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
+    }
+
+    #[test]
+    fn keyboard_shortcut_can_focus_and_close_notification_panel() {
+        let mut state = DesktopAppState::from_current_workspace();
+        let focus_notification = Keystroke::new(
+            zom_core::KeyCode::Char('n'),
+            zom_core::Modifiers::new(false, false, true, true),
+        );
+
+        let handled_focus = state.handle_keystroke(&focus_notification);
+
+        assert!(handled_focus);
+        assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
+        assert_eq!(state.focused_target, FocusTarget::NotificationPanel);
+        assert_eq!(
+            state.take_pending_focus_target(),
+            Some(FocusTarget::NotificationPanel)
+        );
+
+        let close = Keystroke::new(
+            zom_core::KeyCode::Char('w'),
+            zom_core::Modifiers::new(false, false, false, true),
+        );
+        let handled_close = state.handle_keystroke(&close);
+
+        assert!(handled_close);
+        assert!(!state.is_panel_visible(FocusTarget::NotificationPanel));
+        assert_eq!(state.focused_target, FocusTarget::Editor);
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
     }
 
     #[test]
