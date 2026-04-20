@@ -1,17 +1,6 @@
-//! zom-editor 的公共入口。
+//! `zom-editor` 的公共入口。
+//! 负责承载编辑领域行为与文本视图语义。
 
-/// 演示函数：返回两个整数之和。
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod viewer_layout;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use viewer_layout::wrap_visual_line;

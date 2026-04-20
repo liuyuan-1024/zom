@@ -4,7 +4,7 @@ use gpui::{
     App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement, Render,
     StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
-use zom_runtime::state::PaneState;
+use zom_runtime::{projection::wrap_visual_line, state::PaneState};
 
 use crate::{
     components::pane::tab_bar,
@@ -136,17 +136,4 @@ impl PaneView {
             .overflow_scroll()
             .children(line_elements)
     }
-}
-
-/// 按字符数把长行拆成多个显示段，作为查看器模式的软换行。
-fn wrap_visual_line(line: &str, max_chars_per_line: usize) -> Vec<String> {
-    if line.is_empty() {
-        return vec![String::new()];
-    }
-
-    let chars = line.chars().collect::<Vec<_>>();
-    chars
-        .chunks(max_chars_per_line.max(1))
-        .map(|chunk| chunk.iter().collect::<String>())
-        .collect()
 }

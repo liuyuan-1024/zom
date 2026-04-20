@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 zom-text = { workspace = true }
 zom-protocol = { workspace = true }
+zom-editor = { workspace = true }
