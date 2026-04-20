@@ -7173,7 +7173,6 @@ version = "0.1.0"
 dependencies = [
  "zom-editor",
  "zom-protocol",
- "zom-text",
 ]
 
 [[package]]

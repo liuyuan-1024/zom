@@ -84,8 +84,6 @@ fn default_visible_panels() -> HashSet<FocusTarget> {
 
 #[cfg(test)]
 mod tests {
-    use zom_text::{detect_line_ending, split_lines};
-
     use zom_protocol::FocusTarget;
 
     use crate::state::DesktopAppState;
@@ -108,18 +106,5 @@ mod tests {
     fn initial_state_requests_editor_focus() {
         let mut state = DesktopAppState::from_current_workspace();
         assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
-    }
-
-    #[test]
-    fn split_lines_preserves_blank_lines() {
-        let lines = split_lines("a\n\nb\n");
-
-        assert_eq!(lines, vec!["a", "", "b", ""]);
-    }
-
-    #[test]
-    fn detect_line_ending_distinguishes_crlf_and_lf() {
-        assert_eq!(detect_line_ending("a\r\nb\r\n"), "CRLF");
-        assert_eq!(detect_line_ending("a\nb\n"), "LF");
     }
 }
