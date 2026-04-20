@@ -65,7 +65,7 @@ impl DesktopAppState {
             focused_target: FocusTarget::Editor,
             visible_panels: default_visible_panels(),
             active_overlay: None,
-            pending_focus_target: None,
+            pending_focus_target: Some(FocusTarget::Editor),
             pending_ui_action: None,
         }
     }
@@ -81,6 +81,8 @@ fn default_visible_panels() -> HashSet<FocusTarget> {
 
 #[cfg(test)]
 mod tests {
+    use zom_core::FocusTarget;
+
     use crate::{state::DesktopAppState, utils};
 
     #[test]
@@ -95,6 +97,15 @@ mod tests {
     fn initial_state_starts_without_active_tab() {
         let state = DesktopAppState::from_current_workspace();
         assert!(state.pane.active_tab().is_none());
+    }
+
+    #[test]
+    fn initial_state_requests_editor_focus() {
+        let mut state = DesktopAppState::from_current_workspace();
+        assert_eq!(
+            state.take_pending_focus_target(),
+            Some(FocusTarget::Editor)
+        );
     }
 
     #[test]
