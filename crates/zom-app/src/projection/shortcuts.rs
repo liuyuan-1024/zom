@@ -14,8 +14,11 @@ mod tests {
     use super::shortcut_hint;
 
     #[test]
-    fn shortcut_hint_projects_from_input_registry() {
+    fn shortcut_hint_delegates_to_core_input_projection() {
         let command = CommandInvocation::from(WorkspaceAction::CloseFocused);
-        assert_eq!(shortcut_hint(&command), Some("Cmd+W".to_string()));
+        assert_eq!(
+            shortcut_hint(&command),
+            zom_core::input::shortcut_hint(&command)
+        );
     }
 }

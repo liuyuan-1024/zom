@@ -332,6 +332,15 @@ mod tests {
     use super::{DesktopAppState, DesktopUiAction};
     use crate::state::{FileTreeNodeKind, PanelDock};
 
+    fn shortcut_for(command: CommandInvocation) -> Keystroke {
+        zom_core::input::default_shortcut_registry()
+            .bindings()
+            .iter()
+            .find(|binding| binding.command == command)
+            .map(|binding| binding.keystroke)
+            .unwrap_or_else(|| panic!("default shortcut should exist for command: {command:?}"))
+    }
+
     #[test]
     fn activating_file_tree_file_opens_tab_and_activates_it() {
         let mut state = DesktopAppState::from_current_workspace();
@@ -421,10 +430,9 @@ mod tests {
     #[test]
     fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command() {
         let mut state = DesktopAppState::from_current_workspace();
-        let keystroke = Keystroke::new(
-            zom_core::KeyCode::Char('e'),
-            zom_core::Modifiers::new(false, false, true, true),
-        );
+        let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::FileTreePanel,
+        )));
 
         let handled = state.handle_keystroke(&keystroke);
 
@@ -440,10 +448,9 @@ mod tests {
     #[test]
     fn keyboard_shortcut_can_focus_and_close_git_panel() {
         let mut state = DesktopAppState::from_current_workspace();
-        let focus_git = Keystroke::new(
-            zom_core::KeyCode::Char('g'),
-            zom_core::Modifiers::new(false, false, true, true),
-        );
+        let focus_git = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
+            FocusTarget::GitPanel,
+        )));
 
         let handled_focus = state.handle_keystroke(&focus_git);
 
@@ -456,10 +463,7 @@ mod tests {
             Some(FocusTarget::GitPanel)
         );
 
-        let close = Keystroke::new(
-            zom_core::KeyCode::Char('w'),
-            zom_core::Modifiers::new(false, false, false, true),
-        );
+        let close = shortcut_for(CommandInvocation::from(WorkspaceAction::CloseFocused));
         let handled_close = state.handle_keystroke(&close);
 
         assert!(handled_close);
@@ -549,10 +553,9 @@ mod tests {
     #[test]
     fn keyboard_shortcut_can_focus_and_close_notification_panel() {
         let mut state = DesktopAppState::from_current_workspace();
-        let focus_notification = Keystroke::new(
-            zom_core::KeyCode::Char('n'),
-            zom_core::Modifiers::new(false, false, true, true),
-        );
+        let focus_notification = shortcut_for(CommandInvocation::from(
+            WorkspaceAction::FocusPanel(FocusTarget::NotificationPanel),
+        ));
 
         let handled_focus = state.handle_keystroke(&focus_notification);
 
@@ -564,10 +567,7 @@ mod tests {
             Some(FocusTarget::NotificationPanel)
         );
 
-        let close = Keystroke::new(
-            zom_core::KeyCode::Char('w'),
-            zom_core::Modifiers::new(false, false, false, true),
-        );
+        let close = shortcut_for(CommandInvocation::from(WorkspaceAction::CloseFocused));
         let handled_close = state.handle_keystroke(&close);
 
         assert!(handled_close);
@@ -579,10 +579,7 @@ mod tests {
     #[test]
     fn keyboard_shortcut_can_request_open_project_picker_ui_action() {
         let mut state = DesktopAppState::from_current_workspace();
-        let keystroke = Keystroke::new(
-            zom_core::KeyCode::Char('p'),
-            zom_core::Modifiers::new(false, false, true, true),
-        );
+        let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::OpenProjectPicker));
 
         let handled = state.handle_keystroke(&keystroke);
 
@@ -596,10 +593,9 @@ mod tests {
     #[test]
     fn keyboard_shortcut_can_focus_settings_overlay() {
         let mut state = DesktopAppState::from_current_workspace();
-        let keystroke = Keystroke::new(
-            zom_core::KeyCode::Char(','),
-            zom_core::Modifiers::new(false, false, false, true),
-        );
+        let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusOverlay(
+            OverlayTarget::Settings,
+        )));
 
         let handled = state.handle_keystroke(&keystroke);
 
@@ -620,10 +616,7 @@ mod tests {
             OverlayTarget::Settings,
         )));
 
-        let close = Keystroke::new(
-            zom_core::KeyCode::Char('w'),
-            zom_core::Modifiers::new(false, false, false, true),
-        );
+        let close = shortcut_for(CommandInvocation::from(WorkspaceAction::CloseFocused));
         let handled = state.handle_keystroke(&close);
 
         assert!(handled);

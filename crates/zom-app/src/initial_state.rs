@@ -104,10 +104,7 @@ mod tests {
     #[test]
     fn initial_state_requests_editor_focus() {
         let mut state = DesktopAppState::from_current_workspace();
-        assert_eq!(
-            state.take_pending_focus_target(),
-            Some(FocusTarget::Editor)
-        );
+        assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
     }
 
     #[test]

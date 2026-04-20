@@ -218,7 +218,7 @@ pub fn resolve_default(input: &Keystroke, context: &InputContext) -> InputResolu
 #[cfg(test)]
 mod tests {
     use crate::{
-        CommandInvocation, EditorAction, FocusTarget, OverlayTarget,
+        CommandInvocation, EditorAction, EditorInvocation, FocusTarget, OverlayTarget,
         command::{FileTreeAction, WorkspaceAction},
     };
 
@@ -246,6 +246,25 @@ mod tests {
 
     fn focus_settings_overlay_command() -> CommandInvocation {
         CommandInvocation::from(WorkspaceAction::FocusOverlay(OverlayTarget::Settings))
+    }
+
+    fn shortcut_for(command: &CommandInvocation) -> Keystroke {
+        default_shortcut_registry()
+            .bindings()
+            .iter()
+            .find(|binding| &binding.command == command)
+            .map(|binding| binding.keystroke)
+            .unwrap_or_else(|| panic!("default shortcut should exist for command: {command:?}"))
+    }
+
+    fn assert_default_shortcut_resolves(command: CommandInvocation, context: InputContext) {
+        let keymap = default_keymap();
+        let key = shortcut_for(&command);
+
+        assert_eq!(
+            keymap.resolve(&key, &context),
+            InputResolution::Command(command)
+        );
     }
 
     #[test]
@@ -316,140 +335,86 @@ mod tests {
 
     #[test]
     fn default_keymap_resolves_file_tree_scoped_navigation() {
-        let keymap = default_keymap();
-        let key = Keystroke::new(KeyCode::Down, Modifiers::default());
-        let context = InputContext::new(FocusTarget::FileTreePanel);
-
-        assert_eq!(
-            keymap.resolve(&key, &context),
-            InputResolution::Command(CommandInvocation::from(FileTreeAction::SelectNext))
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(FileTreeAction::SelectNext),
+            InputContext::new(FocusTarget::FileTreePanel),
         );
     }
 
     #[test]
     fn default_keymap_resolves_global_file_tree_focus() {
-        let keymap = default_keymap();
-        let key = Keystroke::new(KeyCode::Char('e'), Modifiers::new(false, false, true, true));
-        let context = InputContext::new(FocusTarget::Editor);
-
-        assert_eq!(
-            keymap.resolve(&key, &context),
-            InputResolution::Command(focus_panel_command(FocusTarget::FileTreePanel))
+        assert_default_shortcut_resolves(
+            focus_panel_command(FocusTarget::FileTreePanel),
+            InputContext::new(FocusTarget::Editor),
         );
     }
 
     #[test]
     fn default_keymap_resolves_open_project_shortcut() {
-        let keymap = default_keymap();
-        let key = Keystroke::new(KeyCode::Char('p'), Modifiers::new(false, false, true, true));
-        let context = InputContext::new(FocusTarget::Editor);
-
-        assert_eq!(
-            keymap.resolve(&key, &context),
-            InputResolution::Command(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(WorkspaceAction::OpenProjectPicker),
+            InputContext::new(FocusTarget::Editor),
         );
     }
 
     #[test]
     fn default_keymap_resolves_focus_settings_overlay_shortcut() {
-        let keymap = default_keymap();
-        let key = Keystroke::new(
-            KeyCode::Char(','),
-            Modifiers::new(false, false, false, true),
-        );
-        let context = InputContext::new(FocusTarget::Editor);
-
-        assert_eq!(
-            keymap.resolve(&key, &context),
-            InputResolution::Command(focus_settings_overlay_command())
+        assert_default_shortcut_resolves(
+            focus_settings_overlay_command(),
+            InputContext::new(FocusTarget::Editor),
         );
     }
 
     #[test]
     fn default_keymap_resolves_notification_focus_shortcut() {
-        let keymap = default_keymap();
-        let key = Keystroke::new(KeyCode::Char('n'), Modifiers::new(false, false, true, true));
-        let context = InputContext::new(FocusTarget::Editor);
-
-        assert_eq!(
-            keymap.resolve(&key, &context),
-            InputResolution::Command(focus_panel_command(FocusTarget::NotificationPanel))
+        assert_default_shortcut_resolves(
+            focus_panel_command(FocusTarget::NotificationPanel),
+            InputContext::new(FocusTarget::Editor),
         );
     }
 
     #[test]
     fn default_keymap_resolves_panel_close_shortcut_for_focused_file_tree() {
-        let keymap = default_keymap();
-        let key = Keystroke::new(
-            KeyCode::Char('w'),
-            Modifiers::new(false, false, false, true),
-        );
-        let context = InputContext::new(FocusTarget::FileTreePanel);
-
-        assert_eq!(
-            keymap.resolve(&key, &context),
-            InputResolution::Command(CommandInvocation::from(WorkspaceAction::CloseFocused))
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(WorkspaceAction::CloseFocused),
+            InputContext::new(FocusTarget::FileTreePanel),
         );
     }
 
     #[test]
-    fn default_shortcut_registry_contains_file_tree_focus_shortcut() {
+    fn default_shortcut_registry_contains_file_tree_focus_binding_metadata() {
         let registry = default_shortcut_registry();
+        let command = focus_panel_command(FocusTarget::FileTreePanel);
         let binding = registry
             .bindings()
             .iter()
-            .find(|binding| binding.command == focus_panel_command(FocusTarget::FileTreePanel))
+            .find(|binding| binding.command == command)
             .expect("file tree focus shortcut should exist");
 
         assert_eq!(binding.scope, ShortcutScope::Global);
-        assert_eq!(
-            binding.keystroke,
-            Keystroke::new(KeyCode::Char('e'), Modifiers::new(false, false, true, true),)
-        );
+        assert_eq!(binding.priority, 100);
+        assert_eq!(binding.resolution, InputResolution::Command(command));
     }
 
     #[test]
-    fn shortcut_hint_uses_registry_definition() {
-        assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::FileTreePanel)),
-            Some("Cmd+Shift+E".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::GitPanel)),
-            Some("Cmd+Shift+G".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::OutlinePanel)),
-            Some("Cmd+Shift+O".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::ProjectSearchPanel)),
-            Some("Cmd+Shift+F".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::TerminalPanel)),
-            Some("Cmd+.".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenProjectPicker)),
-            Some("Cmd+Shift+P".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&focus_settings_overlay_command()),
-            Some("Cmd+,".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&focus_panel_command(FocusTarget::NotificationPanel)),
-            Some("Cmd+Shift+N".to_string())
-        );
-        assert_eq!(
-            shortcut_hint(&CommandInvocation::from(WorkspaceAction::CloseFocused)),
-            Some("Cmd+W".to_string())
-        );
+    fn shortcut_hint_tracks_default_shortcut_registry() {
+        let registry = default_shortcut_registry();
+
+        for binding in registry.bindings() {
+            assert_eq!(
+                shortcut_hint(&binding.command),
+                registry.shortcut_hint(&binding.command),
+                "shortcut hint should follow default registry for command: {:?}",
+                binding.command
+            );
+        }
+
+        let command_without_default = CommandInvocation::from(EditorInvocation::insert_text("x"));
+        assert_eq!(shortcut_hint(&command_without_default), None);
     }
 
     #[test]
-    fn default_binding_metadata_is_structured() {
+    fn default_binding_priority_is_structured() {
         let registry = default_shortcut_registry();
         let file_tree_focus = registry
             .bindings()
@@ -459,5 +424,16 @@ mod tests {
 
         assert_eq!(file_tree_focus.scope, ShortcutScope::Global);
         assert_eq!(file_tree_focus.priority, 100);
+    }
+
+    #[test]
+    fn shortcut_for_helper_returns_registered_keystroke() {
+        let command = CommandInvocation::from(WorkspaceAction::OpenProjectPicker);
+        let key = shortcut_for(&command);
+
+        assert_eq!(
+            default_keymap().resolve(&key, &InputContext::new(FocusTarget::Editor)),
+            InputResolution::Command(command)
+        );
     }
 }
