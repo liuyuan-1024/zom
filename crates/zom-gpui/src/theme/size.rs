@@ -28,9 +28,7 @@ pub(crate) const GUTTER_MD: f32 = 40.0; // 中尺寸行号/序号栏宽度
 // 逻辑：定义应用级的骨架尺寸界限
 pub(crate) const WINDOW_WIDTH: f32 = 850.0;
 pub(crate) const WINDOW_HEIGHT: f32 = 950.0;
-pub(crate) const PANEL_WIDTH: f32 = 260.0;
-pub(crate) const PANEL_WIDTH_MIN: f32 = 160.0;
-pub(crate) const PANEL_WIDTH_MAX: f32 = 600.0;
+pub(crate) const PANEL_WIDTH: f32 = 250.0;
 
 // 拖拽遮罩，TODO 后续我想优化，不再用这种暴力遮罩的方法
 pub(crate) const DRAG_CAPTURE_OFFSET: f32 = 2000.0;
