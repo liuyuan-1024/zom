@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use zom_protocol::input::resolve_default;
 use zom_protocol::{
-    BufferId, CommandInvocation, FocusTarget, InputContext, InputResolution, Keystroke, Position,
-    OverlayTarget,
+    BufferId, CommandInvocation, EditorInvocation, FocusTarget, InputContext, InputResolution,
+    Keystroke, OverlayTarget, Position,
     command::{FileTreeAction, TabAction, WorkspaceAction},
 };
 
@@ -76,11 +76,17 @@ impl DesktopAppState {
     pub fn handle_keystroke(&mut self, keystroke: &Keystroke) -> bool {
         let context = InputContext::new(self.focused_target);
         let resolution = resolve_default(keystroke, &context);
-        let InputResolution::Command(command) = resolution else {
-            return false;
-        };
-        self.handle_command(command);
-        true
+        match resolution {
+            InputResolution::Command(command) => {
+                self.handle_command(command);
+                true
+            }
+            InputResolution::InsertText(text) => {
+                self.handle_command(CommandInvocation::from(EditorInvocation::insert_text(text)));
+                true
+            }
+            InputResolution::Noop => false,
+        }
     }
 
     /// 返回指定面板当前是否可见。
@@ -138,9 +144,7 @@ impl DesktopAppState {
     pub fn handle_command(&mut self, command: CommandInvocation) {
         match command {
             CommandInvocation::Workspace(command) => self.handle_workspace_command(command),
-            CommandInvocation::Editor(_command) => {
-                // TODO: 编辑器命令分发接入后在此处理。
-            }
+            CommandInvocation::Editor(command) => self.handle_editor_command(command),
         }
     }
 
@@ -156,6 +160,23 @@ impl DesktopAppState {
             WorkspaceAction::FileTree(command) => self.handle_file_tree_command(command),
             WorkspaceAction::Tab(command) => self.handle_tab_command(command),
         }
+    }
+
+    /// 处理编辑器命令，并把结果写回当前活动标签页与工具栏状态。
+    fn handle_editor_command(&mut self, command: EditorInvocation) {
+        let Some(active_index) = self.pane.active_tab_index else {
+            return;
+        };
+        let Some(active_tab) = self.pane.tabs.get_mut(active_index) else {
+            self.pane.active_tab_index = None;
+            return;
+        };
+
+        let next_cursor = active_tab
+            .buffer
+            .apply_invocation(self.tool_bar.cursor, &command);
+        self.tool_bar.cursor = next_cursor;
+        self.tool_bar.line_ending = active_tab.buffer.line_ending();
     }
 
     /// 处理文件树命令，并同步工作区状态。
@@ -331,7 +352,8 @@ mod tests {
     };
 
     use zom_protocol::{
-        CommandInvocation, FocusTarget, Keystroke, OverlayTarget,
+        CommandInvocation, EditorAction, EditorInvocation, FocusTarget, Keystroke, OverlayTarget,
+        Position,
         command::{FileTreeAction, WorkspaceAction},
     };
 
@@ -352,7 +374,10 @@ mod tests {
         let mut state = DesktopAppState::from_current_workspace();
         let before_len = state.pane.tabs.len();
 
-        state.handle_file_tree_node_activate("crates/zom-runtime/src/lib.rs", FileTreeNodeKind::File);
+        state.handle_file_tree_node_activate(
+            "crates/zom-runtime/src/lib.rs",
+            FileTreeNodeKind::File,
+        );
 
         assert_eq!(state.pane.tabs.len(), before_len + 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
@@ -449,6 +474,44 @@ mod tests {
             state.take_pending_focus_target(),
             Some(FocusTarget::FileTreePanel)
         );
+    }
+
+    #[test]
+    fn editor_command_updates_active_tab_buffer_and_cursor() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.pane.tabs = vec![crate::state::TabState {
+            buffer_id: zom_protocol::BufferId::new(1),
+            title: "demo.rs".into(),
+            relative_path: "demo.rs".into(),
+            buffer: zom_editor::EditorBuffer::from_text("ab"),
+        }];
+        state.pane.active_tab_index = Some(0);
+        state.tool_bar.cursor = Position::new(0, 1);
+
+        state.handle_command(CommandInvocation::from(EditorInvocation::insert_text("X")));
+
+        let active_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(active_tab.buffer.as_str(), "aXb");
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
+
+        state.handle_command(CommandInvocation::from(EditorAction::DeleteBackward));
+        let active_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(active_tab.buffer.as_str(), "ab");
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
+    }
+
+    #[test]
+    fn editor_command_without_active_tab_is_noop() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.pane.tabs.clear();
+        state.pane.active_tab_index = None;
+        state.tool_bar.cursor = Position::new(3, 7);
+
+        state.handle_command(CommandInvocation::from(EditorInvocation::insert_text("x")));
+
+        assert_eq!(state.pane.tabs.len(), 0);
+        assert_eq!(state.pane.active_tab_index, None);
+        assert_eq!(state.tool_bar.cursor, Position::new(3, 7));
     }
 
     #[test]
