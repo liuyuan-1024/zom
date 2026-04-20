@@ -117,10 +117,7 @@ mod tests {
     #[test]
     fn default_keymap_resolves_global_file_tree_focus() {
         let keymap = default_keymap();
-        let key = Keystroke::new(
-            KeyCode::Char('e'),
-            Modifiers::new(false, false, true, true),
-        );
+        let key = Keystroke::new(KeyCode::Char('e'), Modifiers::new(false, false, true, true));
         let context = InputContext::new(FocusTarget::Editor);
 
         assert_eq!(
@@ -195,10 +192,7 @@ mod tests {
         assert_eq!(binding.scope, ShortcutScope::Global);
         assert_eq!(
             binding.keystroke,
-            Keystroke::new(
-                KeyCode::Char('e'),
-                Modifiers::new(false, false, true, true),
-            )
+            Keystroke::new(KeyCode::Char('e'), Modifiers::new(false, false, true, true),)
         );
     }
 
@@ -222,7 +216,7 @@ mod tests {
         );
         assert_eq!(
             shortcut_hint(&focus_panel_command(FocusTarget::TerminalPanel)),
-            Some("Ctrl+`".to_string())
+            Some("Cmd+.".to_string())
         );
         assert_eq!(
             shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenProjectPicker)),
