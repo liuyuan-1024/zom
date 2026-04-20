@@ -34,22 +34,22 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
                 .child(render_value(
                     "tb-cursor",
                     &state.tool_bar.cursor,
-                    "Go to Line/Col",
+                    "跳转到行:列",
                 ))
                 .child(render_value(
                     "tb-language",
                     &state.tool_bar.language,
-                    "Select Language",
+                    "选择语言类型",
                 ))
                 .child(render_value(
                     "tb-line-ending",
                     &state.tool_bar.line_ending,
-                    "Select End of Line Sequence",
+                    "选择换行符",
                 ))
                 .child(render_value(
                     "tb-encoding",
                     &state.tool_bar.encoding,
-                    "Select Encoding",
+                    "选择编码",
                 ))
                 .child(
                     div().flex().items_center().gap(px(size::GAP_1_5)).children(

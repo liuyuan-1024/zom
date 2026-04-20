@@ -50,8 +50,8 @@ impl TextBuffer {
             return None;
         }
 
-        let mut row = 0u32;
-        let mut col = 0u32;
+        let mut line = 0u32;
+        let mut column = 0u32;
         let mut current = 0usize;
 
         for ch in self.text.chars() {
@@ -60,14 +60,14 @@ impl TextBuffer {
             }
             current += ch.len_utf8();
             if ch == '\n' {
-                row += 1;
-                col = 0;
+                line += 1;
+                column = 0;
             } else {
-                col += 1;
+                column += 1;
             }
         }
 
-        Some(Position::new(row, col))
+        Some(Position::new(line, column))
     }
 }
 

@@ -1,18 +1,18 @@
 //! 二维文本坐标 Position 值对象定义。
 
-/// 文本中的逻辑位置，使用 `row` 和 `col` 表示。
+/// 文本中的逻辑位置
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Position {
     /// 所在行号。
-    pub row: u32,
+    pub line: u32,
     /// 所在列号。
-    pub col: u32,
+    pub column: u32,
 }
 
 impl Position {
     /// 构造一个新的逻辑位置。
-    pub fn new(row: u32, col: u32) -> Self {
-        Self { row, col }
+    pub fn new(line: u32, column: u32) -> Self {
+        Self { line, column }
     }
 
     /// 返回文档起点位置。
@@ -21,13 +21,13 @@ impl Position {
     }
 
     /// 基于当前值创建一个仅修改行号的新位置。
-    pub fn with_row(self, row: u32) -> Self {
-        Self { row, ..self }
+    pub fn with_row(self, line: u32) -> Self {
+        Self { line, ..self }
     }
 
     /// 基于当前值创建一个仅修改列号的新位置。
-    pub fn with_col(self, col: u32) -> Self {
-        Self { col, ..self }
+    pub fn with_col(self, column: u32) -> Self {
+        Self { column, ..self }
     }
 }
 
