@@ -16,8 +16,8 @@ pub enum ToolBarIcon {
     Outline,
     /// 全局搜索
     ProjectSearch,
-    /// LSP
-    LSP,
+    /// 语言服务器
+    LanguageServers,
     /// 终端
     Terminal,
     /// 调试

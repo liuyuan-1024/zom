@@ -30,22 +30,22 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         },
         ToolBarIcon::Outline => ToolBarIconSpec {
             path: "icons/tool_bar/tool_list_tree.svg",
-            label: "Outline",
+            label: "大纲",
             shortcut: focus_panel_shortcut(FocusTarget::OutlinePanel),
         },
         ToolBarIcon::ProjectSearch => ToolBarIconSpec {
             path: "icons/tool_bar/tool_search.svg",
-            label: "Search",
+            label: "项目搜索",
             shortcut: focus_panel_shortcut(FocusTarget::ProjectSearchPanel),
         },
-        ToolBarIcon::LSP => ToolBarIconSpec {
+        ToolBarIcon::LanguageServers => ToolBarIconSpec {
             path: "icons/tool_bar/tool_bolt_outlined.svg",
-            label: "Language Servers",
+            label: "语言服务器",
             shortcut: focus_panel_shortcut(FocusTarget::LanguageServersPanel),
         },
         ToolBarIcon::Terminal => ToolBarIconSpec {
             path: "icons/tool_bar/tool_terminal.svg",
-            label: "Terminal",
+            label: "终端",
             shortcut: focus_panel_shortcut(FocusTarget::TerminalPanel),
         },
         ToolBarIcon::Debug => ToolBarIconSpec {
@@ -55,7 +55,7 @@ pub(super) fn spec(icon: ToolBarIcon) -> ToolBarIconSpec {
         },
         ToolBarIcon::Notification => ToolBarIconSpec {
             path: "icons/tool_bar/tool_notification.svg",
-            label: "Notifications",
+            label: "通知",
             shortcut: focus_panel_shortcut(FocusTarget::NotificationPanel),
         },
     }
@@ -68,7 +68,7 @@ pub(super) fn panel_target(icon: ToolBarIcon) -> Option<FocusTarget> {
         ToolBarIcon::GitBranch => Some(FocusTarget::GitPanel),
         ToolBarIcon::Outline => Some(FocusTarget::OutlinePanel),
         ToolBarIcon::ProjectSearch => Some(FocusTarget::ProjectSearchPanel),
-        ToolBarIcon::LSP => Some(FocusTarget::LanguageServersPanel),
+        ToolBarIcon::LanguageServers => Some(FocusTarget::LanguageServersPanel),
         ToolBarIcon::Terminal => Some(FocusTarget::TerminalPanel),
         ToolBarIcon::Debug => Some(FocusTarget::DebugPanel),
         ToolBarIcon::Notification => Some(FocusTarget::NotificationPanel),
@@ -110,7 +110,7 @@ mod tests {
             ToolBarIcon::GitBranch,
             ToolBarIcon::Outline,
             ToolBarIcon::ProjectSearch,
-            ToolBarIcon::LSP,
+            ToolBarIcon::LanguageServers,
             ToolBarIcon::Terminal,
             ToolBarIcon::Debug,
             ToolBarIcon::Notification,
