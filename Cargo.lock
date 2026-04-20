@@ -7173,6 +7173,7 @@ version = "0.1.0"
 dependencies = [
  "zom-editor",
  "zom-protocol",
+ "zom-workspace",
 ]
 
 [[package]]
@@ -7185,6 +7186,10 @@ dependencies = [
 [[package]]
 name = "zom-workspace"
 version = "0.1.0"
+dependencies = [
+ "zom-editor",
+ "zom-protocol",
+]
 
 [[package]]
 name = "zune-core"

@@ -1,17 +1,10 @@
-//! zom-workspace 的公共入口。
+//! `zom-workspace` 的公共入口。
+//! 负责承载工作区领域状态（文件树、窗格、面板布局）。
 
-/// 演示函数：返回两个整数之和。
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod file_tree;
+mod pane;
+mod panel_layout;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use file_tree::{FileTreeNode, FileTreeNodeKind, FileTreeState};
+pub use pane::{PaneState, TabState};
+pub use panel_layout::{PanelDock, dock_targets, panel_dock};
