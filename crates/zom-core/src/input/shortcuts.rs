@@ -1,9 +1,8 @@
 //! 快捷键绑定模型与注册表实现。
 
-use zom_core::{
-    CommandInvocation, InputResolution, KeyCode, Keystroke,
-    command::ShortcutScope as CoreShortcutScope,
-};
+use crate::{CommandInvocation, command::ShortcutScope as CoreShortcutScope};
+
+use super::{InputResolution, KeyCode, Keystroke};
 
 /// 快捷键作用域（源自 `zom-core::command::ShortcutScope`）。
 pub type ShortcutScope = CoreShortcutScope;

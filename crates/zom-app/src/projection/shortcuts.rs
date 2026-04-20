@@ -4,7 +4,7 @@ use zom_core::CommandInvocation;
 
 /// 将命令语义投影为快捷键提示文案（供 UI 展示层消费）。
 pub fn shortcut_hint(command: &CommandInvocation) -> Option<String> {
-    zom_input::shortcut_hint(command)
+    zom_core::input::shortcut_hint(command)
 }
 
 #[cfg(test)]

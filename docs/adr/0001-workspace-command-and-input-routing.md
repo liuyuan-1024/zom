@@ -18,19 +18,19 @@
 - 优点：实现快、局部改动少。
 - 缺点：重复逻辑高，违背“输入映射应独立模块”约束；跨面板行为一致性差。
 
-### 方案 B：`zom-gpui` 只做事件适配，`zom-app` 调用 `zom-input` 做解析（本次采用）
+### 方案 B：`zom-gpui` 只做事件适配，`zom-app` 调用 `zom-core::input` 做解析（本次采用）
 
 - 优点：
-  - 输入映射集中在 `zom-input`；
+  - 输入映射集中在 `zom-core::input`；
   - `zom-app` 统一命令分发；
   - `zom-gpui` 保持“事件采集 + 渲染”职责。
-- 缺点：`zom-app` 需要新增对 `zom-input` 的依赖。
+- 缺点：`zom-core` 边界会从“纯协议”扩展为“协议 + 默认输入解析”。
 
 ## 3. 决策与影响
 
 采用方案 B：
 
-1. 新增依赖：`zom-app -> zom-input`。
+1. 输入解析实现归并到 `zom-core::input`（不再保留独立输入 crate）。
 2. 新增统一入口：`DesktopAppState::handle_keystroke`（输入解析后复用 `handle_command`）。
 3. `zom-gpui` 根视图统一监听键盘并调用应用层入口；`FileTreePanel` 不再内嵌命令映射。
 4. 工作台面板显隐状态改为通用集合 `visible_panels`，并以 `FocusTarget` 的显隐语义统一管理，后续面板复用同一套路由。
@@ -39,7 +39,11 @@
 
 若后续验证发现：
 
-1. `zom-app` 对 `zom-input` 的依赖造成明显边界复杂度上升，或
+1. `zom-core::input` 的实现复杂度显著侵蚀核心协议层清晰度，或
 2. 输入解析无法满足性能/可维护性要求，
 
-则回滚为“应用层仅持有输入结果接口”，并将具体 keymap 解析下沉到独立运行时服务；保持 `zom-gpui` 不直接持有命令映射逻辑。
+则回滚为“应用层仅持有输入结果接口”，并将具体 keymap 解析再拆分到独立 crate；保持 `zom-gpui` 不直接持有命令映射逻辑。
+
+## 5. 演进记录
+
+2026-04-20：输入映射实现已从独立输入 crate 合并到 `zom-core::input`，本文档已按现状同步。

@@ -4,7 +4,6 @@ resolver = "2"
 members = [
     "crates/zom-core",
     "crates/zom-text",
-    "crates/zom-input",
     "crates/zom-editor",
     "crates/zom-workspace",
     "crates/zom-gpui",
@@ -23,8 +22,6 @@ default-members = [
 zom-core = { path = "crates/zom-core" }
 # ===== 文本层 =====
 zom-text = { path = "crates/zom-text" }
-# ===== 输入层 =====
-zom-input = { path = "crates/zom-input" }
 # ===== 领域层 =====
 zom-editor = { path = "crates/zom-editor" }
 zom-workspace = { path = "crates/zom-workspace" }

@@ -11,7 +11,7 @@ pub mod direction;
 pub mod focus;
 /// 强类型 ID 定义。
 pub mod ids;
-/// 输入协议模型，不包含具体解析逻辑。
+/// 输入协议模型与默认输入解析实现。
 pub mod input;
 /// 文本位置模型。
 pub mod position;

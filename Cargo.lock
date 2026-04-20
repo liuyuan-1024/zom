@@ -7145,7 +7145,6 @@ name = "zom-app"
 version = "0.1.0"
 dependencies = [
  "zom-core",
- "zom-input",
  "zom-text",
 ]
 
@@ -7170,13 +7169,6 @@ version = "0.1.0"
 dependencies = [
  "gpui",
  "zom-app",
- "zom-core",
-]
-
-[[package]]
-name = "zom-input"
-version = "0.1.0"
-dependencies = [
  "zom-core",
 ]
 

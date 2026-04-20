@@ -3,12 +3,12 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+use zom_core::input::resolve_default;
 use zom_core::{
     BufferId, CommandInvocation, FocusTarget, InputContext, InputResolution, Keystroke,
     OverlayTarget,
     command::{FileTreeAction, TabAction, WorkspaceAction},
 };
-use zom_input::resolve_default;
 
 use crate::{
     state::{

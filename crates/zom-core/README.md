@@ -28,8 +28,8 @@ CommandKind、CommandInvocation、EditorInvocation/EditorAction、WorkspaceActio
 - 命令元信息（`CommandMeta`）
 - 默认快捷键元数据（`default_shortcut_bindings`）
 
-3. 输入协议模型
-注意，是输入协议，不是输入解析实现。
+3. 输入协议与默认解析模型
+`zom-core::input` 既定义输入协议，也承载默认 keymap 解析实现。
 适合放：
 Keystroke
 Modifiers
@@ -38,7 +38,7 @@ InputContext
 FocusTarget
 InputResult / InputResolution
 因为：
-zom-input 要生产/消费它
+zom-core::input 自身要生产/消费它
 zom-gpui 要桥接它
 zom-workspace 要提供 context facts
 zom-editor 可能要读取一部分上下文
@@ -68,7 +68,7 @@ zom-core
 ├── geometry      // 位置、范围、方向
 ├── selection     // 选区模型
 ├── command       // 命令语义
-├── input         // 输入协议
+├── input         // 输入协议 + 默认解析
 ├── ids           // 强类型 ID
 └── state         // 少量通用状态类型
 
@@ -113,7 +113,7 @@ zom-core
 # 正确的数据流
 Key Event (GPUI)
    ↓
-zom-input
+zom-core::input
    ↓
 CommandInvocation
    ↓

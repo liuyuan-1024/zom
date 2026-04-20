@@ -2,9 +2,11 @@
 
 use std::collections::HashMap;
 
-use zom_core::{FocusTarget, InputContext, InputResolution, Keystroke};
+use crate::FocusTarget;
 
-use crate::{ShortcutBinding, ShortcutRegistry, ShortcutScope};
+use super::{
+    InputContext, InputResolution, Keystroke, ShortcutBinding, ShortcutRegistry, ShortcutScope,
+};
 
 /// 输入键位解析表，按全局与焦点作用域组织快捷键。
 #[derive(Debug, Clone, Default)]
