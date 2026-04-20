@@ -1,3 +1,5 @@
+//! zom-input 的公共入口与默认解析能力导出。
+
 mod defaults;
 mod keymap;
 mod shortcuts;
@@ -9,6 +11,7 @@ pub use keymap::Keymap;
 pub use shortcuts::{ShortcutBinding, ShortcutBindingSpec, ShortcutRegistry, ShortcutScope};
 use zom_core::{CommandInvocation, InputContext, InputResolution, Keystroke};
 
+/// 把命令语义包装为输入解析结果。
 pub fn command(command: CommandInvocation) -> InputResolution {
     InputResolution::Command(command)
 }
@@ -23,6 +26,7 @@ pub fn shortcut_hint(command: &CommandInvocation) -> Option<String> {
     default_shortcut_registry().shortcut_hint(command)
 }
 
+/// 基于默认注册表构建默认键位映射。
 pub fn default_keymap() -> Keymap {
     Keymap::from_shortcut_registry(default_shortcut_registry())
 }

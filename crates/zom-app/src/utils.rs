@@ -1,3 +1,5 @@
+//! 应用层通用路径与文本工具函数。
+
 use std::{
     env, fs,
     path::{Path, PathBuf},

@@ -1,3 +1,5 @@
+//! 二维文本坐标 Position 值对象定义。
+
 /// 文本中的逻辑位置，使用 `row` 和 `col` 表示。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Position {

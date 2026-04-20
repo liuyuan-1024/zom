@@ -1,3 +1,5 @@
+//! 主题颜色 token 定义。
+
 //! 极简且和谐的 UI 颜色主题 Tokens (参考现代 IDE 配色)
 
 // --- 容器与表面 (Surfaces & Backgrounds) ---

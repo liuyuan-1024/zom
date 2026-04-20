@@ -1,3 +1,5 @@
+//! 文本区间 Range 值对象与判定逻辑。
+
 use crate::Position;
 
 /// 文本模型中的逻辑范围，采用半开区间语义 `[start, end)`。

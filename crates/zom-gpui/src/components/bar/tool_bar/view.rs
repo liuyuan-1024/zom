@@ -1,3 +1,5 @@
+//! 底部工具栏视图渲染。
+
 //! 底部工具栏视图。
 
 use gpui::{div, prelude::*, px, rgb};

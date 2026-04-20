@@ -1,3 +1,5 @@
+//! Chip tooltip 规格与渲染实现。
+
 //! 胶囊组件共用的 tooltip 语义与视图。
 
 use gpui::{AnyView, App, Context, FontWeight, Window, div, prelude::*, px, rgb};

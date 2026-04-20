@@ -1,3 +1,5 @@
+//! 编辑器领域命令规范声明。
+
 use crate::command::kind::{Buildability, CommandKind, CommandKindSpec};
 use crate::{CommandInvocation, EditorAction};
 

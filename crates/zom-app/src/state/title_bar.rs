@@ -1,3 +1,5 @@
+//! 标题栏状态与图标语义定义。
+
 /// 标题栏使用的图标语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TitleBarIcon {

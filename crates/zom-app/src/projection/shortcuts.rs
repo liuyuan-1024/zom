@@ -1,3 +1,5 @@
+//! 命令到快捷键文案的展示投影。
+
 use zom_core::CommandInvocation;
 
 /// 将命令语义投影为快捷键提示文案（供 UI 展示层消费）。

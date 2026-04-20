@@ -1,3 +1,5 @@
+//! Pane 主体视图渲染与内容展示逻辑。
+
 use gpui::{
     App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement, Render,
     StatefulInteractiveElement, Styled, Window, div, px, rgb,
@@ -12,12 +14,14 @@ use crate::{
 /// 查看器模式下的软换行阈值（按字符数近似）。
 const SOFT_WRAP_MAX_CHARS: usize = 120;
 
+/// 中央编辑窗格视图，负责标签栏与当前内容区渲染。
 pub struct PaneView {
     state: PaneState,
     focus_handle: FocusHandle,
 }
 
 impl PaneView {
+    /// 用初始 Pane 状态构建视图实体。
     pub fn new(state: PaneState, cx: &mut Context<Self>) -> Self {
         Self {
             state,
@@ -46,7 +50,6 @@ impl Render for PaneView {
             .flex()
             .flex_col()
             .flex_1()
-            .h_full()
             .overflow_hidden()
             .bg(rgb(color::COLOR_BG_APP))
             .child(tab_bar::render(&self.state))

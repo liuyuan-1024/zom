@@ -1,3 +1,5 @@
+//! 悬浮层相关命令规范声明。
+
 use crate::command::kind::{
     Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope, types::meta_char,
 };

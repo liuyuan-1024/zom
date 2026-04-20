@@ -1,3 +1,5 @@
+//! 默认快捷键注册表构建逻辑。
+
 use zom_core::command::{CommandShortcut, default_shortcut_bindings};
 
 use crate::{ShortcutBinding, ShortcutBindingSpec, ShortcutRegistry};

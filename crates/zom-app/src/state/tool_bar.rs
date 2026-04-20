@@ -1,3 +1,5 @@
+//! 工具栏状态与图标语义定义。
+
 /// 工具栏展示信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolBarEntry {

@@ -1,3 +1,5 @@
+//! 编辑器领域命令调用载荷定义。
+
 /// 编辑器领域的无参动作语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EditorAction {

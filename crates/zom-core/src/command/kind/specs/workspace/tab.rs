@@ -1,3 +1,5 @@
+//! 标签页相关命令规范声明。
+
 use crate::command::kind::{Buildability, CommandKind, CommandKindSpec};
 use crate::{CommandInvocation, TabAction};
 

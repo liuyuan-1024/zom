@@ -1,3 +1,5 @@
+//! 应用初始状态装配逻辑。
+
 use std::collections::HashSet;
 
 use zom_core::{FocusTarget, PaneId};

@@ -1,3 +1,5 @@
+//! 命令规范目录使用的核心类型定义。
+
 use std::fmt;
 
 use crate::{CommandInvocation, FocusTarget, KeyCode, Keystroke, Modifiers, OverlayTarget};

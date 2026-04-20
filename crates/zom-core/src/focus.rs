@@ -1,3 +1,5 @@
+//! 焦点目标与悬浮层目标语义定义。
+
 /// 当前焦点所在的逻辑区域。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FocusTarget {

@@ -1,3 +1,5 @@
+//! 工作台通用动作命令规范声明。
+
 use crate::command::kind::{
     Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope,
     types::meta_shift_char,

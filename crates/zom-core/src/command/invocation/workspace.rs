@@ -1,3 +1,5 @@
+//! 工作台领域命令调用载荷定义。
+
 use crate::{FocusTarget, OverlayTarget};
 
 /// 标签页动作语义。

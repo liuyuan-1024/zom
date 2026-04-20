@@ -1,4 +1,4 @@
-//! 极简且语义化的尺寸主题 Tokens
+//! 主题尺寸 token 定义。
 
 // --- 间距与网格 (Spacing & Grid) ---
 // 逻辑：以 6px 为基础网格，提供线性递增的间距单位，用于 padding, margin, gap
@@ -29,3 +29,7 @@ pub(crate) const GUTTER_MD: f32 = 40.0; // 中尺寸行号/序号栏宽度
 pub(crate) const WINDOW_WIDTH: f32 = 850.0;
 pub(crate) const WINDOW_HEIGHT: f32 = 950.0;
 pub(crate) const PANEL_WIDTH: f32 = 250.0;
+
+// bar 容器上下各 GAP_1 内边距，主图标高度 ICON_MD。
+// 限制面板最大高度，防止面板的边界超过或重合应用边界，导致无法再次拖拽。
+pub(crate) const BAR_HEIGHT: f32 = ICON_MD + GAP_2;

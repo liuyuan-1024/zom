@@ -1,3 +1,5 @@
+//! 文件树状态与导航行为模型。
+
 use std::{
     fs,
     path::{Path, PathBuf},

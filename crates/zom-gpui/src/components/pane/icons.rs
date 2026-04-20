@@ -1,3 +1,5 @@
+//! Pane 图标规格与渲染辅助。
+
 //! Pane 专属的图标定义与渲染。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
@@ -10,12 +12,14 @@ pub(crate) enum PaneIcon {
     Close,
 }
 
+/// Pane 图标规格：资产路径、文案与快捷键提示。
 pub(super) struct PaneIconSpec {
     pub path: &'static str,
     pub label: &'static str,
     pub shortcut: Option<String>,
 }
 
+/// 根据图标语义返回对应规格。
 pub(super) fn spec(icon: PaneIcon) -> PaneIconSpec {
     match icon {
         PaneIcon::Close => PaneIconSpec {

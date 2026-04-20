@@ -1,3 +1,5 @@
+//! Pane 标签栏渲染与交互元素构造。
+
 use crate::{
     components::{
         chip,

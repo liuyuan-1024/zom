@@ -1,3 +1,5 @@
+//! 快捷键绑定模型与注册表实现。
+
 use zom_core::{
     CommandInvocation, InputResolution, KeyCode, Keystroke,
     command::ShortcutScope as CoreShortcutScope,
@@ -50,6 +52,7 @@ pub struct ShortcutBinding {
 }
 
 impl ShortcutBinding {
+    /// 从声明规范构造运行时绑定条目。
     pub(crate) fn from_spec(
         spec: ShortcutBindingSpec,
         scope: ShortcutScope,

@@ -1,8 +1,11 @@
+//! 跨模块共享的强类型 ID 定义。
+
 use std::fmt;
 
 /// 定义共享 ID 新类型，避免业务层到处传裸 `u64`。
 macro_rules! define_id {
     ($name:ident, $doc:literal) => {
+        /// 强类型 ID 包装，避免业务层直接传递裸 `u64`。
         #[doc = $doc]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub struct $name(pub u64);
