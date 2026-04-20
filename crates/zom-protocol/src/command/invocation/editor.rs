@@ -43,7 +43,10 @@ pub enum EditorInvocation {
     /// 调用一个无参编辑动作。
     Action(EditorAction),
     /// 插入一段动态文本。
-    InsertText { text: String },
+    InsertText {
+        /// 需要插入到光标位置的文本内容。
+        text: String,
+    },
 }
 
 impl EditorInvocation {

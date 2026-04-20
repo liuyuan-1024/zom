@@ -1,4 +1,5 @@
-//! 占位面板的通用渲染函数。TODO: 仅用来填充面板内容，后续删除
+//! 占位面板的通用渲染函数。
+//！TODO: 仅用来填充面板内容，后续删除。
 
 use gpui::{ParentElement, Styled, div, prelude::*, rgb};
 
