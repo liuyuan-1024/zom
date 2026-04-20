@@ -71,9 +71,32 @@ impl TextBuffer {
     }
 }
 
+/// 按编辑器视角拆分文本行，并保留空行。
+pub fn split_lines(text: &str) -> Vec<String> {
+    let mut lines = text
+        .split('\n')
+        .map(|line| line.trim_end_matches('\r').to_string())
+        .collect::<Vec<_>>();
+
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
+    lines
+}
+
+/// 识别文本的换行风格。
+pub fn detect_line_ending(text: &str) -> String {
+    if text.contains("\r\n") {
+        "CRLF".into()
+    } else {
+        "LF".into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::TextBuffer;
+    use super::{TextBuffer, detect_line_ending, split_lines};
     use zom_protocol::Position;
 
     #[test]
@@ -94,5 +117,17 @@ mod tests {
         assert_eq!(buffer.offset_to_position(3), Some(Position::new(1, 0)));
         assert_eq!(buffer.offset_to_position(5), Some(Position::new(1, 2)));
         assert_eq!(buffer.offset_to_position(6), None);
+    }
+
+    #[test]
+    fn split_lines_preserves_blank_lines() {
+        let lines = split_lines("a\n\nb\n");
+        assert_eq!(lines, vec!["a", "", "b", ""]);
+    }
+
+    #[test]
+    fn detect_line_ending_distinguishes_crlf_and_lf() {
+        assert_eq!(detect_line_ending("a\r\nb\r\n"), "CRLF");
+        assert_eq!(detect_line_ending("a\nb\n"), "LF");
     }
 }

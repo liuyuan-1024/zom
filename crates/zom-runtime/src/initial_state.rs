@@ -83,9 +83,11 @@ fn default_visible_panels() -> HashSet<FocusTarget> {
 
 #[cfg(test)]
 mod tests {
+    use zom_text::{detect_line_ending, split_lines};
+
     use zom_protocol::FocusTarget;
 
-    use crate::{state::DesktopAppState, utils};
+    use crate::state::DesktopAppState;
 
     #[test]
     fn initial_state_has_buffers_and_file_tree_content() {
@@ -109,14 +111,14 @@ mod tests {
 
     #[test]
     fn split_lines_preserves_blank_lines() {
-        let lines = utils::split_lines("a\n\nb\n");
+        let lines = split_lines("a\n\nb\n");
 
         assert_eq!(lines, vec!["a", "", "b", ""]);
     }
 
     #[test]
     fn detect_line_ending_distinguishes_crlf_and_lf() {
-        assert_eq!(utils::detect_line_ending("a\r\nb\r\n"), "CRLF");
-        assert_eq!(utils::detect_line_ending("a\nb\n"), "LF");
+        assert_eq!(detect_line_ending("a\r\nb\r\n"), "CRLF");
+        assert_eq!(detect_line_ending("a\nb\n"), "LF");
     }
 }

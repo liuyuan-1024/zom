@@ -4,7 +4,7 @@ use std::{
     env, fs,
     path::{Path, PathBuf},
 };
-use zom_text::TextBuffer;
+use zom_text::{detect_line_ending, split_lines};
 
 /// 生成工作区文件的绝对路径。
 pub fn workspace_file_absolute_path(workspace_root: &Path, relative_path: &str) -> PathBuf {
@@ -49,33 +49,9 @@ pub fn load_buffer_preview(path: &PathBuf) -> (Vec<String>, String, String) {
         );
     };
 
-    let buffer = TextBuffer::from_text(text.clone());
-    let lines = split_lines(buffer.as_str());
+    let lines = split_lines(&text);
     let line_ending = detect_line_ending(&text);
     let cursor = format!("{}:{}", lines.len().max(1), 1);
 
     (lines, line_ending, cursor)
-}
-
-/// 按编辑器视角拆分文本行，并保留空行。
-pub fn split_lines(text: &str) -> Vec<String> {
-    let mut lines = text
-        .split('\n')
-        .map(|line| line.trim_end_matches('\r').to_string())
-        .collect::<Vec<_>>();
-
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-
-    lines
-}
-
-/// 识别文本的换行风格。
-pub fn detect_line_ending(text: &str) -> String {
-    if text.contains("\r\n") {
-        "CRLF".into()
-    } else {
-        "LF".into()
-    }
 }
