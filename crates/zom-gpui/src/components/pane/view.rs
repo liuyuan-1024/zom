@@ -61,12 +61,13 @@ impl PaneView {
     /// 渲染当前活动标签的内容（编辑区）
     fn render_active_content(&self) -> impl IntoElement {
         if let Some(active_tab) = self.state.active_tab() {
+            let buffer_lines = active_tab.buffer_lines();
             return div()
                 .flex()
                 .flex_col()
                 .flex_1()
                 .overflow_hidden()
-                .child(self.render_viewer_content(&active_tab.buffer_lines))
+                .child(self.render_viewer_content(buffer_lines))
                 .into_any_element();
         }
 
@@ -81,7 +82,7 @@ impl PaneView {
     }
 
     /// 渲染实际的文件内容查看器
-    fn render_viewer_content(&self, buffer_lines: &[String]) -> impl IntoElement + '_ {
+    fn render_viewer_content(&self, buffer_lines: Vec<String>) -> impl IntoElement + '_ {
         let line_elements = buffer_lines
             .iter()
             .enumerate()

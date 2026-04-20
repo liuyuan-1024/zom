@@ -7150,6 +7150,9 @@ dependencies = [
 [[package]]
 name = "zom-editor"
 version = "0.1.0"
+dependencies = [
+ "zom-text",
+]
 
 [[package]]
 name = "zom-gpui"

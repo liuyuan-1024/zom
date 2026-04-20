@@ -1,6 +1,7 @@
 //! 编辑窗格与标签页状态模型。
 
 use zom_protocol::{BufferId, PaneId};
+use zom_editor::EditorBuffer;
 
 /// 窗格模型（带有标签页和具体内容展示区）
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +25,13 @@ pub struct TabState {
     pub title: String,
     /// 工作区相对路径，用于标识该标签页绑定的文件。
     pub relative_path: String,
-    /// 已加载的文本行数据，用于 Pane 内容区直接渲染。
-    pub buffer_lines: Vec<String>,
+    /// 编辑器缓冲区。
+    pub buffer: EditorBuffer,
+}
+
+impl TabState {
+    /// 返回用于查看器渲染的文本行数据。
+    pub fn buffer_lines(&self) -> Vec<String> {
+        self.buffer.lines()
+    }
 }

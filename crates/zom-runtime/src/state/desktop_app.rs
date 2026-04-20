@@ -279,7 +279,7 @@ impl DesktopAppState {
     /// 在当前 Pane 打开文件：已打开则切换并刷新内容，未打开则新增标签页。
     fn open_file_in_pane(&mut self, relative_path: &str) {
         let absolute_path = utils::workspace_file_absolute_path(&self.project_root, relative_path);
-        let (buffer_lines, line_ending, cursor) = utils::load_buffer_preview(&absolute_path);
+        let (buffer, line_ending, cursor) = utils::load_buffer_preview(&absolute_path);
 
         self.tool_bar.cursor = cursor;
         self.tool_bar.line_ending = line_ending;
@@ -291,7 +291,7 @@ impl DesktopAppState {
             .position(|tab| tab.relative_path == relative_path)
         {
             if let Some(existing_tab) = self.pane.tabs.get_mut(tab_index) {
-                existing_tab.buffer_lines = buffer_lines;
+                existing_tab.buffer = buffer;
             }
             self.pane.active_tab_index = Some(tab_index);
             return;
@@ -310,7 +310,7 @@ impl DesktopAppState {
             buffer_id: BufferId::new(next_buffer_id),
             title: utils::file_name_from_path(relative_path),
             relative_path: relative_path.to_string(),
-            buffer_lines,
+            buffer,
         });
         self.pane.active_tab_index = Some(self.pane.tabs.len() - 1);
     }
@@ -351,7 +351,7 @@ mod tests {
         assert_eq!(state.pane.tabs.len(), before_len + 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
         assert_eq!(active_tab.relative_path, "crates/zom-runtime/src/lib.rs");
-        assert!(!active_tab.buffer_lines.is_empty());
+        assert!(!active_tab.buffer_lines().is_empty());
         assert_eq!(state.focused_target, FocusTarget::Editor);
         assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
     }
@@ -668,7 +668,7 @@ mod tests {
 
         let active_tab = state.pane.active_tab().expect("active tab should exist");
         assert_eq!(active_tab.relative_path, "src/main.rs");
-        assert_eq!(active_tab.buffer_lines[0], "fn main() {}");
+        assert_eq!(active_tab.buffer_lines()[0], "fn main() {}");
 
         remove_temp_workspace(workspace);
     }
@@ -692,7 +692,7 @@ mod tests {
             buffer_id: zom_protocol::BufferId::new(999),
             title: "old".into(),
             relative_path: relative_path.into(),
-            buffer_lines: vec!["old".into()],
+            buffer: zom_editor::EditorBuffer::from_text("old"),
         }
     }
 }

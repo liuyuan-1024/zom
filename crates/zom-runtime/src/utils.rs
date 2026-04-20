@@ -4,7 +4,7 @@ use std::{
     env, fs,
     path::{Path, PathBuf},
 };
-use zom_text::{detect_line_ending, split_lines};
+use zom_editor::EditorBuffer;
 
 /// 生成工作区文件的绝对路径。
 pub fn workspace_file_absolute_path(workspace_root: &Path, relative_path: &str) -> PathBuf {
@@ -40,18 +40,14 @@ pub fn file_name_from_path(relative_path: &str) -> String {
 }
 
 /// 读取真实文件内容，并转换成界面需要的预览数据。
-pub fn load_buffer_preview(path: &PathBuf) -> (Vec<String>, String, String) {
-    let Ok(text) = fs::read_to_string(path) else {
-        return (
-            vec![format!("// failed to read {}", path.display())],
-            "LF".into(),
-            "1:1".into(),
-        );
+pub fn load_buffer_preview(path: &PathBuf) -> (EditorBuffer, String, String) {
+    let buffer = match fs::read_to_string(path) {
+        Ok(text) => EditorBuffer::from_text(text),
+        Err(_) => EditorBuffer::from_text(format!("// failed to read {}", path.display())),
     };
 
-    let lines = split_lines(&text);
-    let line_ending = detect_line_ending(&text);
-    let cursor = format!("{}:{}", lines.len().max(1), 1);
+    let line_ending = buffer.line_ending();
+    let cursor = format!("{}:{}", buffer.line_count(), 1);
 
-    (lines, line_ending, cursor)
+    (buffer, line_ending, cursor)
 }
