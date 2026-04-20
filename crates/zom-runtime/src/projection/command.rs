@@ -33,7 +33,8 @@ mod tests {
 
     #[test]
     fn focus_panel_command_projects_to_target_and_dock() {
-        let command = CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::TerminalPanel));
+        let command =
+            CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::TerminalPanel));
         assert_eq!(
             panel_target_for_command(&command),
             Some(FocusTarget::TerminalPanel)

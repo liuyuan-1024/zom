@@ -1,9 +1,9 @@
 //! 工具栏图标规格与渲染。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
+use zom_protocol::{CommandInvocation, FocusTarget, WorkspaceAction};
 use zom_runtime::projection::shortcut_hint;
 use zom_runtime::state::ToolBarEntry;
-use zom_protocol::{CommandInvocation, FocusTarget, WorkspaceAction};
 
 /// 底部工具栏图标的展示规格。
 pub(super) struct ToolBarIconSpec {
@@ -53,11 +53,7 @@ pub(super) fn spec(item: &ToolBarEntry) -> ToolBarIconSpec {
 }
 
 /// 渲染工具栏中的单色 SVG 图标。
-pub(super) fn render(
-    item: &ToolBarEntry,
-    size: f32,
-    color: impl Into<Hsla>,
-) -> impl IntoElement {
+pub(super) fn render(item: &ToolBarEntry, size: f32, color: impl Into<Hsla>) -> impl IntoElement {
     let color = color.into();
     let spec = spec(item);
 

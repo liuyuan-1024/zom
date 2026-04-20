@@ -1,9 +1,9 @@
 //! 标题栏图标规格与渲染辅助。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
+use zom_protocol::{CommandInvocation, OverlayTarget, WorkspaceAction};
 use zom_runtime::projection::shortcut_hint;
 use zom_runtime::state::TitleBarAction;
-use zom_protocol::{CommandInvocation, OverlayTarget, WorkspaceAction};
 
 /// 标题栏图标的展示规格。
 pub(super) struct TitleBarIconSpec {

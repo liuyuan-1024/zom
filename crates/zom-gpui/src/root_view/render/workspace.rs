@@ -3,8 +3,8 @@
 use gpui::{
     Context, Div, InteractiveElement, ParentElement, Stateful, Styled, Window, div, px, rgb,
 };
-use zom_runtime::state::PanelDock;
 use zom_protocol::FocusTarget;
+use zom_runtime::state::PanelDock;
 
 use super::super::{DEFAULT_BOTTOM_PANEL_HEIGHT, ZomRootView, dock_gap, splitter_hit_size};
 use crate::theme::{color, size};

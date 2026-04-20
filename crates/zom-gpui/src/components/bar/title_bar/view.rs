@@ -1,9 +1,9 @@
 //! 标题栏视图渲染。
 
 use gpui::{App, ClickEvent, Window, div, prelude::*, px, rgb};
+use zom_protocol::{CommandInvocation, WorkspaceAction};
 use zom_runtime::projection::shortcut_hint;
 use zom_runtime::state::{DesktopAppState, TitleBarAction};
-use zom_protocol::{CommandInvocation, WorkspaceAction};
 
 use super::super::bar;
 use super::icons;

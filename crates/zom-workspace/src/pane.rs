@@ -1,7 +1,7 @@
 //! 编辑窗格与标签页状态模型。
 
-use zom_protocol::{BufferId, PaneId};
 use zom_editor::EditorBuffer;
+use zom_protocol::{BufferId, PaneId};
 
 /// 窗格模型（带有标签页和具体内容展示区）
 #[derive(Debug, Clone, PartialEq, Eq)]

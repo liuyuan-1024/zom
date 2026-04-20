@@ -2,10 +2,7 @@
 
 use std::collections::HashSet;
 
-use zom_protocol::{
-    FocusTarget, PaneId, Position, WorkspaceAction,
-    command::CommandInvocation,
-};
+use zom_protocol::{FocusTarget, PaneId, Position, WorkspaceAction, command::CommandInvocation};
 
 use crate::{
     state::{
