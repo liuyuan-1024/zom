@@ -10,5 +10,5 @@ pub use desktop_app::{DesktopAppState, DesktopUiAction};
 pub use file_tree::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 pub use pane::{PaneState, TabState};
 pub use panel_layout::{PanelDock, dock_targets, panel_dock};
-pub use title_bar::{TitleBarIcon, TitleBarState};
-pub use tool_bar::{ToolBarEntry, ToolBarIcon, ToolBarState};
+pub use title_bar::{TitleBarAction, TitleBarState};
+pub use tool_bar::{ToolBarEntry, ToolBarState};

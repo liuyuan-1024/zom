@@ -2,7 +2,7 @@
 
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_runtime::projection::shortcut_hint;
-use zom_runtime::state::TitleBarIcon;
+use zom_runtime::state::TitleBarAction;
 use zom_protocol::{CommandInvocation, OverlayTarget, WorkspaceAction};
 
 /// 标题栏图标的展示规格。
@@ -16,22 +16,29 @@ pub(super) struct TitleBarIconSpec {
 }
 
 /// 将应用层语义映射为标题栏自身维护的展示规格。
-pub(super) fn spec(icon: TitleBarIcon) -> TitleBarIconSpec {
-    match icon {
-        TitleBarIcon::Settings => TitleBarIconSpec {
-            path: "icons/title_bar/title_settings.svg",
-            label: "Settings",
-            shortcut: shortcut_hint(&CommandInvocation::from(WorkspaceAction::FocusOverlay(
-                OverlayTarget::Settings,
-            ))),
-        },
+pub(super) fn spec(action: &TitleBarAction) -> TitleBarIconSpec {
+    let (path, label) = match &action.command {
+        CommandInvocation::Workspace(WorkspaceAction::FocusOverlay(OverlayTarget::Settings)) => {
+            ("icons/title_bar/title_settings.svg", "Settings")
+        }
+        _ => ("icons/keyboard.svg", "Action"),
+    };
+
+    TitleBarIconSpec {
+        path,
+        label,
+        shortcut: shortcut_hint(&action.command),
     }
 }
 
 /// 渲染标题栏中的单色 SVG 图标。
-pub(super) fn render(icon: TitleBarIcon, size: f32, color: impl Into<Hsla>) -> impl IntoElement {
+pub(super) fn render(
+    action: &TitleBarAction,
+    size: f32,
+    color: impl Into<Hsla>,
+) -> impl IntoElement {
     let color = color.into();
-    let spec = spec(icon);
+    let spec = spec(action);
 
     div()
         .size(px(size))

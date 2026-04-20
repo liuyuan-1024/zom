@@ -2,7 +2,7 @@
 
 use gpui::{App, ClickEvent, Window, div, prelude::*, px, rgb};
 use zom_runtime::projection::shortcut_hint;
-use zom_runtime::state::{DesktopAppState, TitleBarIcon};
+use zom_runtime::state::{DesktopAppState, TitleBarAction};
 use zom_protocol::{CommandInvocation, WorkspaceAction};
 
 use super::super::bar;
@@ -43,24 +43,24 @@ pub(crate) fn render(
             group().children(
                 state
                     .title_bar
-                    .right_icons
+                    .right_actions
                     .iter()
                     .enumerate()
-                    .map(|(index, &icon)| render_settings_button(index, icon)),
+                    .map(|(index, action)| render_action_button(index, action)),
             ),
         )
 }
 
 /// 渲染标题栏右侧系统设置按钮。
-fn render_settings_button(index: usize, icon: TitleBarIcon) -> impl IntoElement {
-    let spec = icons::spec(icon);
+fn render_action_button(index: usize, action: &TitleBarAction) -> impl IntoElement {
+    let spec = icons::spec(action);
 
     chip::interactive_icon_chip(
         ("title-bar-item", index),
         chip::TooltipSpec::new(spec.label, spec.shortcut),
     )
     .child(icons::render(
-        icon,
+        action,
         size::ICON_MD,
         rgb(color::COLOR_FG_MUTED),
     ))

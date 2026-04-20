@@ -2,8 +2,8 @@
 
 use gpui::{div, prelude::*, px, rgb};
 use zom_runtime::{
-    projection::cursor_text,
-    state::{DesktopAppState, PanelDock, ToolBarEntry, panel_dock},
+    projection::{command_dock, command_is_active, cursor_text},
+    state::{DesktopAppState, PanelDock, ToolBarEntry},
 };
 
 use super::icons;
@@ -70,10 +70,8 @@ fn render_tool(
     index: usize,
     item: &ToolBarEntry,
 ) -> impl IntoElement {
-    let spec = icons::spec(item.icon);
-    let is_active = icons::panel_target(item.icon)
-        .map(|target| state.is_panel_visible(target))
-        .unwrap_or(false);
+    let spec = icons::spec(item);
+    let is_active = command_is_active(state, &item.command);
     let icon_color = if is_active {
         rgb(color::COLOR_FG_PRIMARY)
     } else {
@@ -84,7 +82,7 @@ fn render_tool(
         (group, index),
         chip::TooltipSpec::new(spec.label, spec.shortcut),
     )
-    .child(icons::render(item.icon, size::ICON_MD, icon_color))
+    .child(icons::render(item, size::ICON_MD, icon_color))
 }
 
 /// 渲染工具栏中的与当前活动文本有关的工具。
@@ -136,5 +134,5 @@ fn render_section_divider(id: &'static str) -> impl IntoElement {
 }
 
 fn right_tool_dock(item: &ToolBarEntry) -> Option<PanelDock> {
-    icons::panel_target(item.icon).and_then(panel_dock)
+    command_dock(&item.command)
 }

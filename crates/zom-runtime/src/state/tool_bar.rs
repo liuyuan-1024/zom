@@ -1,33 +1,13 @@
 //! 工具栏状态与图标语义定义。
 
 use zom_protocol::Position;
+use zom_protocol::CommandInvocation;
 
 /// 工具栏展示信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolBarEntry {
-    /// 图标语义。
-    pub icon: ToolBarIcon,
-}
-
-/// 工具栏使用的图标语义。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ToolBarIcon {
-    /// 文件树
-    FileTree,
-    /// Git
-    GitBranch,
-    /// 大纲
-    Outline,
-    /// 全局搜索
-    ProjectSearch,
-    /// 语言服务器
-    LanguageServers,
-    /// 终端
-    Terminal,
-    /// 调试
-    Debug,
-    /// 通知
-    Notification,
+    /// 该入口对应的命令语义。
+    pub command: CommandInvocation,
 }
 
 /// 工具栏展示信息。

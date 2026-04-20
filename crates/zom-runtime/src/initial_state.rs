@@ -2,12 +2,15 @@
 
 use std::collections::HashSet;
 
-use zom_protocol::{FocusTarget, PaneId, Position};
+use zom_protocol::{
+    FocusTarget, PaneId, Position, WorkspaceAction,
+    command::CommandInvocation,
+};
 
 use crate::{
     state::{
-        DesktopAppState, FileTreeState, PaneState, TitleBarIcon, TitleBarState, ToolBarEntry,
-        ToolBarIcon, ToolBarState,
+        DesktopAppState, FileTreeState, PaneState, TitleBarAction, TitleBarState, ToolBarEntry,
+        ToolBarState,
     },
     workspace_paths,
 };
@@ -21,24 +24,38 @@ impl DesktopAppState {
 
         Self {
             title_bar: TitleBarState {
-                right_icons: vec![TitleBarIcon::Settings],
+                right_actions: vec![TitleBarAction {
+                    command: CommandInvocation::from(WorkspaceAction::FocusOverlay(
+                        zom_protocol::OverlayTarget::Settings,
+                    )),
+                }],
             },
             tool_bar: ToolBarState {
                 left_tools: vec![
                     ToolBarEntry {
-                        icon: ToolBarIcon::FileTree,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::FileTreePanel,
+                        )),
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::GitBranch,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::GitPanel,
+                        )),
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::Outline,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::OutlinePanel,
+                        )),
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::ProjectSearch,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::ProjectSearchPanel,
+                        )),
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::LanguageServers,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::LanguageServersPanel,
+                        )),
                     },
                 ],
                 cursor: Position::zero(),
@@ -47,13 +64,19 @@ impl DesktopAppState {
                 encoding: "UTF-8".into(),
                 right_tools: vec![
                     ToolBarEntry {
-                        icon: ToolBarIcon::Terminal,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::TerminalPanel,
+                        )),
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::Debug,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::DebugPanel,
+                        )),
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::Notification,
+                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
+                            FocusTarget::NotificationPanel,
+                        )),
                     },
                 ],
             },
