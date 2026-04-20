@@ -1,20 +1,18 @@
-//! 文件树组件视图。
+//! 文件树面板视图与状态同步逻辑。
 
 use gpui::{
-    AnyElement, App, Context, CursorStyle, FocusHandle, Focusable, InteractiveElement, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Render, ScrollHandle,
-    StatefulInteractiveElement, Styled, Window, div, prelude::*, px, rgb,
+    AnyElement, App, Context, FocusHandle, Focusable, InteractiveElement, ParentElement, Render,
+    ScrollHandle, Styled, Window, div, prelude::*, px, rgb,
 };
 use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
 use super::row;
+use crate::components::panel::shell;
 use crate::theme::{color, size};
 
 /// 文件树面板视图。
 pub struct FileTreePanel {
     state: FileTreeState,
-    width: f32,
-    is_dragging: bool,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
     pending_scroll_to_selection: bool,
@@ -25,8 +23,6 @@ impl FileTreePanel {
     pub fn new(state: FileTreeState, cx: &mut Context<Self>) -> Self {
         Self {
             state,
-            width: size::PANEL_WIDTH,
-            is_dragging: false,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
             pending_scroll_to_selection: true,
@@ -54,19 +50,6 @@ impl Focusable for FileTreePanel {
 impl Render for FileTreePanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let panel_has_focus = self.focus_handle.contains_focused(window, cx);
-
-        // 基础容器
-        let mut container = div()
-            .id("file-tree-container")
-            .relative()
-            .w(px(self.width))
-            .h_full()
-            .flex()
-            .flex_row()
-            .track_focus(&self.focus_handle)
-            .tab_index(0);
-
-        // 左侧实际文件树内容
         let visible_rows = collect_visible_rows(&self.state.roots);
         let selected_row_index = visible_rows.iter().position(|row| row.node.is_selected);
 
@@ -79,15 +62,12 @@ impl Render for FileTreePanel {
 
         let tree_content = div()
             .id("file-tree-scroll")
-            .h_full()
-            .flex_1()
+            .size_full()
             .flex()
             .flex_col()
             .overflow_scroll()
             .track_scroll(&self.scroll_handle)
             .bg(rgb(color::COLOR_BG_PANEL))
-            .border_r_1()
-            .border_color(rgb(color::COLOR_BORDER))
             .px(px(size::GAP_1))
             .children(
                 visible_rows
@@ -95,57 +75,7 @@ impl Render for FileTreePanel {
                     .map(|row| render_visible_row(row, panel_has_focus)),
             );
 
-        // 右侧分割线：绝对定位，悬浮于边框之上，不占任何宽度
-        let splitter = div()
-            .id("splitter")
-            .absolute()
-            .right(px(-(size::GAP_0_5)))
-            .w(px(size::GAP_1))
-            .h_full()
-            .cursor(CursorStyle::ResizeLeftRight)
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
-                    this.is_dragging = true;
-                    cx.notify();
-                }),
-            );
-
-        // 装配内容
-        container = container.child(tree_content).child(splitter);
-
-        // 拖拽时的全局事件捕获网
-        if self.is_dragging {
-            container = container.child(
-                div()
-                    .absolute()
-                    .top(px(-size::DRAG_CAPTURE_OFFSET))
-                    .left(px(-size::DRAG_CAPTURE_OFFSET))
-                    .w(px(size::DRAG_CAPTURE_SPAN))
-                    .h(px(size::DRAG_CAPTURE_SPAN))
-                    .cursor(CursorStyle::ResizeLeftRight)
-                    .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
-                        let mut new_width: f32 = event.position.x.into();
-                        if new_width < size::PANEL_WIDTH_MIN {
-                            new_width = size::PANEL_WIDTH_MIN;
-                        }
-                        if new_width > size::PANEL_WIDTH_MAX {
-                            new_width = size::PANEL_WIDTH_MAX;
-                        }
-                        this.width = new_width;
-                        cx.notify();
-                    }))
-                    .on_mouse_up(
-                        MouseButton::Left,
-                        cx.listener(|this, _event: &MouseUpEvent, _window, cx| {
-                            this.is_dragging = false;
-                            cx.notify();
-                        }),
-                    ),
-            );
-        }
-
-        container
+        shell::render_shell("file-tree-container", &self.focus_handle, tree_content)
     }
 }
 
