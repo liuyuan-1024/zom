@@ -3,7 +3,7 @@
 use crate::FocusTarget;
 use crate::command::kind::{
     Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope,
-    types::{ctrl_char, meta_char, meta_shift_char},
+    types::{meta_char, meta_shift_char},
 };
 use crate::{CommandInvocation, WorkspaceAction};
 
@@ -21,8 +21,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::Palette),
         "workspace.focus_panel.palette",
-        "Focus Command Palette",
-        "Move focus to the command palette.",
+        "聚焦命令调色板",
+        "显示并聚焦命令调色板",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::Palette))
         }),
@@ -78,7 +78,7 @@ pub const SPECS: &[CommandKindSpec] = &[
                 FocusTarget::LanguageServersPanel,
             ))
         }),
-        &[],
+        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('l')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::TerminalPanel),
@@ -88,7 +88,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::TerminalPanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, ctrl_char('`')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, meta_char('.')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::DebugPanel),
