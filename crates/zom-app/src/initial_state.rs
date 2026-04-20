@@ -35,7 +35,7 @@ impl DesktopAppState {
                         icon: ToolBarIcon::ProjectSearch,
                     },
                     ToolBarEntry {
-                        icon: ToolBarIcon::LSP,
+                        icon: ToolBarIcon::LanguageServers,
                     },
                 ],
                 cursor: "1:1".into(),
