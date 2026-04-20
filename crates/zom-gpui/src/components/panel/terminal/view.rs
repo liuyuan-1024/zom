@@ -1,7 +1,5 @@
 //! 终端面板视图。
 
-//! 终端面板视图。
-
 use gpui::{App, Context, FocusHandle, Focusable, Render, Window};
 
 use crate::components::panel::{placeholder, shell};

@@ -1,7 +1,5 @@
 //! 通知面板视图。
 
-//! 通知面板视图。
-
 use gpui::{App, Context, FocusHandle, Focusable, Render, Window};
 
 use crate::components::panel::{placeholder, shell};

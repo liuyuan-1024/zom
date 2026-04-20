@@ -1,7 +1,5 @@
 //! 设置面板视图渲染。
 
-//! 设置悬浮层视图。
-
 use gpui::{FontWeight, InteractiveElement, IntoElement, ParentElement, Styled, div, px, rgb};
 
 use crate::theme::{color, size};

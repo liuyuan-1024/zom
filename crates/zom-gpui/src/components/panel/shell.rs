@@ -1,6 +1,5 @@
 //! 面板壳层容器渲染。
-
-//! 面板通用壳层，仅负责内容容器能力。
+//! 仅负责内容容器能力。
 
 use gpui::{FocusHandle, InteractiveElement, ParentElement, Styled, div, prelude::*, rgb};
 

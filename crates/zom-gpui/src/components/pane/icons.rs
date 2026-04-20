@@ -1,7 +1,5 @@
 //! Pane 图标规格与渲染辅助。
 
-//! Pane 专属的图标定义与渲染。
-
 use gpui::{Hsla, div, prelude::*, px, svg};
 use zom_app::projection::shortcut_hint;
 use zom_core::{CommandInvocation, WorkspaceAction};

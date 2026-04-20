@@ -1,7 +1,5 @@
 //! UI 组件总入口与聚合导出。
 
-//! UI 组件模块入口。
-
 pub(crate) mod bar;
 pub(crate) mod chip;
 pub(crate) mod overlay;

@@ -1,7 +1,5 @@
 //! 标题栏视图渲染。
 
-//! 顶部标题栏视图。
-
 use gpui::{App, ClickEvent, Window, div, prelude::*, px, rgb};
 use zom_app::projection::shortcut_hint;
 use zom_app::state::{DesktopAppState, TitleBarIcon};

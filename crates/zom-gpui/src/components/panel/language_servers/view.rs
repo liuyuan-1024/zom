@@ -1,5 +1,3 @@
-//! Language Servers 面板视图。
-
 //! 语言服务器面板视图。
 
 use gpui::{App, Context, FocusHandle, Focusable, Render, Window};

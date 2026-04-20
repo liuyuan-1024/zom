@@ -1,7 +1,5 @@
 //! 文件树行渲染与视觉状态规则。
 
-//! 文件树单行节点视图。
-
 use gpui::{AnyElement, div, prelude::*, px, rgb, svg, transparent_black};
 use zom_app::state::{FileTreeNode, FileTreeNodeKind};
 

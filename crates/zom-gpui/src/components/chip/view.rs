@@ -1,7 +1,5 @@
 //! Chip 组件视图构造与交互封装。
 
-//! 胶囊组件视图构造器。
-
 use gpui::{CursorStyle, Div, ElementId, Stateful, StatefulInteractiveElement, div, prelude::*};
 
 use super::{TooltipSpec, tooltip::tooltip_view};

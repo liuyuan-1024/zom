@@ -1,7 +1,5 @@
 //! Debug 面板视图。
 
-//! 调试面板视图。
-
 use gpui::{App, Context, FocusHandle, Focusable, Render, Window};
 
 use crate::components::panel::{placeholder, shell};

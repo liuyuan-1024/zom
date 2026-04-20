@@ -1,5 +1,3 @@
-//! Project Search 面板视图。
-
 //! 项目搜索面板视图。
 
 use gpui::{App, Context, FocusHandle, Focusable, Render, Window};
