@@ -1,5 +1,7 @@
 //! 工具栏状态与图标语义定义。
 
+use zom_protocol::Position;
+
 /// 工具栏展示信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolBarEntry {
@@ -33,8 +35,8 @@ pub enum ToolBarIcon {
 pub struct ToolBarState {
     /// 左侧工具入口。
     pub left_tools: Vec<ToolBarEntry>,
-    /// 光标位置文本。
-    pub cursor: String,
+    /// 光标逻辑位置（零基行列）。
+    pub cursor: Position,
     /// 当前文本语言类型。
     pub language: String,
     /// 当前文件换行符格式。

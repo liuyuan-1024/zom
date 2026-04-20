@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use zom_protocol::input::resolve_default;
 use zom_protocol::{
-    BufferId, CommandInvocation, FocusTarget, InputContext, InputResolution, Keystroke,
+    BufferId, CommandInvocation, FocusTarget, InputContext, InputResolution, Keystroke, Position,
     OverlayTarget,
     command::{FileTreeAction, TabAction, WorkspaceAction},
 };
@@ -63,7 +63,7 @@ impl DesktopAppState {
         // 旧项目打开的标签页路径不再可信，切换项目时统一清空。
         self.pane.tabs.clear();
         self.pane.active_tab_index = None;
-        self.tool_bar.cursor = "1:1".into();
+        self.tool_bar.cursor = Position::zero();
     }
 
     /// 确保文件树存在初始选中项（用于首次获取键盘焦点前）。

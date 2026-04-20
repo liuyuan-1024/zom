@@ -1,7 +1,10 @@
 //! 底部工具栏视图渲染。
 
 use gpui::{div, prelude::*, px, rgb};
-use zom_runtime::state::{DesktopAppState, PanelDock, ToolBarEntry, panel_dock};
+use zom_runtime::{
+    projection::cursor_text,
+    state::{DesktopAppState, PanelDock, ToolBarEntry, panel_dock},
+};
 
 use super::icons;
 use crate::components::bar::{bar, group};
@@ -91,12 +94,10 @@ fn render_value(id: &'static str, value: &str, tooltip: &str) -> impl IntoElemen
 }
 
 fn render_active_file_status(state: &DesktopAppState) -> impl IntoElement {
+    let cursor = cursor_text(state.tool_bar.cursor);
+
     group()
-        .child(render_value(
-            "tb-cursor",
-            &state.tool_bar.cursor,
-            "跳转到行:列",
-        ))
+        .child(render_value("tb-cursor", &cursor, "跳转到行:列"))
         .child(render_value(
             "tb-language",
             &state.tool_bar.language,

@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use zom_protocol::{FocusTarget, PaneId};
+use zom_protocol::{FocusTarget, PaneId, Position};
 
 use crate::{
     state::{
@@ -40,7 +40,7 @@ impl DesktopAppState {
                         icon: ToolBarIcon::LanguageServers,
                     },
                 ],
-                cursor: "1:1".into(),
+                cursor: Position::zero(),
                 language: "Rust".into(),
                 line_ending: "LF".into(),
                 encoding: "UTF-8".into(),
