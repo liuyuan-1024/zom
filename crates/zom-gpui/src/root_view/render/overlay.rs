@@ -4,7 +4,7 @@ use gpui::{
     Context, Div, InteractiveElement, MouseButton, MouseDownEvent, ParentElement, Stateful, Styled,
     div, px, rgb,
 };
-use zom_core::{CommandInvocation, WorkspaceAction};
+use zom_protocol::{CommandInvocation, WorkspaceAction};
 
 use super::super::ZomRootView;
 use crate::{components::settings_overlay, theme::color};

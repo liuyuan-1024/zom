@@ -4,7 +4,7 @@ use crate::{CommandInvocation, command::ShortcutScope as CoreShortcutScope};
 
 use super::{InputResolution, KeyCode, Keystroke};
 
-/// 快捷键作用域（源自 `zom-core::command::ShortcutScope`）。
+/// 快捷键作用域（源自 `zom-protocol::command::ShortcutScope`）。
 pub type ShortcutScope = CoreShortcutScope;
 
 /// 快捷键绑定契约（不含运行时解析结果）。

@@ -2,12 +2,12 @@
 resolver = "2"
 
 members = [
-    "crates/zom-core",
+    "crates/zom-protocol",
     "crates/zom-text",
     "crates/zom-editor",
     "crates/zom-workspace",
     "crates/zom-gpui",
-    "crates/zom-app",
+    "crates/zom-runtime",
     "apps/zom-desktop",
 ]
 
@@ -19,14 +19,14 @@ default-members = [
 # 统一依赖版本（非常重要，避免版本漂移）
 [workspace.dependencies]
 # ===== 核心层（最底层）=====
-zom-core = { path = "crates/zom-core" }
+zom-protocol = { path = "crates/zom-protocol" }
 # ===== 文本层 =====
 zom-text = { path = "crates/zom-text" }
 # ===== 领域层 =====
 zom-editor = { path = "crates/zom-editor" }
 zom-workspace = { path = "crates/zom-workspace" }
 # ===== 应用层 =====
-zom-app = { path = "crates/zom-app" }
+zom-runtime = { path = "crates/zom-runtime" }
 # ===== UI 适配层 =====
 zom-gpui = { path = "crates/zom-gpui" }
 # ===== 第三方依赖 =====

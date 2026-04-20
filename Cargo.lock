@@ -7141,18 +7141,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
 [[package]]
-name = "zom-app"
-version = "0.1.0"
-dependencies = [
- "zom-core",
- "zom-text",
-]
-
-[[package]]
-name = "zom-core"
-version = "0.1.0"
-
-[[package]]
 name = "zom-desktop"
 version = "0.1.0"
 dependencies = [
@@ -7168,15 +7156,27 @@ name = "zom-gpui"
 version = "0.1.0"
 dependencies = [
  "gpui",
- "zom-app",
- "zom-core",
+ "zom-protocol",
+ "zom-runtime",
+]
+
+[[package]]
+name = "zom-protocol"
+version = "0.1.0"
+
+[[package]]
+name = "zom-runtime"
+version = "0.1.0"
+dependencies = [
+ "zom-protocol",
+ "zom-text",
 ]
 
 [[package]]
 name = "zom-text"
 version = "0.1.0"
 dependencies = [
- "zom-core",
+ "zom-protocol",
 ]
 
 [[package]]

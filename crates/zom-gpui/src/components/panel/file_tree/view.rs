@@ -4,7 +4,7 @@ use gpui::{
     AnyElement, App, Context, FocusHandle, Focusable, InteractiveElement, ParentElement, Render,
     ScrollHandle, Styled, Window, div, prelude::*, px, rgb,
 };
-use zom_app::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
+use zom_runtime::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
 use super::row;
 use crate::components::panel::shell;

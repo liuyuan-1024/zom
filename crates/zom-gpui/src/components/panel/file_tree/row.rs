@@ -1,7 +1,7 @@
 //! 文件树行渲染与视觉状态规则。
 
 use gpui::{AnyElement, div, prelude::*, px, rgb, svg, transparent_black};
-use zom_app::state::{FileTreeNode, FileTreeNodeKind};
+use zom_runtime::state::{FileTreeNode, FileTreeNodeKind};
 
 use super::FILE_TREE_INDENT_STEP;
 use crate::theme::{color, size};
@@ -104,7 +104,7 @@ fn render_file_icon() -> impl IntoElement {
 
 #[cfg(test)]
 mod tests {
-    use zom_app::state::{FileTreeNode, FileTreeNodeKind};
+    use zom_runtime::state::{FileTreeNode, FileTreeNodeKind};
 
     use super::{focus_emphasis_visible, row_background_color};
     use crate::theme::color;

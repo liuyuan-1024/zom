@@ -6,8 +6,8 @@ use gpui::{
     App, AppContext, Application, Bounds, Context, Entity, KeyDownEvent, MouseMoveEvent,
     PathPromptOptions, TitlebarOptions, Window, WindowBounds, WindowOptions, px, size,
 };
-use zom_app::state::{DesktopAppState, DesktopUiAction, PanelDock};
-use zom_core::{CommandInvocation, FocusTarget, WorkspaceAction};
+use zom_runtime::state::{DesktopAppState, DesktopUiAction, PanelDock};
+use zom_protocol::{CommandInvocation, FocusTarget, WorkspaceAction};
 
 use crate::{
     assets,

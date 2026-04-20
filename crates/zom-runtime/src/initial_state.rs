@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use zom_core::{FocusTarget, PaneId};
+use zom_protocol::{FocusTarget, PaneId};
 
 use crate::{
     state::{
@@ -83,7 +83,7 @@ fn default_visible_panels() -> HashSet<FocusTarget> {
 
 #[cfg(test)]
 mod tests {
-    use zom_core::FocusTarget;
+    use zom_protocol::FocusTarget;
 
     use crate::{state::DesktopAppState, utils};
 

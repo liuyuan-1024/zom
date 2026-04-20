@@ -8,7 +8,7 @@ use gpui::{
     Context, CursorStyle, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     div, rgb,
 };
-use zom_core::OverlayTarget;
+use zom_protocol::OverlayTarget;
 
 use super::{ActiveDockDrag, ZomRootView};
 use crate::{

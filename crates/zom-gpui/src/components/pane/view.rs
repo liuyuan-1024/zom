@@ -4,7 +4,7 @@ use gpui::{
     App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement, Render,
     StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
-use zom_app::state::PaneState;
+use zom_runtime::state::PaneState;
 
 use crate::{
     components::pane::tab_bar,

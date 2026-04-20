@@ -1,7 +1,7 @@
 //! 底部工具栏视图渲染。
 
 use gpui::{div, prelude::*, px, rgb};
-use zom_app::state::{DesktopAppState, PanelDock, ToolBarEntry, panel_dock};
+use zom_runtime::state::{DesktopAppState, PanelDock, ToolBarEntry, panel_dock};
 
 use super::icons;
 use crate::components::bar::{bar, group};

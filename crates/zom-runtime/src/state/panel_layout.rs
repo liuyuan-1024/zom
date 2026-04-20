@@ -1,6 +1,6 @@
 //! 面板停靠位规则与目标映射。
 
-use zom_core::FocusTarget;
+use zom_protocol::FocusTarget;
 
 /// 工作台面板停靠区域。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -44,7 +44,7 @@ pub fn dock_targets(dock: PanelDock) -> &'static [FocusTarget] {
 
 #[cfg(test)]
 mod tests {
-    use zom_core::FocusTarget;
+    use zom_protocol::FocusTarget;
 
     use super::{PanelDock, dock_targets, panel_dock};
 

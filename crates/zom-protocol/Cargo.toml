@@ -1,5 +1,5 @@
 [package]
-name = "zom-core"
+name = "zom-protocol"
 version = "0.1.0"
 edition = "2024"
 

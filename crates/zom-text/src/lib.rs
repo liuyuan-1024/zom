@@ -1,6 +1,6 @@
 //! zom-text 的文本缓冲区抽象与基础操作。
 
-use zom_core::Position;
+use zom_protocol::Position;
 
 /// 轻量文本缓冲区，提供基础插入/删除与位置映射能力。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -74,7 +74,7 @@ impl TextBuffer {
 #[cfg(test)]
 mod tests {
     use super::TextBuffer;
-    use zom_core::Position;
+    use zom_protocol::Position;
 
     #[test]
     fn insert_and_remove_text() {

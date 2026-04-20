@@ -3,9 +3,9 @@
 //! 底部工具栏专属的图标定义与渲染。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
-use zom_app::projection::shortcut_hint;
-use zom_app::state::ToolBarIcon;
-use zom_core::{CommandInvocation, FocusTarget, WorkspaceAction};
+use zom_runtime::projection::shortcut_hint;
+use zom_runtime::state::ToolBarIcon;
+use zom_protocol::{CommandInvocation, FocusTarget, WorkspaceAction};
 
 /// 底部工具栏图标的展示规格。
 pub(super) struct ToolBarIconSpec {
@@ -100,8 +100,8 @@ pub(super) fn render(icon: ToolBarIcon, size: f32, color: impl Into<Hsla>) -> im
 
 #[cfg(test)]
 mod tests {
-    use zom_app::state::ToolBarIcon;
-    use zom_core::FocusTarget;
+    use zom_runtime::state::ToolBarIcon;
+    use zom_protocol::FocusTarget;
 
     use super::panel_target;
 

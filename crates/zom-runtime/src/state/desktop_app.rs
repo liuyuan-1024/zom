@@ -3,8 +3,8 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use zom_core::input::resolve_default;
-use zom_core::{
+use zom_protocol::input::resolve_default;
+use zom_protocol::{
     BufferId, CommandInvocation, FocusTarget, InputContext, InputResolution, Keystroke,
     OverlayTarget,
     command::{FileTreeAction, TabAction, WorkspaceAction},
@@ -324,7 +324,7 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use zom_core::{
+    use zom_protocol::{
         CommandInvocation, FocusTarget, Keystroke, OverlayTarget,
         command::{FileTreeAction, WorkspaceAction},
     };
@@ -333,7 +333,7 @@ mod tests {
     use crate::state::{FileTreeNodeKind, PanelDock};
 
     fn shortcut_for(command: CommandInvocation) -> Keystroke {
-        zom_core::input::default_shortcut_registry()
+        zom_protocol::input::default_shortcut_registry()
             .bindings()
             .iter()
             .find(|binding| binding.command == command)
@@ -346,11 +346,11 @@ mod tests {
         let mut state = DesktopAppState::from_current_workspace();
         let before_len = state.pane.tabs.len();
 
-        state.handle_file_tree_node_activate("crates/zom-app/src/lib.rs", FileTreeNodeKind::File);
+        state.handle_file_tree_node_activate("crates/zom-runtime/src/lib.rs", FileTreeNodeKind::File);
 
         assert_eq!(state.pane.tabs.len(), before_len + 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
-        assert_eq!(active_tab.relative_path, "crates/zom-app/src/lib.rs");
+        assert_eq!(active_tab.relative_path, "crates/zom-runtime/src/lib.rs");
         assert!(!active_tab.buffer_lines.is_empty());
         assert_eq!(state.focused_target, FocusTarget::Editor);
         assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
@@ -417,7 +417,7 @@ mod tests {
     fn close_focused_closes_active_tab_when_editor_is_focused() {
         let mut state = DesktopAppState::from_current_workspace();
         state.focused_target = FocusTarget::Editor;
-        state.pane.tabs = vec![zom_app_test_tab("a.rs"), zom_app_test_tab("b.rs")];
+        state.pane.tabs = vec![zom_runtime_test_tab("a.rs"), zom_runtime_test_tab("b.rs")];
         state.pane.active_tab_index = Some(1);
 
         state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
@@ -633,7 +633,7 @@ mod tests {
             .expect("write lib.rs");
 
         let mut state = DesktopAppState::from_current_workspace();
-        state.pane.tabs.push(zom_app_test_tab("old.rs"));
+        state.pane.tabs.push(zom_runtime_test_tab("old.rs"));
         state.pane.active_tab_index = Some(0);
 
         state.switch_project(workspace.clone());
@@ -687,9 +687,9 @@ mod tests {
         fs::remove_dir_all(path).expect("remove temp workspace");
     }
 
-    fn zom_app_test_tab(relative_path: &str) -> crate::state::TabState {
+    fn zom_runtime_test_tab(relative_path: &str) -> crate::state::TabState {
         crate::state::TabState {
-            buffer_id: zom_core::BufferId::new(999),
+            buffer_id: zom_protocol::BufferId::new(999),
             title: "old".into(),
             relative_path: relative_path.into(),
             buffer_lines: vec!["old".into()],

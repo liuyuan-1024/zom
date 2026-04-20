@@ -8,7 +8,7 @@ use crate::{
     theme::{color, opacity, size},
 };
 use gpui::{CursorStyle, IntoElement, div, prelude::*, px, rgb};
-use zom_app::state::{PaneState, TabState};
+use zom_runtime::state::{PaneState, TabState};
 
 /// 渲染 Pane 顶部的标签栏
 pub(super) fn render(pane: &PaneState) -> impl IntoElement {

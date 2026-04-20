@@ -1,8 +1,8 @@
 //! Pane 图标规格与渲染辅助。
 
 use gpui::{Hsla, div, prelude::*, px, svg};
-use zom_app::projection::shortcut_hint;
-use zom_core::{CommandInvocation, WorkspaceAction};
+use zom_runtime::projection::shortcut_hint;
+use zom_protocol::{CommandInvocation, WorkspaceAction};
 
 /// Pane 内部使用的图标语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
