@@ -9,14 +9,15 @@ use crate::{
         DesktopAppState, FileTreeState, PaneState, TitleBarIcon, TitleBarState, ToolBarEntry,
         ToolBarIcon, ToolBarState,
     },
-    utils,
+    workspace_paths,
 };
 
 impl DesktopAppState {
     /// 基于当前工作区构造应用初始状态。
     pub fn from_current_workspace() -> Self {
-        let workspace_root = utils::normalize_workspace_root(utils::detect_workspace_root());
-        let workspace_name = utils::project_name_from_root(&workspace_root);
+        let workspace_root =
+            workspace_paths::normalize_workspace_root(workspace_paths::detect_workspace_root());
+        let workspace_name = workspace_paths::project_name_from_root(&workspace_root);
 
         Self {
             title_bar: TitleBarState {

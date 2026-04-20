@@ -11,11 +11,12 @@ use zom_protocol::{
 };
 
 use crate::{
+    buffer_preview,
     state::{
         FileTreeNodeKind, FileTreeState, PaneState, PanelDock, TabState, TitleBarState,
         ToolBarState, dock_targets, panel_dock,
     },
-    utils,
+    workspace_paths,
 };
 
 /// 需要在 UI 层执行的副作用动作。
@@ -55,8 +56,8 @@ pub struct DesktopAppState {
 impl DesktopAppState {
     /// 切换当前工作区项目，并重建文件树。
     pub fn switch_project(&mut self, project_root: impl Into<PathBuf>) {
-        let project_root = utils::normalize_workspace_root(project_root.into());
-        self.project_name = utils::project_name_from_root(&project_root);
+        let project_root = workspace_paths::normalize_workspace_root(project_root.into());
+        self.project_name = workspace_paths::project_name_from_root(&project_root);
         self.project_root = project_root.clone();
         self.file_tree = FileTreeState::from_workspace_root(&project_root);
 
@@ -278,8 +279,13 @@ impl DesktopAppState {
 
     /// 在当前 Pane 打开文件：已打开则切换并刷新内容，未打开则新增标签页。
     fn open_file_in_pane(&mut self, relative_path: &str) {
-        let absolute_path = utils::workspace_file_absolute_path(&self.project_root, relative_path);
-        let (buffer, line_ending, cursor) = utils::load_buffer_preview(&absolute_path);
+        let absolute_path =
+            workspace_paths::workspace_file_absolute_path(&self.project_root, relative_path);
+        let buffer_preview::BufferPreview {
+            buffer,
+            line_ending,
+            cursor,
+        } = buffer_preview::load_buffer_preview(&absolute_path);
 
         self.tool_bar.cursor = cursor;
         self.tool_bar.line_ending = line_ending;
@@ -308,7 +314,7 @@ impl DesktopAppState {
 
         self.pane.tabs.push(TabState {
             buffer_id: BufferId::new(next_buffer_id),
-            title: utils::file_name_from_path(relative_path),
+            title: workspace_paths::file_name_from_path(relative_path),
             relative_path: relative_path.to_string(),
             buffer,
         });
@@ -640,7 +646,7 @@ mod tests {
 
         assert_eq!(
             state.project_root,
-            crate::utils::normalize_workspace_root(workspace.clone())
+            crate::workspace_paths::normalize_workspace_root(workspace.clone())
         );
         assert_eq!(state.pane.tabs.len(), 0);
         assert!(state.pane.active_tab_index.is_none());

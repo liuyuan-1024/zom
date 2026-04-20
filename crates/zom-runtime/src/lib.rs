@@ -4,4 +4,5 @@
 mod initial_state;
 pub mod projection;
 pub mod state;
-mod utils;
+mod buffer_preview;
+mod workspace_paths;
