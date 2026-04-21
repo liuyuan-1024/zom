@@ -763,6 +763,7 @@ mod tests {
         let active_tab = state.pane.active_tab().expect("active tab should exist");
         assert_eq!(active_tab.relative_path, "src/main.rs");
         assert_eq!(active_tab.buffer_lines()[0], "fn main() {}");
+        assert_eq!(state.tool_bar.cursor, Position::zero());
 
         remove_temp_workspace(workspace);
     }

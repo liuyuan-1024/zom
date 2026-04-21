@@ -4,7 +4,7 @@ use std::{fs, path::Path};
 
 use zom_editor::EditorState;
 use zom_protocol::Position;
-use zom_text::{detect_line_ending, split_lines};
+use zom_text::detect_line_ending;
 
 /// 文件加载后的预览数据。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,9 +25,7 @@ pub fn load_buffer_preview(path: &Path) -> BufferPreview {
     };
 
     let line_ending = detect_line_ending(editor_state.text());
-    let cursor_line =
-        u32::try_from(split_lines(editor_state.text()).len().saturating_sub(1)).unwrap_or(u32::MAX);
-    let cursor = Position::new(cursor_line, 0);
+    let cursor = Position::zero();
 
     BufferPreview {
         editor_state,
