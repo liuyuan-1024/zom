@@ -22,7 +22,7 @@ pub(super) fn spec(icon: PaneIcon) -> PaneIconSpec {
     match icon {
         PaneIcon::Close => PaneIconSpec {
             path: "icons/tab/close.svg",
-            label: "Close",
+            label: "关闭",
             shortcut: shortcut_hint(&CommandInvocation::from(WorkspaceAction::CloseFocused)),
         },
     }

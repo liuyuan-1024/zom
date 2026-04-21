@@ -48,15 +48,15 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
                 .flex()
                 .items_center()
                 .gap(px(size::GAP_1))
-                .child(render_close_button(&group_id, index))
+                // 等宽占位，避免关闭按钮显隐时标题飘移
+                .child(render_close_button_placeholder())
                 .child(
                     div()
                         .overflow_hidden()
                         .whitespace_nowrap()
                         .child(tab.title.clone()),
                 )
-                // 右侧等宽占位，避免左侧关闭按钮显隐时标题飘移
-                .child(render_close_button_placeholder()),
+                .child(render_close_button(&group_id, index)),
         );
 
     if is_active {
