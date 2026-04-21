@@ -479,7 +479,10 @@ mod tests {
 
     #[test]
     fn resolve_default_preserves_shift_case_for_ascii_letters() {
-        let key = Keystroke::new(KeyCode::Char('x'), Modifiers::new(false, false, true, false));
+        let key = Keystroke::new(
+            KeyCode::Char('x'),
+            Modifiers::new(false, false, true, false),
+        );
 
         assert_eq!(
             resolve_default(&key, &InputContext::new(FocusTarget::Editor)),
