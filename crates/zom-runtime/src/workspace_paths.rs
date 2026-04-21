@@ -77,11 +77,11 @@ pub fn language_from_path(relative_path: &str) -> String {
         Some("scss") => "SCSS",
         Some("sql") => "SQL",
         Some("md") | Some("mdx") => "Markdown",
-        Some("txt") => "Plain Text",
+        Some("txt") => "Text",
         _ => match file_name.as_deref() {
             Some("dockerfile") => "Dockerfile",
             Some("makefile") => "Makefile",
-            _ => "Plain Text",
+            _ => "Unknown",
         },
     }
     .to_string()
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn language_from_path_falls_back_to_plain_text() {
-        assert_eq!(language_from_path("notes/README"), "Plain Text");
+        assert_eq!(language_from_path("notes/README"), "Unknown");
     }
 
     #[test]
