@@ -1,6 +1,6 @@
 # Crate Boundary Checklist
 
-版本：`v0.1`  
+版本：`v0.2`  
 适用范围：`/Users/liuyuan/project/zom` workspace 内部 crate 依赖关系（只讨论 workspace crate 之间的直接依赖）
 
 ## 1. 目标
@@ -54,6 +54,14 @@ zom-text      zom-editor
 4. `zom-runtime` 负责编排，不反向要求 `zom-gpui` 暴露 UI 实现细节。
 5. 跨 crate 共享语义类型优先沉淀到 `zom-protocol`，不要在上层重复定义 1:1 镜像类型。
 
+### 4.1 边界执行纪律（强制）
+
+1. 开发前必须先判定主 crate 与职责归属，禁止先实现后迁移。
+2. 禁止以“先跑通”为理由在错误层放实现；职责不明确时先补文档/ADR。
+3. 禁止跨层重复定义已存在的稳定类型或能力（含 1:1 镜像结构与重复实现）。
+4. 一旦发现职责漂移，必须先回收边界，再继续叠加功能。
+5. 评审发现边界问题可直接拒绝合入，不以“功能可用”作为放行理由。
+
 ## 5. 变更与验收流程
 
 1. 若新增/调整依赖方向，必须同步更新：
@@ -66,6 +74,8 @@ zom-text      zom-editor
 ./scripts/check-boundaries.sh
 cargo check
 ```
+
+3. PR 描述必须包含“主 crate（唯一）+ 次要 crate + 是否触及 `zom-protocol` + 是否存在职责漂移”。
 
 ## 6. 关联文档
 
