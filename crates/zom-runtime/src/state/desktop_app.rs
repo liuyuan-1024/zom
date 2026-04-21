@@ -239,32 +239,82 @@ impl DesktopAppState {
     fn handle_tab_command(&mut self, command: TabAction) {
         match command {
             TabAction::CloseActiveTab => self.close_active_tab(),
-            TabAction::ActivatePrevTab => {
-                // TODO: 标签页切换接入后在此处理。
-            }
-            TabAction::ActivateNextTab => {
-                // TODO: 标签页切换接入后在此处理。
-            }
+            TabAction::ActivatePrevTab => self.activate_prev_tab(),
+            TabAction::ActivateNextTab => self.activate_next_tab(),
         }
     }
 
     fn close_active_tab(&mut self) {
         let Some(active_index) = self.pane.active_tab_index else {
+            self.sync_tool_bar_with_active_tab();
             return;
         };
         if active_index >= self.pane.tabs.len() {
             self.pane.active_tab_index = None;
+            self.sync_tool_bar_with_active_tab();
             return;
         }
 
         self.pane.tabs.remove(active_index);
         if self.pane.tabs.is_empty() {
             self.pane.active_tab_index = None;
+            self.sync_tool_bar_with_active_tab();
             return;
         }
 
         let next_index = active_index.min(self.pane.tabs.len() - 1);
         self.pane.active_tab_index = Some(next_index);
+        self.sync_tool_bar_with_active_tab();
+    }
+
+    fn activate_prev_tab(&mut self) {
+        let tab_count = self.pane.tabs.len();
+        if tab_count == 0 {
+            self.pane.active_tab_index = None;
+            self.sync_tool_bar_with_active_tab();
+            return;
+        }
+
+        let current_index = self
+            .pane
+            .active_tab_index
+            .unwrap_or(0)
+            .min(tab_count.saturating_sub(1));
+        let prev_index = if current_index == 0 {
+            tab_count - 1
+        } else {
+            current_index - 1
+        };
+        self.pane.active_tab_index = Some(prev_index);
+        self.sync_tool_bar_with_active_tab();
+    }
+
+    fn activate_next_tab(&mut self) {
+        let tab_count = self.pane.tabs.len();
+        if tab_count == 0 {
+            self.pane.active_tab_index = None;
+            self.sync_tool_bar_with_active_tab();
+            return;
+        }
+
+        let current_index = self
+            .pane
+            .active_tab_index
+            .unwrap_or(0)
+            .min(tab_count.saturating_sub(1));
+        let next_index = (current_index + 1) % tab_count;
+        self.pane.active_tab_index = Some(next_index);
+        self.sync_tool_bar_with_active_tab();
+    }
+
+    fn sync_tool_bar_with_active_tab(&mut self) {
+        if let Some(active_tab) = self.pane.active_tab() {
+            self.tool_bar.cursor = active_tab.editor_state.selection().active();
+            self.tool_bar.line_ending = active_tab.line_ending();
+        } else {
+            self.tool_bar.cursor = Position::zero();
+            self.tool_bar.line_ending = "LF".into();
+        }
     }
 
     fn focus_editor(&mut self) {
@@ -355,7 +405,7 @@ mod tests {
     use zom_protocol::{
         CommandInvocation, EditorAction, EditorInvocation, FocusTarget, KeyCode, Keystroke,
         Modifiers, OverlayTarget, Position,
-        command::{FileTreeAction, WorkspaceAction},
+        command::{FileTreeAction, TabAction, WorkspaceAction},
     };
 
     use super::{DesktopAppState, DesktopUiAction};
@@ -460,6 +510,52 @@ mod tests {
     }
 
     #[test]
+    fn tab_activation_commands_cycle_tabs_and_sync_toolbar_state() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.pane.tabs = vec![
+            zom_runtime_test_tab_with_text_and_cursor("a.rs", "first\nline", 0),
+            zom_runtime_test_tab_with_text_and_cursor("b.rs", "x\r\ny", 1),
+            zom_runtime_test_tab_with_text_and_cursor("c.rs", "tail", 2),
+        ];
+        state.pane.active_tab_index = Some(0);
+        state.tool_bar.cursor = Position::new(99, 99);
+        state.tool_bar.line_ending = "LF".into();
+
+        state.handle_command(CommandInvocation::from(TabAction::ActivateNextTab));
+
+        assert_eq!(state.pane.active_tab_index, Some(1));
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
+        assert_eq!(state.tool_bar.line_ending, "CRLF");
+
+        state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
+        assert_eq!(state.pane.active_tab_index, Some(0));
+        assert_eq!(state.tool_bar.cursor, Position::zero());
+        assert_eq!(state.tool_bar.line_ending, "LF");
+
+        state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
+        assert_eq!(state.pane.active_tab_index, Some(2));
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
+    }
+
+    #[test]
+    fn keyboard_shortcut_can_activate_next_tab() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.focused_target = FocusTarget::FileTreePanel;
+        state.pane.tabs = vec![
+            zom_runtime_test_tab_with_text_and_cursor("a.rs", "a", 0),
+            zom_runtime_test_tab_with_text_and_cursor("b.rs", "bc", 1),
+        ];
+        state.pane.active_tab_index = Some(0);
+
+        let next_tab = shortcut_for(CommandInvocation::from(TabAction::ActivateNextTab));
+        let handled = state.handle_keystroke(&next_tab);
+
+        assert!(handled);
+        assert_eq!(state.pane.active_tab_index, Some(1));
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
+    }
+
+    #[test]
     fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command() {
         let mut state = DesktopAppState::from_current_workspace();
         let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -514,10 +610,8 @@ mod tests {
         state.focused_target = FocusTarget::Editor;
         state.tool_bar.cursor = Position::new(0, 1);
 
-        let handled = state.handle_keystroke(&Keystroke::new(
-            KeyCode::Char('x'),
-            Modifiers::default(),
-        ));
+        let handled =
+            state.handle_keystroke(&Keystroke::new(KeyCode::Char('x'), Modifiers::default()));
 
         assert!(handled);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
@@ -788,6 +882,30 @@ mod tests {
             title: "old".into(),
             relative_path: relative_path.into(),
             editor_state: zom_editor::EditorState::from_text("old"),
+        }
+    }
+
+    fn zom_runtime_test_tab_with_text_and_cursor(
+        relative_path: &str,
+        text: &str,
+        cursor_column: u32,
+    ) -> crate::state::TabState {
+        let mut editor_state = zom_editor::EditorState::from_text(text);
+        let mut cursor = Position::zero();
+        for _ in 0..cursor_column {
+            let result = zom_editor::apply_editor_invocation(
+                &editor_state,
+                cursor,
+                &EditorInvocation::from(EditorAction::MoveRight),
+            );
+            editor_state = result.state;
+            cursor = result.cursor;
+        }
+        crate::state::TabState {
+            buffer_id: zom_protocol::BufferId::new((1000 + cursor_column).into()),
+            title: relative_path.into(),
+            relative_path: relative_path.into(),
+            editor_state,
         }
     }
 }
