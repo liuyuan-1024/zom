@@ -1,8 +1,11 @@
 //! Pane 主体视图渲染与内容展示逻辑。
 
+use std::time::{Duration, Instant};
+
 use gpui::{
-    AnyElement, App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement,
-    ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, px, rgb,
+    Animation, AnimationExt, AnyElement, App, Context, FocusHandle, Focusable, InteractiveElement,
+    IntoElement, ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
+    div, px, rgb,
 };
 use zom_protocol::Position;
 use zom_runtime::{projection::wrap_visual_line, state::PaneState};
@@ -19,14 +22,19 @@ const APPROX_MONO_CHAR_WIDTH_PX: f32 = 8.0;
 /// 细线光标宽度。
 const CARET_WIDTH_PX: f32 = 1.5;
 /// 细线光标高度。
-const CARET_HEIGHT_PX: f32 = 16.0;
+const CARET_HEIGHT_PX: f32 = size::FONT_MD;
 /// 光标在文本中的内部标记字符（私有使用区）。
 const CARET_MARKER: char = '\u{E000}';
+/// 光标闪烁周期。
+const CARET_BLINK_DURATION_MS: u64 = 1_000;
+/// 光标移动后，暂时禁止闪烁的时长。
+const CARET_BLINK_PAUSE_AFTER_MOVE_MS: u64 = 500;
 
 /// 中央编辑窗格视图，负责标签栏与当前内容区渲染。
 pub struct PaneView {
     state: PaneState,
     cursor: Position,
+    last_cursor_moved_at: Option<Instant>,
     pending_scroll_to_cursor: bool,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
@@ -38,6 +46,7 @@ impl PaneView {
         Self {
             state,
             cursor,
+            last_cursor_moved_at: None,
             pending_scroll_to_cursor: true,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
@@ -47,6 +56,7 @@ impl PaneView {
     /// 覆盖 Pane 状态，用于响应外部交互（例如文件树激活）。
     pub fn set_state(&mut self, state: PaneState, cursor: Position, cx: &mut Context<Self>) {
         if self.cursor != cursor {
+            self.last_cursor_moved_at = Some(Instant::now());
             self.pending_scroll_to_cursor = true;
         }
         self.state = state;
@@ -120,6 +130,9 @@ impl PaneView {
         wrap_max_chars: usize,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + '_ {
+        let suppress_caret_blink = self.last_cursor_moved_at.is_some_and(|moved_at| {
+            moved_at.elapsed() < Duration::from_millis(CARET_BLINK_PAUSE_AFTER_MOVE_MS)
+        });
         let cursor_line = usize::try_from(self.cursor.line).unwrap_or(usize::MAX);
         let cursor_column = usize::try_from(self.cursor.column).unwrap_or(usize::MAX);
         let line_elements = buffer_lines
@@ -152,14 +165,14 @@ impl PaneView {
                             .flex_row()
                             .flex_none()
                             .gap(px(size::GAP_3))
-                            // 顶部对齐：确保长文本软换行时，行号停留在第一行的高度
-                            .items_start()
+                            .items_center()
                             .child(
                                 div()
                                     .w(px(size::GUTTER_MD))
                                     .flex_shrink_0()
                                     .text_right()
                                     .text_sm()
+                                    .line_height(px(size::FONT_MD))
                                     .text_color(rgb(color::COLOR_FG_MUTED))
                                     .child(line_number),
                             )
@@ -168,13 +181,17 @@ impl PaneView {
                                     .flex_1()
                                     .w_full()
                                     .text_sm()
+                                    .line_height(px(size::FONT_MD))
                                     .text_color(rgb(if is_cursor_line {
                                         color::COLOR_FG_PRIMARY
                                     } else {
                                         color::COLOR_FG_MUTED
                                     }))
                                     .whitespace_nowrap()
-                                    .child(render_wrapped_line_content(wrapped_line)),
+                                    .child(render_wrapped_line_content(
+                                        wrapped_line,
+                                        suppress_caret_blink,
+                                    )),
                             )
                     })
             });
@@ -213,30 +230,44 @@ fn line_with_caret_marker(line: &str, column: usize) -> String {
     rendered
 }
 
-fn render_wrapped_line_content(wrapped_line: String) -> AnyElement {
+fn render_wrapped_line_content(wrapped_line: String, suppress_caret_blink: bool) -> AnyElement {
     if let Some((before, after)) = wrapped_line.split_once(CARET_MARKER) {
         return div()
             .flex()
-            .items_start()
+            .items_center()
             .child(before.to_string())
-            .child(render_caret())
+            .child(render_caret(suppress_caret_blink))
             .child(after.to_string())
             .into_any_element();
     }
 
     div()
         .flex()
-        .items_start()
+        .items_center()
         .child(wrapped_line)
         .into_any_element()
 }
 
-fn render_caret() -> impl IntoElement {
+fn render_caret(suppress_caret_blink: bool) -> impl IntoElement {
     div()
         .w(px(CARET_WIDTH_PX))
         .h(px(CARET_HEIGHT_PX))
         .flex_shrink_0()
         .bg(rgb(color::COLOR_FG_PRIMARY))
+        .with_animation(
+            "pane-caret-blink",
+            Animation::new(Duration::from_millis(CARET_BLINK_DURATION_MS)).repeat(),
+            move |this, delta| {
+                let opacity = if suppress_caret_blink {
+                    1.0
+                } else if delta < 0.5 {
+                    1.0
+                } else {
+                    0.0
+                };
+                this.opacity(opacity)
+            },
+        )
 }
 
 fn soft_wrap_max_chars(scroll_width_px: f32, viewport_width_px: f32) -> usize {
