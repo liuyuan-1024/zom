@@ -81,7 +81,7 @@ pub fn language_from_path(relative_path: &str) -> String {
         _ => match file_name.as_deref() {
             Some("dockerfile") => "Dockerfile",
             Some("makefile") => "Makefile",
-            _ => "Plain Text",
+            _ => "Unknown",
         },
     }
     .to_string()
