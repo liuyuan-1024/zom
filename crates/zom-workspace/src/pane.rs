@@ -31,6 +31,12 @@ pub struct TabState {
     pub title: String,
     /// 工作区相对路径，用于标识该标签页绑定的文件。
     pub relative_path: String,
+    /// 标签页语言（由拓展名推断并缓存）。
+    pub language: String,
+    /// 标签页换行格式（缓存于 tab 元信息）。
+    pub line_ending: String,
+    /// 标签页编码（缓存于 tab 元信息）。
+    pub encoding: String,
     /// 编辑器状态。
     pub editor_state: EditorState,
 }
@@ -46,8 +52,23 @@ impl TabState {
         self.editor_state.text()
     }
 
+    /// 返回该标签页的语言。
+    pub fn language(&self) -> &str {
+        &self.language
+    }
+
     /// 返回文本换行格式。
-    pub fn line_ending(&self) -> String {
-        detect_line_ending(self.editor_state.text())
+    pub fn line_ending(&self) -> &str {
+        &self.line_ending
+    }
+
+    /// 返回文本编码。
+    pub fn encoding(&self) -> &str {
+        &self.encoding
+    }
+
+    /// 根据当前编辑器文本刷新换行符缓存。
+    pub fn refresh_line_ending_from_text(&mut self) {
+        self.line_ending = detect_line_ending(self.editor_state.text());
     }
 }
