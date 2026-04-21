@@ -167,6 +167,8 @@ impl ZomRootView {
                     div()
                         .id("workspace-editor-area")
                         .flex_1()
+                        .flex()
+                        .flex_col()
                         .overflow_hidden()
                         .child(self.pane_view.clone()),
                 )
@@ -177,6 +179,8 @@ impl ZomRootView {
                 div()
                     .id("workspace-editor-area")
                     .flex_1()
+                    .flex()
+                    .flex_col()
                     .overflow_hidden()
                     .child(self.pane_view.clone()),
             );

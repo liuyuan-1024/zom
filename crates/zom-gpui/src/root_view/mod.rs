@@ -102,7 +102,7 @@ impl ZomRootView {
         let terminal_panel = cx.new(TerminalPanel::new);
         let debug_panel = cx.new(DebugPanel::new);
         let notification_panel = cx.new(NotificationPanel::new);
-        let pane_view = cx.new(|cx| PaneView::new(state.pane.clone(), cx));
+        let pane_view = cx.new(|cx| PaneView::new(state.pane.clone(), state.tool_bar.cursor, cx));
 
         Self {
             state,
@@ -189,12 +189,13 @@ impl ZomRootView {
     pub(super) fn sync_child_views(&mut self, cx: &mut Context<Self>) {
         let file_tree_state = self.state.file_tree.clone();
         let pane_state = self.state.pane.clone();
+        let cursor = self.state.tool_bar.cursor;
 
         self.file_tree_panel.update(cx, |this, cx| {
             this.set_state(file_tree_state, cx);
         });
         self.pane_view.update(cx, |this, cx| {
-            this.set_state(pane_state, cx);
+            this.set_state(pane_state, cursor, cx);
         });
         cx.notify();
     }
@@ -428,6 +429,7 @@ impl ZomRootView {
             return false;
         };
         // debug时才会出发
+        // TODO：后期改成悬浮提示框
         let debug_keys = std::env::var_os("ZOM_DEBUG_KEYS").is_some();
         if debug_keys {
             eprintln!(
