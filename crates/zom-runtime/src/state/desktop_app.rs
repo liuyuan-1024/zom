@@ -65,7 +65,7 @@ impl DesktopAppState {
         // 旧项目打开的标签页路径不再可信，切换项目时统一清空。
         self.pane.tabs.clear();
         self.pane.active_tab_index = None;
-        self.tool_bar.cursor = Position::zero();
+        self.sync_tool_bar_with_active_tab();
     }
 
     /// 确保文件树存在初始选中项（用于首次获取键盘焦点前）。
@@ -135,8 +135,9 @@ impl DesktopAppState {
             FileTreeNodeKind::Directory => self.file_tree.toggle_directory(relative_path),
             FileTreeNodeKind::File => {
                 self.file_tree.activate_file(relative_path);
-                self.open_file_in_pane(relative_path);
-                self.focus_editor();
+                if self.open_file_in_pane(relative_path) {
+                    self.focus_editor();
+                }
             }
         }
     }
@@ -170,14 +171,14 @@ impl DesktopAppState {
         };
         let Some(active_tab) = self.pane.tabs.get_mut(active_index) else {
             self.pane.active_tab_index = None;
+            self.sync_tool_bar_with_active_tab();
             return;
         };
 
         let result =
             apply_editor_invocation(&active_tab.editor_state, self.tool_bar.cursor, &command);
         active_tab.editor_state = result.state;
-        self.tool_bar.cursor = result.cursor;
-        self.tool_bar.line_ending = active_tab.line_ending();
+        self.sync_tool_bar_with_active_tab();
     }
 
     /// 处理文件树命令，并同步工作区状态。
@@ -310,10 +311,10 @@ impl DesktopAppState {
     fn sync_tool_bar_with_active_tab(&mut self) {
         if let Some(active_tab) = self.pane.active_tab() {
             self.tool_bar.cursor = active_tab.editor_state.selection().active();
-            self.tool_bar.line_ending = active_tab.line_ending();
+            self.tool_bar.language = active_tab.language().to_string();
         } else {
             self.tool_bar.cursor = Position::zero();
-            self.tool_bar.line_ending = "LF".into();
+            self.tool_bar.language.clear();
         }
     }
 
@@ -350,17 +351,18 @@ impl DesktopAppState {
     }
 
     /// 在当前 Pane 打开文件：已打开则切换并刷新内容，未打开则新增标签页。
-    fn open_file_in_pane(&mut self, relative_path: &str) {
+    fn open_file_in_pane(&mut self, relative_path: &str) -> bool {
         let absolute_path =
             workspace_paths::workspace_file_absolute_path(&self.project_root, relative_path);
-        let buffer_preview::BufferPreview {
+        let Ok(buffer_preview::BufferPreview {
             editor_state,
             line_ending,
-            cursor,
-        } = buffer_preview::load_buffer_preview(&absolute_path);
-
-        self.tool_bar.cursor = cursor;
-        self.tool_bar.line_ending = line_ending;
+            ..
+        }) = buffer_preview::load_buffer_preview(&absolute_path)
+        else {
+            return false;
+        };
+        let language = workspace_paths::language_from_path(relative_path);
 
         if let Some(tab_index) = self
             .pane
@@ -370,9 +372,12 @@ impl DesktopAppState {
         {
             if let Some(existing_tab) = self.pane.tabs.get_mut(tab_index) {
                 existing_tab.editor_state = editor_state;
+                existing_tab.language = language;
+                existing_tab.line_ending = line_ending;
             }
             self.pane.active_tab_index = Some(tab_index);
-            return;
+            self.sync_tool_bar_with_active_tab();
+            return true;
         }
 
         let next_buffer_id = self
@@ -388,9 +393,13 @@ impl DesktopAppState {
             buffer_id: BufferId::new(next_buffer_id),
             title: workspace_paths::file_name_from_path(relative_path),
             relative_path: relative_path.to_string(),
+            language,
+            line_ending,
             editor_state,
         });
         self.pane.active_tab_index = Some(self.pane.tabs.len() - 1);
+        self.sync_tool_bar_with_active_tab();
+        true
     }
 }
 
@@ -422,20 +431,23 @@ mod tests {
 
     #[test]
     fn activating_file_tree_file_opens_tab_and_activates_it() {
+        let workspace = create_temp_workspace("activate-file-opens-tab");
+        fs::write(workspace.join("main.rs"), "fn main() {}").expect("write main.rs");
+
         let mut state = DesktopAppState::from_current_workspace();
+        state.switch_project(workspace.clone());
         let before_len = state.pane.tabs.len();
 
-        state.handle_file_tree_node_activate(
-            "crates/zom-runtime/src/lib.rs",
-            FileTreeNodeKind::File,
-        );
+        state.handle_file_tree_node_activate("main.rs", FileTreeNodeKind::File);
 
         assert_eq!(state.pane.tabs.len(), before_len + 1);
         let active_tab = state.pane.active_tab().expect("active tab should exist");
-        assert_eq!(active_tab.relative_path, "crates/zom-runtime/src/lib.rs");
+        assert_eq!(active_tab.relative_path, "main.rs");
         assert!(!active_tab.buffer_lines().is_empty());
         assert_eq!(state.focused_target, FocusTarget::Editor);
         assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
+
+        remove_temp_workspace(workspace);
     }
 
     #[test]
@@ -514,27 +526,28 @@ mod tests {
         let mut state = DesktopAppState::from_current_workspace();
         state.pane.tabs = vec![
             zom_runtime_test_tab_with_text_and_cursor("a.rs", "first\nline", 0),
-            zom_runtime_test_tab_with_text_and_cursor("b.rs", "x\r\ny", 1),
-            zom_runtime_test_tab_with_text_and_cursor("c.rs", "tail", 2),
+            zom_runtime_test_tab_with_text_and_cursor("b.py", "x\r\ny", 1),
+            zom_runtime_test_tab_with_text_and_cursor("c.md", "tail", 2),
         ];
         state.pane.active_tab_index = Some(0);
         state.tool_bar.cursor = Position::new(99, 99);
-        state.tool_bar.line_ending = "LF".into();
+        state.tool_bar.language = "Plain Text".into();
 
         state.handle_command(CommandInvocation::from(TabAction::ActivateNextTab));
 
         assert_eq!(state.pane.active_tab_index, Some(1));
         assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
-        assert_eq!(state.tool_bar.line_ending, "CRLF");
+        assert_eq!(state.tool_bar.language, "Python");
 
         state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
         assert_eq!(state.pane.active_tab_index, Some(0));
         assert_eq!(state.tool_bar.cursor, Position::zero());
-        assert_eq!(state.tool_bar.line_ending, "LF");
+        assert_eq!(state.tool_bar.language, "Rust");
 
         state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
         assert_eq!(state.pane.active_tab_index, Some(2));
         assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
+        assert_eq!(state.tool_bar.language, "Markdown");
     }
 
     #[test]
@@ -543,7 +556,7 @@ mod tests {
         state.focused_target = FocusTarget::FileTreePanel;
         state.pane.tabs = vec![
             zom_runtime_test_tab_with_text_and_cursor("a.rs", "a", 0),
-            zom_runtime_test_tab_with_text_and_cursor("b.rs", "bc", 1),
+            zom_runtime_test_tab_with_text_and_cursor("b.ts", "bc", 1),
         ];
         state.pane.active_tab_index = Some(0);
 
@@ -553,6 +566,7 @@ mod tests {
         assert!(handled);
         assert_eq!(state.pane.active_tab_index, Some(1));
         assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
+        assert_eq!(state.tool_bar.language, "TypeScript");
     }
 
     #[test]
@@ -580,6 +594,8 @@ mod tests {
             buffer_id: zom_protocol::BufferId::new(1),
             title: "demo.rs".into(),
             relative_path: "demo.rs".into(),
+            language: "Rust".into(),
+            line_ending: "LF".into(),
             editor_state: zom_editor::EditorState::from_text("ab"),
         }];
         state.pane.active_tab_index = Some(0);
@@ -604,6 +620,8 @@ mod tests {
             buffer_id: zom_protocol::BufferId::new(1),
             title: "demo.rs".into(),
             relative_path: "demo.rs".into(),
+            language: "Rust".into(),
+            line_ending: "LF".into(),
             editor_state: zom_editor::EditorState::from_text("ab"),
         }];
         state.pane.active_tab_index = Some(0);
@@ -840,6 +858,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["src"]
         );
+        assert_eq!(state.tool_bar.cursor, Position::zero());
+        assert_eq!(state.tool_bar.language, "");
 
         remove_temp_workspace(workspace);
     }
@@ -857,7 +877,35 @@ mod tests {
         let active_tab = state.pane.active_tab().expect("active tab should exist");
         assert_eq!(active_tab.relative_path, "src/main.rs");
         assert_eq!(active_tab.buffer_lines()[0], "fn main() {}");
+        assert_eq!(active_tab.language(), "Rust");
+        assert_eq!(active_tab.line_ending(), &expected_platform_line_ending());
         assert_eq!(state.tool_bar.cursor, Position::zero());
+        assert_eq!(state.tool_bar.language, "Rust");
+
+        remove_temp_workspace(workspace);
+    }
+
+    #[test]
+    fn open_file_failure_keeps_existing_editor_state() {
+        let workspace = create_temp_workspace("open-missing-file");
+        fs::write(workspace.join("old.rs"), "let old = 1;").expect("write old.rs");
+
+        let mut state = DesktopAppState::from_current_workspace();
+        state.switch_project(workspace.clone());
+        state.handle_file_tree_node_activate("old.rs", FileTreeNodeKind::File);
+
+        let before_tabs = state.pane.tabs.clone();
+        let before_active = state.pane.active_tab_index;
+        let before_cursor = state.tool_bar.cursor;
+        let before_language = state.tool_bar.language.clone();
+
+        let opened = state.open_file_in_pane("missing.rs");
+
+        assert!(!opened);
+        assert_eq!(state.pane.tabs, before_tabs);
+        assert_eq!(state.pane.active_tab_index, before_active);
+        assert_eq!(state.tool_bar.cursor, before_cursor);
+        assert_eq!(state.tool_bar.language, before_language);
 
         remove_temp_workspace(workspace);
     }
@@ -881,6 +929,8 @@ mod tests {
             buffer_id: zom_protocol::BufferId::new(999),
             title: "old".into(),
             relative_path: relative_path.into(),
+            language: crate::workspace_paths::language_from_path(relative_path),
+            line_ending: "LF".into(),
             editor_state: zom_editor::EditorState::from_text("old"),
         }
     }
@@ -905,7 +955,17 @@ mod tests {
             buffer_id: zom_protocol::BufferId::new((1000 + cursor_column).into()),
             title: relative_path.into(),
             relative_path: relative_path.into(),
+            language: crate::workspace_paths::language_from_path(relative_path),
+            line_ending: zom_text::detect_line_ending(editor_state.text()),
             editor_state,
+        }
+    }
+
+    fn expected_platform_line_ending() -> String {
+        if cfg!(windows) {
+            "CRLF".into()
+        } else {
+            "LF".into()
         }
     }
 }

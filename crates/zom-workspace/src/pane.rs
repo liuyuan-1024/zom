@@ -2,7 +2,7 @@
 
 use zom_editor::EditorState;
 use zom_protocol::{BufferId, PaneId};
-use zom_text::{detect_line_ending, split_lines};
+use zom_text::split_lines;
 
 /// 窗格模型（带有标签页和具体内容展示区）
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,10 +33,8 @@ pub struct TabState {
     pub relative_path: String,
     /// 标签页语言（由拓展名推断并缓存）。
     pub language: String,
-    /// 标签页换行格式（缓存于 tab 元信息）。
+    /// 原始文件换行符格式（用于保存时 preserve）。
     pub line_ending: String,
-    /// 标签页编码（缓存于 tab 元信息）。
-    pub encoding: String,
     /// 编辑器状态。
     pub editor_state: EditorState,
 }
@@ -60,15 +58,5 @@ impl TabState {
     /// 返回文本换行格式。
     pub fn line_ending(&self) -> &str {
         &self.line_ending
-    }
-
-    /// 返回文本编码。
-    pub fn encoding(&self) -> &str {
-        &self.encoding
-    }
-
-    /// 根据当前编辑器文本刷新换行符缓存。
-    pub fn refresh_line_ending_from_text(&mut self) {
-        self.line_ending = detect_line_ending(self.editor_state.text());
     }
 }

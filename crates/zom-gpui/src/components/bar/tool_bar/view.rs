@@ -92,6 +92,10 @@ fn render_value(id: &'static str, value: &str, tooltip: &str) -> impl IntoElemen
 }
 
 fn render_active_file_status(state: &DesktopAppState) -> impl IntoElement {
+    if state.pane.active_tab().is_none() {
+        return group();
+    }
+
     let cursor = cursor_text(state.tool_bar.cursor);
 
     group()
@@ -100,16 +104,6 @@ fn render_active_file_status(state: &DesktopAppState) -> impl IntoElement {
             "tb-language",
             &state.tool_bar.language,
             "选择语言类型",
-        ))
-        .child(render_value(
-            "tb-line-ending",
-            &state.tool_bar.line_ending,
-            "选择换行符",
-        ))
-        .child(render_value(
-            "tb-encoding",
-            &state.tool_bar.encoding,
-            "选择编码",
         ))
 }
 

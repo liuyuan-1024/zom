@@ -56,9 +56,7 @@ impl DesktopAppState {
                     },
                 ],
                 cursor: Position::zero(),
-                language: "Rust".into(),
-                line_ending: "LF".into(),
-                encoding: "UTF-8".into(),
+                language: String::new(),
                 right_tools: vec![
                     ToolBarEntry {
                         command: CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -120,6 +118,7 @@ mod tests {
     fn initial_state_starts_without_active_tab() {
         let state = DesktopAppState::from_current_workspace();
         assert!(state.pane.active_tab().is_none());
+        assert_eq!(state.tool_bar.language, "");
     }
 
     #[test]

@@ -19,10 +19,6 @@ pub struct ToolBarState {
     pub cursor: Position,
     /// 当前文本语言类型。
     pub language: String,
-    /// 当前文件换行符格式。
-    pub line_ending: String,
-    /// 当前文件编码。
-    pub encoding: String,
     /// 右侧工具入口。
     pub right_tools: Vec<ToolBarEntry>,
 }
