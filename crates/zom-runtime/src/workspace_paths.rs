@@ -37,3 +37,75 @@ pub fn file_name_from_path(relative_path: &str) -> String {
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| relative_path.to_string())
 }
+
+/// 从文件路径推断语言名称（用于工具栏与标签元信息）。
+pub fn language_from_path(relative_path: &str) -> String {
+    let path = Path::new(relative_path);
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase());
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.to_ascii_lowercase());
+
+    match extension.as_deref() {
+        Some("rs") => "Rust",
+        Some("py") => "Python",
+        Some("ts") | Some("mts") | Some("cts") => "TypeScript",
+        Some("tsx") => "TypeScript React",
+        Some("js") | Some("mjs") | Some("cjs") => "JavaScript",
+        Some("jsx") => "JavaScript React",
+        Some("go") => "Go",
+        Some("java") => "Java",
+        Some("kt") | Some("kts") => "Kotlin",
+        Some("swift") => "Swift",
+        Some("c") => "C",
+        Some("h") => "C Header",
+        Some("cc") | Some("cpp") | Some("cxx") | Some("hh") | Some("hpp") | Some("hxx") => "C++",
+        Some("cs") => "C#",
+        Some("php") => "PHP",
+        Some("rb") => "Ruby",
+        Some("sh") | Some("bash") | Some("zsh") => "Shell",
+        Some("toml") => "TOML",
+        Some("json") => "JSON",
+        Some("yaml") | Some("yml") => "YAML",
+        Some("xml") => "XML",
+        Some("html") | Some("htm") => "HTML",
+        Some("css") => "CSS",
+        Some("scss") => "SCSS",
+        Some("sql") => "SQL",
+        Some("md") | Some("mdx") => "Markdown",
+        Some("txt") => "Plain Text",
+        _ => match file_name.as_deref() {
+            Some("dockerfile") => "Dockerfile",
+            Some("makefile") => "Makefile",
+            _ => "Plain Text",
+        },
+    }
+    .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::language_from_path;
+
+    #[test]
+    fn language_from_path_uses_extension_mapping() {
+        assert_eq!(language_from_path("src/main.rs"), "Rust");
+        assert_eq!(language_from_path("web/app.tsx"), "TypeScript React");
+        assert_eq!(language_from_path("scripts/build.zsh"), "Shell");
+    }
+
+    #[test]
+    fn language_from_path_falls_back_to_plain_text() {
+        assert_eq!(language_from_path("notes/README"), "Plain Text");
+    }
+
+    #[test]
+    fn language_from_path_supports_special_file_names() {
+        assert_eq!(language_from_path("Dockerfile"), "Dockerfile");
+        assert_eq!(language_from_path("build/Makefile"), "Makefile");
+    }
+}
