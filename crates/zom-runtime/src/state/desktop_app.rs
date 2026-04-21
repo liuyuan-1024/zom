@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+use zom_editor::apply_editor_invocation;
 use zom_protocol::input::resolve_default;
 use zom_protocol::{
     BufferId, CommandInvocation, EditorInvocation, FocusTarget, InputContext, InputResolution,
@@ -172,11 +173,11 @@ impl DesktopAppState {
             return;
         };
 
-        let next_cursor = active_tab
-            .buffer
-            .apply_invocation(self.tool_bar.cursor, &command);
-        self.tool_bar.cursor = next_cursor;
-        self.tool_bar.line_ending = active_tab.buffer.line_ending();
+        let result =
+            apply_editor_invocation(&active_tab.editor_state, self.tool_bar.cursor, &command);
+        active_tab.editor_state = result.state;
+        self.tool_bar.cursor = result.cursor;
+        self.tool_bar.line_ending = active_tab.line_ending();
     }
 
     /// 处理文件树命令，并同步工作区状态。
@@ -303,7 +304,7 @@ impl DesktopAppState {
         let absolute_path =
             workspace_paths::workspace_file_absolute_path(&self.project_root, relative_path);
         let buffer_preview::BufferPreview {
-            buffer,
+            editor_state,
             line_ending,
             cursor,
         } = buffer_preview::load_buffer_preview(&absolute_path);
@@ -318,7 +319,7 @@ impl DesktopAppState {
             .position(|tab| tab.relative_path == relative_path)
         {
             if let Some(existing_tab) = self.pane.tabs.get_mut(tab_index) {
-                existing_tab.buffer = buffer;
+                existing_tab.editor_state = editor_state;
             }
             self.pane.active_tab_index = Some(tab_index);
             return;
@@ -337,7 +338,7 @@ impl DesktopAppState {
             buffer_id: BufferId::new(next_buffer_id),
             title: workspace_paths::file_name_from_path(relative_path),
             relative_path: relative_path.to_string(),
-            buffer,
+            editor_state,
         });
         self.pane.active_tab_index = Some(self.pane.tabs.len() - 1);
     }
@@ -352,8 +353,8 @@ mod tests {
     };
 
     use zom_protocol::{
-        CommandInvocation, EditorAction, EditorInvocation, FocusTarget, Keystroke, OverlayTarget,
-        Position,
+        CommandInvocation, EditorAction, EditorInvocation, FocusTarget, KeyCode, Keystroke,
+        Modifiers, OverlayTarget, Position,
         command::{FileTreeAction, WorkspaceAction},
     };
 
@@ -483,7 +484,7 @@ mod tests {
             buffer_id: zom_protocol::BufferId::new(1),
             title: "demo.rs".into(),
             relative_path: "demo.rs".into(),
-            buffer: zom_editor::EditorBuffer::from_text("ab"),
+            editor_state: zom_editor::EditorState::from_text("ab"),
         }];
         state.pane.active_tab_index = Some(0);
         state.tool_bar.cursor = Position::new(0, 1);
@@ -491,13 +492,37 @@ mod tests {
         state.handle_command(CommandInvocation::from(EditorInvocation::insert_text("X")));
 
         let active_tab = state.pane.active_tab().expect("active tab should exist");
-        assert_eq!(active_tab.buffer.as_str(), "aXb");
+        assert_eq!(active_tab.text(), "aXb");
         assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
 
         state.handle_command(CommandInvocation::from(EditorAction::DeleteBackward));
         let active_tab = state.pane.active_tab().expect("active tab should exist");
-        assert_eq!(active_tab.buffer.as_str(), "ab");
+        assert_eq!(active_tab.text(), "ab");
         assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
+    }
+
+    #[test]
+    fn plain_character_keystroke_in_editor_focus_inserts_text() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.pane.tabs = vec![crate::state::TabState {
+            buffer_id: zom_protocol::BufferId::new(1),
+            title: "demo.rs".into(),
+            relative_path: "demo.rs".into(),
+            editor_state: zom_editor::EditorState::from_text("ab"),
+        }];
+        state.pane.active_tab_index = Some(0);
+        state.focused_target = FocusTarget::Editor;
+        state.tool_bar.cursor = Position::new(0, 1);
+
+        let handled = state.handle_keystroke(&Keystroke::new(
+            KeyCode::Char('x'),
+            Modifiers::default(),
+        ));
+
+        assert!(handled);
+        let active_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(active_tab.text(), "axb");
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
     }
 
     #[test]
@@ -761,7 +786,7 @@ mod tests {
             buffer_id: zom_protocol::BufferId::new(999),
             title: "old".into(),
             relative_path: relative_path.into(),
-            buffer: zom_editor::EditorBuffer::from_text("old"),
+            editor_state: zom_editor::EditorState::from_text("old"),
         }
     }
 }
