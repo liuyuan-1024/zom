@@ -1,143 +1,200 @@
 //! 编辑器领域命令规范声明。
 
-use crate::command::kind::{Buildability, CommandKind, CommandKindSpec};
-use crate::{CommandInvocation, EditorAction};
+use crate::command::kind::{
+    Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope,
+    types::{meta_char, meta_shift_char, plain},
+};
+use crate::{CommandInvocation, EditorAction, FocusTarget, KeyCode};
 
 pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::EditorInsertText,
         "editor.insert_text",
-        "Insert Text",
-        "Insert provided text at the current caret position.",
+        "插入文本",
+        "将提供的文本插入到当前光标位置。",
         Buildability::RequiresArgs,
         &[],
     ),
     CommandKindSpec::new(
         CommandKind::EditorInsertNewline,
         "editor.insert_newline",
-        "Insert Newline",
-        "Insert a newline at the current caret position.",
+        "插入新行",
+        "在当前光标位置插入一个新行。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::InsertNewline)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Enter),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMoveLeft,
         "editor.move_left",
-        "Move Left",
-        "Move the caret one character to the left.",
+        "光标左移",
+        "将光标向左移动一个字符。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MoveLeft)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Left),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMoveRight,
         "editor.move_right",
-        "Move Right",
-        "Move the caret one character to the right.",
+        "光标右移",
+        "将光标向右移动一个字符。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MoveRight)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Right),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMoveUp,
         "editor.move_up",
-        "Move Up",
-        "Move the caret one line up.",
+        "光标上移",
+        "将光标向上移动一行。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MoveUp)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Up),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMoveDown,
         "editor.move_down",
-        "Move Down",
-        "Move the caret one line down.",
+        "光标下移",
+        "将光标向下移动一行。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MoveDown)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Down),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMoveToStart,
         "editor.move_to_start",
-        "Move To Start",
-        "Move the caret to the beginning of the current line.",
+        "光标移动到行起点",
+        "将光标移动到当前行的起点。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MoveToStart)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Home),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMoveToEnd,
         "editor.move_to_end",
-        "Move To End",
-        "Move the caret to the end of the current line.",
+        "光标移动到行终点",
+        "将光标移动到当前行的终点。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MoveToEnd)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::End),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMovePageUp,
         "editor.page_up",
-        "Page Up",
-        "Move the caret one page up.",
+        "向上翻页",
+        "将光标向上翻一页。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MovePageUp)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::PageUp),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorMovePageDown,
         "editor.page_down",
-        "Page Down",
-        "Move the caret one page down.",
+        "向下翻页",
+        "将光标向下翻一页。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::MovePageDown)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::PageDown),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorDeleteBackward,
         "editor.delete_backward",
-        "Delete Backward",
-        "Delete one character backward.",
+        "删除前一个字符",
+        "删除光标前一个字符。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::DeleteBackward)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Backspace),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorDeleteForward,
         "editor.delete_forward",
-        "Delete Forward",
-        "Delete one character forward.",
+        "删除后一个字符",
+        "删除光标后一个字符。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::DeleteForward)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            plain(KeyCode::Delete),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorDeleteWordBackward,
         "editor.delete_word_backward",
-        "Delete Word Backward",
-        "Delete one word backward.",
+        "删除前一个单词",
+        "删除光标前一个单词。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::DeleteWordBackward)),
         &[],
     ),
     CommandKindSpec::new(
         CommandKind::EditorDeleteWordForward,
         "editor.delete_word_forward",
-        "Delete Word Forward",
-        "Delete one word forward.",
+        "删除后一个单词",
+        "删除光标后一个单词。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::DeleteWordForward)),
         &[],
     ),
     CommandKindSpec::new(
         CommandKind::EditorUndo,
         "editor.undo",
-        "Undo",
-        "Undo the most recent edit.",
+        "撤销",
+        "撤销最近一次编辑。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::Undo)),
-        &[],
+        &[
+            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), meta_char('z'))
+                .with_priority(120),
+        ],
     ),
     CommandKindSpec::new(
         CommandKind::EditorRedo,
         "editor.redo",
-        "Redo",
-        "Redo the most recently undone edit.",
+        "重做",
+        "重做最近一次撤销的编辑。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::Redo)),
-        &[],
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            meta_shift_char('z'),
+        )
+        .with_priority(120)],
     ),
     CommandKindSpec::new(
         CommandKind::EditorSelectAll,
         "editor.select_all",
-        "Select All",
-        "Select all content in the current editor.",
+        "全选",
+        "全选当前编辑器中的内容。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::SelectAll)),
-        &[],
+        &[
+            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), meta_char('a'))
+                .with_priority(120),
+        ],
     ),
 ];

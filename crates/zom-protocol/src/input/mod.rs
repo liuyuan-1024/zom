@@ -212,7 +212,36 @@ static DEFAULT_KEYMAP: LazyLock<Keymap> = LazyLock::new(default_keymap);
 
 /// 使用默认键位方案解析一次输入。
 pub fn resolve_default(input: &Keystroke, context: &InputContext) -> InputResolution {
-    DEFAULT_KEYMAP.resolve(input, context)
+    let resolution = DEFAULT_KEYMAP.resolve(input, context);
+    if !resolution.is_noop() {
+        return resolution;
+    }
+
+    resolve_editor_text_fallback(input, context)
+}
+
+fn resolve_editor_text_fallback(input: &Keystroke, context: &InputContext) -> InputResolution {
+    if context.focus != FocusTarget::Editor {
+        return InputResolution::Noop;
+    }
+
+    if input.modifiers.has_ctrl || input.modifiers.has_alt || input.modifiers.has_meta {
+        return InputResolution::Noop;
+    }
+
+    match input.key {
+        KeyCode::Char(c) => {
+            let ch = if input.modifiers.has_shift && c.is_ascii_alphabetic() {
+                c.to_ascii_uppercase()
+            } else {
+                c
+            };
+            InputResolution::insert_text(ch.to_string())
+        }
+        KeyCode::Tab if !input.modifiers.has_shift => InputResolution::insert_text("\t"),
+        KeyCode::Enter => InputResolution::insert_text("\n"),
+        _ => InputResolution::Noop,
+    }
 }
 
 #[cfg(test)]
@@ -224,7 +253,8 @@ mod tests {
 
     use super::{
         EditorInputContext, InputContext, InputResolution, KeyCode, Keymap, Keystroke, Modifiers,
-        ShortcutScope, command, default_keymap, default_shortcut_registry, shortcut_hint,
+        ShortcutScope, command, default_keymap, default_shortcut_registry, resolve_default,
+        shortcut_hint,
     };
 
     fn editor_context() -> InputContext {
@@ -434,6 +464,44 @@ mod tests {
         assert_eq!(
             default_keymap().resolve(&key, &InputContext::new(FocusTarget::Editor)),
             InputResolution::Command(command)
+        );
+    }
+
+    #[test]
+    fn resolve_default_falls_back_to_plain_text_insert_in_editor_focus() {
+        let key = Keystroke::new(KeyCode::Char('x'), Modifiers::default());
+
+        assert_eq!(
+            resolve_default(&key, &InputContext::new(FocusTarget::Editor)),
+            InputResolution::InsertText("x".into())
+        );
+    }
+
+    #[test]
+    fn resolve_default_preserves_shift_case_for_ascii_letters() {
+        let key = Keystroke::new(KeyCode::Char('x'), Modifiers::new(false, false, true, false));
+
+        assert_eq!(
+            resolve_default(&key, &InputContext::new(FocusTarget::Editor)),
+            InputResolution::InsertText("X".into())
+        );
+    }
+
+    #[test]
+    fn resolve_default_does_not_insert_plain_text_outside_editor_focus() {
+        let key = Keystroke::new(KeyCode::Char('x'), Modifiers::default());
+
+        assert_eq!(
+            resolve_default(&key, &InputContext::new(FocusTarget::FileTreePanel)),
+            InputResolution::Noop
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_backspace_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::DeleteBackward),
+            InputContext::new(FocusTarget::Editor),
         );
     }
 }
