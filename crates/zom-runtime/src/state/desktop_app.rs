@@ -265,6 +265,7 @@ impl DesktopAppState {
 
         let next_index = active_index.min(self.pane.tabs.len() - 1);
         self.pane.active_tab_index = Some(next_index);
+        self.sync_file_tree_with_active_tab();
         self.sync_tool_bar_with_active_tab();
     }
 
@@ -287,6 +288,7 @@ impl DesktopAppState {
             current_index - 1
         };
         self.pane.active_tab_index = Some(prev_index);
+        self.sync_file_tree_with_active_tab();
         self.sync_tool_bar_with_active_tab();
     }
 
@@ -305,6 +307,7 @@ impl DesktopAppState {
             .min(tab_count.saturating_sub(1));
         let next_index = (current_index + 1) % tab_count;
         self.pane.active_tab_index = Some(next_index);
+        self.sync_file_tree_with_active_tab();
         self.sync_tool_bar_with_active_tab();
     }
 
@@ -316,6 +319,17 @@ impl DesktopAppState {
             self.tool_bar.cursor = Position::zero();
             self.tool_bar.language.clear();
         }
+    }
+
+    fn sync_file_tree_with_active_tab(&mut self) {
+        let Some(relative_path) = self
+            .pane
+            .active_tab()
+            .map(|active_tab| active_tab.relative_path.clone())
+        else {
+            return;
+        };
+        self.file_tree.activate_file(&relative_path);
     }
 
     fn focus_editor(&mut self) {
@@ -376,6 +390,7 @@ impl DesktopAppState {
                 existing_tab.line_ending = line_ending;
             }
             self.pane.active_tab_index = Some(tab_index);
+            self.sync_file_tree_with_active_tab();
             self.sync_tool_bar_with_active_tab();
             return true;
         }
@@ -398,6 +413,7 @@ impl DesktopAppState {
             editor_state,
         });
         self.pane.active_tab_index = Some(self.pane.tabs.len() - 1);
+        self.sync_file_tree_with_active_tab();
         self.sync_tool_bar_with_active_tab();
         true
     }
@@ -548,6 +564,53 @@ mod tests {
         assert_eq!(state.pane.active_tab_index, Some(2));
         assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
         assert_eq!(state.tool_bar.language, "Markdown");
+    }
+
+    #[test]
+    fn tab_activation_commands_sync_file_tree_selection_to_active_tab() {
+        let workspace = create_temp_workspace("tab-activation-syncs-file-tree");
+        fs::write(workspace.join("a.rs"), "fn a() {}").expect("write a.rs");
+        fs::write(workspace.join("b.py"), "print('b')").expect("write b.py");
+        fs::write(workspace.join("c.md"), "# c").expect("write c.md");
+
+        let mut state = DesktopAppState::from_current_workspace();
+        state.switch_project(workspace.clone());
+        state.handle_file_tree_node_activate("a.rs", FileTreeNodeKind::File);
+        state.handle_file_tree_node_activate("b.py", FileTreeNodeKind::File);
+        state.handle_file_tree_node_activate("c.md", FileTreeNodeKind::File);
+
+        assert_eq!(
+            state.file_tree.selected_node().map(|(path, _)| path),
+            Some("c.md".to_string())
+        );
+
+        state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
+        assert_eq!(
+            state
+                .pane
+                .active_tab()
+                .map(|tab| tab.relative_path.as_str()),
+            Some("b.py")
+        );
+        assert_eq!(
+            state.file_tree.selected_node().map(|(path, _)| path),
+            Some("b.py".to_string())
+        );
+
+        state.handle_command(CommandInvocation::from(TabAction::ActivateNextTab));
+        assert_eq!(
+            state
+                .pane
+                .active_tab()
+                .map(|tab| tab.relative_path.as_str()),
+            Some("c.md")
+        );
+        assert_eq!(
+            state.file_tree.selected_node().map(|(path, _)| path),
+            Some("c.md".to_string())
+        );
+
+        remove_temp_workspace(workspace);
     }
 
     #[test]

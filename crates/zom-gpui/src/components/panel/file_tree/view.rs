@@ -16,27 +16,35 @@ pub struct FileTreePanel {
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
     pending_scroll_to_selection: bool,
+    is_logically_focused: bool,
 }
 
 impl FileTreePanel {
     /// 创建一个新的文件树面板。
-    pub fn new(state: FileTreeState, cx: &mut Context<Self>) -> Self {
+    pub fn new(state: FileTreeState, is_logically_focused: bool, cx: &mut Context<Self>) -> Self {
         Self {
             state,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
             pending_scroll_to_selection: true,
+            is_logically_focused,
         }
     }
 
     /// 更新文件树展示状态（例如选中态、展开态）。
-    pub fn set_state(&mut self, state: FileTreeState, cx: &mut Context<Self>) {
+    pub fn set_state(
+        &mut self,
+        state: FileTreeState,
+        is_logically_focused: bool,
+        cx: &mut Context<Self>,
+    ) {
         let previous_selected_path = selected_path(&self.state.roots).map(ToOwned::to_owned);
         let next_selected_path = selected_path(&state.roots).map(ToOwned::to_owned);
         if previous_selected_path != next_selected_path {
             self.pending_scroll_to_selection = true;
         }
         self.state = state;
+        self.is_logically_focused = is_logically_focused;
         cx.notify();
     }
 }
@@ -48,8 +56,8 @@ impl Focusable for FileTreePanel {
 }
 
 impl Render for FileTreePanel {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let panel_has_focus = self.focus_handle.contains_focused(window, cx);
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let panel_has_focus = self.is_logically_focused;
         let visible_rows = collect_visible_rows(&self.state.roots);
         let selected_row_index = visible_rows.iter().position(|row| row.node.is_selected);
 

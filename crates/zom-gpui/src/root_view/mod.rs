@@ -94,7 +94,13 @@ pub(super) struct ZomRootView {
 impl ZomRootView {
     /// 用应用状态创建根视图。
     pub(super) fn new(state: DesktopAppState, cx: &mut Context<Self>) -> Self {
-        let file_tree_panel = cx.new(|cx| FileTreePanel::new(state.file_tree.clone(), cx));
+        let file_tree_panel = cx.new(|cx| {
+            FileTreePanel::new(
+                state.file_tree.clone(),
+                state.focused_target == FocusTarget::FileTreePanel,
+                cx,
+            )
+        });
         let git_panel = cx.new(GitPanel::new);
         let outline_panel = cx.new(OutlinePanel::new);
         let project_search_panel = cx.new(ProjectSearchPanel::new);
@@ -188,11 +194,12 @@ impl ZomRootView {
     /// 将最新应用状态同步到文件树和窗格视图。
     pub(super) fn sync_child_views(&mut self, cx: &mut Context<Self>) {
         let file_tree_state = self.state.file_tree.clone();
+        let file_tree_is_focused = self.state.focused_target == FocusTarget::FileTreePanel;
         let pane_state = self.state.pane.clone();
         let cursor = self.state.tool_bar.cursor;
 
         self.file_tree_panel.update(cx, |this, cx| {
-            this.set_state(file_tree_state, cx);
+            this.set_state(file_tree_state, file_tree_is_focused, cx);
         });
         self.pane_view.update(cx, |this, cx| {
             this.set_state(pane_state, cursor, cx);
