@@ -28,6 +28,7 @@ fn to_core_key_code(key: &str) -> Option<KeyCode> {
         "backspace" => Some(KeyCode::Backspace),
         "delete" => Some(KeyCode::Delete),
         "tab" => Some(KeyCode::Tab),
+        "space" => Some(KeyCode::Char(' ')),
         "home" => Some(KeyCode::Home),
         "end" => Some(KeyCode::End),
         "pageup" => Some(KeyCode::PageUp),

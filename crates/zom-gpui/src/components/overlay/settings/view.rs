@@ -54,8 +54,7 @@ pub(crate) fn panel() -> impl IntoElement {
                     div()
                         .pt(px(size::GAP_1))
                         .text_xs()
-                        .text_color(rgb(color::COLOR_FG_MUTED))
-                        .child("Use Cmd+W to close, or click outside the card."),
+                        .text_color(rgb(color::COLOR_FG_MUTED)),
                 ),
         )
 }
