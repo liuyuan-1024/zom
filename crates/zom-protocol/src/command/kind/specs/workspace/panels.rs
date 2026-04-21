@@ -112,12 +112,4 @@ pub const SPECS: &[CommandKindSpec] = &[
         }),
         &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('n')).with_priority(80)],
     ),
-    CommandKindSpec::new(
-        CommandKind::WorkspaceCloseFocused,
-        "workspace.close_focused",
-        "关闭或隐藏",
-        "关闭或隐藏当前聚焦组件",
-        Buildability::Static(|| CommandInvocation::from(WorkspaceAction::CloseFocused)),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char('w')).with_priority(120)],
-    ),
 ];
