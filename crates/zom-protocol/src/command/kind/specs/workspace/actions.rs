@@ -9,8 +9,8 @@ use crate::{CommandInvocation, WorkspaceAction};
 pub const SPECS: &[CommandKindSpec] = &[CommandKindSpec::new(
     CommandKind::WorkspaceOpenProjectPicker,
     "workspace.open_project_picker",
-    "Open Project Picker",
-    "Open the project folder picker.",
+    "打开项目选择器",
+    "打开项目目录选择器。",
     Buildability::Static(|| CommandInvocation::from(WorkspaceAction::OpenProjectPicker)),
     &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('p')).with_priority(80)],
 )];

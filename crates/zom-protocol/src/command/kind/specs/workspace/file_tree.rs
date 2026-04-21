@@ -9,8 +9,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFileTreeSelectPrev,
         "workspace.file_tree.select_prev",
-        "File Tree Select Previous",
-        "Move file-tree selection to the previous visible node.",
+        "文件树选择上一项",
+        "将文件树选择移动到上一个可见节点。",
         Buildability::Static(|| CommandInvocation::from(FileTreeAction::SelectPrev)),
         &[CommandShortcut::new(
             ShortcutScope::Focus(FocusTarget::FileTreePanel),
@@ -21,8 +21,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFileTreeSelectNext,
         "workspace.file_tree.select_next",
-        "File Tree Select Next",
-        "Move file-tree selection to the next visible node.",
+        "文件树选择下一项",
+        "将文件树选择移动到下一个可见节点。",
         Buildability::Static(|| CommandInvocation::from(FileTreeAction::SelectNext)),
         &[CommandShortcut::new(
             ShortcutScope::Focus(FocusTarget::FileTreePanel),
@@ -33,8 +33,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFileTreeExpandOrDescend,
         "workspace.file_tree.expand_or_descend",
-        "File Tree Expand Or Descend",
-        "Expand selected folder or descend into its first child.",
+        "文件树展开或下探",
+        "展开选中的文件夹或进入其第一个子节点。",
         Buildability::Static(|| CommandInvocation::from(FileTreeAction::ExpandOrDescend)),
         &[CommandShortcut::new(
             ShortcutScope::Focus(FocusTarget::FileTreePanel),
@@ -45,8 +45,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFileTreeCollapseOrAscend,
         "workspace.file_tree.collapse_or_ascend",
-        "File Tree Collapse Or Ascend",
-        "Collapse selected folder or move selection to parent node.",
+        "文件树折叠或上探",
+        "折叠选中的文件夹或移动选择到父节点。",
         Buildability::Static(|| CommandInvocation::from(FileTreeAction::CollapseOrAscend)),
         &[CommandShortcut::new(
             ShortcutScope::Focus(FocusTarget::FileTreePanel),
@@ -57,8 +57,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFileTreeActivateSelection,
         "workspace.file_tree.activate_selection",
-        "File Tree Activate Selection",
-        "Activate selected file-tree node.",
+        "文件树激活选中项",
+        "激活选中的文件树节点。",
         Buildability::Static(|| CommandInvocation::from(FileTreeAction::ActivateSelection)),
         &[CommandShortcut::new(
             ShortcutScope::Focus(FocusTarget::FileTreePanel),

@@ -13,12 +13,12 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::Editor),
         "workspace.focus_panel.editor",
-        "Focus Editor",
-        "Move focus to the editor pane.",
+        "聚焦编辑器",
+        "聚焦编辑器窗格。",
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::Editor))
         }),
-        &[],
+        &[CommandShortcut::new(ShortcutScope::Global, meta_char('e')).with_priority(100)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::Palette),
@@ -28,7 +28,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::Palette))
         }),
-        &[],
+        &[CommandShortcut::new(ShortcutScope::Global, meta_char('p')).with_priority(100)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::FileTreePanel),

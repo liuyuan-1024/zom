@@ -8,8 +8,8 @@ use crate::{CommandInvocation, OverlayTarget, WorkspaceAction};
 pub const SPECS: &[CommandKindSpec] = &[CommandKindSpec::new(
     CommandKind::WorkspaceFocusOverlay(OverlayTarget::Settings),
     "workspace.focus_overlay.settings",
-    "Focus Settings Overlay",
-    "Show settings overlay and move focus to it.",
+    "聚焦设置悬浮面板",
+    "显示并聚焦设置悬浮面板。",
     Buildability::Static(|| {
         CommandInvocation::from(WorkspaceAction::FocusOverlay(OverlayTarget::Settings))
     }),

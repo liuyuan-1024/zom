@@ -48,7 +48,7 @@ pub fn command_kind(command: &CommandInvocation) -> CommandKind {
 
     *COMMAND_KIND_LOOKUP
         .get(command)
-        .expect("all static command invocations must be declared in CommandKindSpec slices")
+        .expect("所有静态命令调用都必须在 CommandKindSpec 切片中声明。")
 }
 
 /// 读取命令语义族稳定字符串 ID。
@@ -74,7 +74,7 @@ pub fn command_kind_spec_by_id(id: CommandKindId) -> Option<&'static CommandKind
 /// 通过运行时调用查询命令声明。
 pub fn command_kind_spec(command: &CommandInvocation) -> &'static CommandKindSpec {
     let kind = command_kind(command);
-    command_kind_spec_by_kind(kind).expect("all command kinds must be declared")
+    command_kind_spec_by_kind(kind).expect("必须声明所有命令类型。")
 }
 
 /// 读取命令默认快捷键。
