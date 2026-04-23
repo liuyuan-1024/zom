@@ -37,6 +37,8 @@ pub enum EditorAction {
     SelectPageUp,
     /// 向下扩展一页选区。
     SelectPageDown,
+    /// 全选。
+    SelectAll,
     /// 向后删除一个字符。
     DeleteBackward,
     /// 向前删除一个字符。
@@ -49,8 +51,6 @@ pub enum EditorAction {
     Undo,
     /// 重做最近一次撤销。
     Redo,
-    /// 全选。
-    SelectAll,
 }
 
 /// 编辑器命令的运行时调用。

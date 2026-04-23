@@ -220,6 +220,17 @@ pub const SPECS: &[CommandKindSpec] = &[
         .with_priority(120)],
     ),
     CommandKindSpec::new(
+        CommandKind::EditorSelectAll,
+        "editor.select_all",
+        "全选",
+        "全选当前编辑器中的内容。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectAll)),
+        &[
+            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), meta_char('a'))
+                .with_priority(120),
+        ],
+    ),
+    CommandKindSpec::new(
         CommandKind::EditorDeleteBackward,
         "editor.delete_backward",
         "删除前一个字符",
@@ -281,16 +292,5 @@ pub const SPECS: &[CommandKindSpec] = &[
             meta_shift_char('z'),
         )
         .with_priority(120)],
-    ),
-    CommandKindSpec::new(
-        CommandKind::EditorSelectAll,
-        "editor.select_all",
-        "全选",
-        "全选当前编辑器中的内容。",
-        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectAll)),
-        &[
-            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), meta_char('a'))
-                .with_priority(120),
-        ],
     ),
 ];

@@ -43,6 +43,8 @@ pub enum CommandKind {
     EditorSelectPageUp,
     /// 编辑器向下扩展一页选区。
     EditorSelectPageDown,
+    /// 编辑器全选。
+    EditorSelectAll,
     /// 编辑器向后删除一个字符。
     EditorDeleteBackward,
     /// 编辑器向前删除一个字符。
@@ -55,8 +57,6 @@ pub enum CommandKind {
     EditorUndo,
     /// 编辑器重做。
     EditorRedo,
-    /// 编辑器全选。
-    EditorSelectAll,
 
     /// 显示并聚焦指定面板。
     WorkspaceFocusPanel(FocusTarget),
