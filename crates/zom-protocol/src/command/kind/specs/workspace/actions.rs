@@ -8,6 +8,22 @@ use crate::{CommandInvocation, WorkspaceAction};
 
 pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
+        CommandKind::WorkspaceQuitApp,
+        "workspace.quit_app",
+        "退出应用",
+        "退出当前应用。",
+        Buildability::Static(|| CommandInvocation::from(WorkspaceAction::QuitApp)),
+        &[CommandShortcut::new(ShortcutScope::Global, primary_char('q')).with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::WorkspaceMinimizeWindow,
+        "workspace.minimize_window",
+        "最小化窗口",
+        "将当前应用窗口最小化。",
+        Buildability::Static(|| CommandInvocation::from(WorkspaceAction::MinimizeWindow)),
+        &[CommandShortcut::new(ShortcutScope::Global, primary_char('m')).with_priority(120)],
+    ),
+    CommandKindSpec::new(
         CommandKind::WorkspaceOpenProjectPicker,
         "workspace.open_project_picker",
         "打开项目选择器",

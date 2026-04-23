@@ -409,6 +409,22 @@ mod tests {
     }
 
     #[test]
+    fn default_keymap_resolves_minimize_window_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(WorkspaceAction::MinimizeWindow),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_quit_app_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(WorkspaceAction::QuitApp),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
     fn default_keymap_resolves_focus_settings_overlay_shortcut() {
         assert_default_shortcut_resolves(
             focus_settings_overlay_command(),

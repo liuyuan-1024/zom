@@ -23,6 +23,10 @@ use crate::{
 /// 需要在 UI 层执行的副作用动作。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DesktopUiAction {
+    /// 退出应用。
+    QuitApp,
+    /// 最小化当前窗口。
+    MinimizeWindow,
     /// 打开项目目录选择器。
     OpenProjectPicker,
 }
@@ -153,12 +157,18 @@ impl DesktopAppState {
     /// 处理工作台命令，并分发到细分子域。
     fn handle_workspace_command(&mut self, command: WorkspaceAction) {
         match command {
-            WorkspaceAction::FocusPanel(target) => self.focus_panel(target),
-            WorkspaceAction::FocusOverlay(target) => self.focus_overlay(target),
-            WorkspaceAction::CloseFocused => self.close_focused(),
+            WorkspaceAction::QuitApp => {
+                self.pending_ui_action = Some(DesktopUiAction::QuitApp);
+            }
+            WorkspaceAction::MinimizeWindow => {
+                self.pending_ui_action = Some(DesktopUiAction::MinimizeWindow);
+            }
             WorkspaceAction::OpenProjectPicker => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
             }
+            WorkspaceAction::FocusPanel(target) => self.focus_panel(target),
+            WorkspaceAction::FocusOverlay(target) => self.focus_overlay(target),
+            WorkspaceAction::CloseFocused => self.close_focused(),
             WorkspaceAction::FileTree(command) => self.handle_file_tree_command(command),
             WorkspaceAction::Tab(command) => self.handle_tab_command(command),
         }
@@ -915,6 +925,34 @@ mod tests {
         assert_eq!(
             state.take_pending_ui_action(),
             Some(DesktopUiAction::OpenProjectPicker)
+        );
+    }
+
+    #[test]
+    fn keyboard_shortcut_can_request_minimize_window_ui_action() {
+        let mut state = DesktopAppState::from_current_workspace();
+        let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::MinimizeWindow));
+
+        let handled = state.handle_keystroke(&keystroke);
+
+        assert!(handled);
+        assert_eq!(
+            state.take_pending_ui_action(),
+            Some(DesktopUiAction::MinimizeWindow)
+        );
+    }
+
+    #[test]
+    fn keyboard_shortcut_can_request_quit_app_ui_action() {
+        let mut state = DesktopAppState::from_current_workspace();
+        let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::QuitApp));
+
+        let handled = state.handle_keystroke(&keystroke);
+
+        assert!(handled);
+        assert_eq!(
+            state.take_pending_ui_action(),
+            Some(DesktopUiAction::QuitApp)
         );
     }
 

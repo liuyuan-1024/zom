@@ -187,6 +187,8 @@ impl ZomRootView {
         cx: &mut Context<Self>,
     ) {
         match action {
+            DesktopUiAction::QuitApp => cx.quit(),
+            DesktopUiAction::MinimizeWindow => window.minimize_window(),
             DesktopUiAction::OpenProjectPicker => self.open_project_from_title_bar(window, cx),
         }
     }

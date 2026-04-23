@@ -58,15 +58,19 @@ pub enum CommandKind {
     /// 编辑器重做。
     EditorRedo,
 
+    /// 退出应用。
+    WorkspaceQuitApp,
+    /// 最小化当前窗口。
+    WorkspaceMinimizeWindow,
+    /// 打开项目选择器。
+    WorkspaceOpenProjectPicker,
+
     /// 显示并聚焦指定面板。
     WorkspaceFocusPanel(FocusTarget),
     /// 显示并聚焦指定悬浮层。
     WorkspaceFocusOverlay(OverlayTarget),
     /// 关闭当前聚焦组件。
     WorkspaceCloseFocused,
-
-    /// 打开项目选择器。
-    WorkspaceOpenProjectPicker,
 
     /// 打开代码操作入口。
     WorkspaceOpenCodeActions,

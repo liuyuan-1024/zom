@@ -31,15 +31,19 @@ pub enum FileTreeAction {
 /// 工作台动作语义。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WorkspaceAction {
+    /// 退出应用。
+    QuitApp,
+    /// 最小化当前窗口。
+    MinimizeWindow,
+    /// 打开项目目录选择器。
+    OpenProjectPicker,
+
     /// 聚焦到并显示指定面板。
     FocusPanel(FocusTarget),
     /// 聚焦到并显示指定悬浮层。
     FocusOverlay(OverlayTarget),
     /// 关闭当前聚焦组件如悬浮层、面板、标签页等）。
     CloseFocused,
-
-    /// 打开项目目录选择器。
-    OpenProjectPicker,
 
     /// 作用于文件树的动作。
     FileTree(FileTreeAction),
