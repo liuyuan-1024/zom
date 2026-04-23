@@ -1,13 +1,16 @@
 //! Pane 主体视图渲染与内容展示逻辑。
 
-use std::time::{Duration, Instant};
+use std::{
+    ops::Range,
+    time::{Duration, Instant},
+};
 
 use gpui::{
     Animation, AnimationExt, AnyElement, App, Context, FocusHandle, Focusable, InteractiveElement,
     IntoElement, ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
     div, px, rgb,
 };
-use zom_protocol::Position;
+use zom_protocol::{Position, Selection};
 use zom_runtime::{projection::wrap_visual_line, state::PaneState};
 
 use crate::{
@@ -23,8 +26,6 @@ const APPROX_MONO_CHAR_WIDTH_PX: f32 = 8.0;
 const CARET_WIDTH_PX: f32 = 1.5;
 /// 细线光标高度。
 const CARET_HEIGHT_PX: f32 = size::FONT_MD;
-/// 光标在文本中的内部标记字符（私有使用区）。
-const CARET_MARKER: char = '\u{E000}';
 /// 光标闪烁周期。
 const CARET_BLINK_DURATION_MS: u64 = 1_000;
 /// 光标移动后，暂时禁止闪烁的时长。
@@ -109,7 +110,12 @@ impl PaneView {
                 .flex_col()
                 .flex_1()
                 .overflow_hidden()
-                .child(self.render_viewer_content(buffer_lines, wrap_max_chars, cx))
+                .child(self.render_viewer_content(
+                    buffer_lines,
+                    wrap_max_chars,
+                    active_tab.editor_state.selection(),
+                    cx,
+                ))
                 .into_any_element();
         }
 
@@ -128,8 +134,10 @@ impl PaneView {
         &self,
         buffer_lines: Vec<String>,
         wrap_max_chars: usize,
+        selection: Selection,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + '_ {
+        let wrap_chunk = wrap_max_chars.max(1);
         let suppress_caret_blink = self.last_cursor_moved_at.is_some_and(|moved_at| {
             moved_at.elapsed() < Duration::from_millis(CARET_BLINK_PAUSE_AFTER_MOVE_MS)
         });
@@ -140,15 +148,32 @@ impl PaneView {
             .enumerate()
             .flat_map(|(line_index, line)| {
                 let is_cursor_line = line_index == cursor_line;
-                let rendered_line = if is_cursor_line {
-                    line_with_caret_marker(line, cursor_column)
-                } else {
-                    line.clone()
-                };
-                wrap_visual_line(&rendered_line, wrap_max_chars)
+                let line_char_len = line.chars().count();
+                let line_selected_range =
+                    selected_column_range_for_line(selection, line_index, line_char_len);
+                let wrapped_lines = wrap_visual_line(line, wrap_chunk);
+                let wrapped_count = wrapped_lines.len();
+                wrapped_lines
                     .into_iter()
                     .enumerate()
                     .map(move |(wrapped_index, wrapped_line)| {
+                        let segment_start_column = wrapped_index * wrap_chunk;
+                        let segment_end_column =
+                            segment_start_column + wrapped_line.chars().count();
+                        let is_last_segment = wrapped_index + 1 == wrapped_count;
+                        let selected_range = selected_range_in_wrapped_segment(
+                            line_selected_range.as_ref(),
+                            segment_start_column,
+                            segment_end_column,
+                        );
+                        let caret_column = caret_column_in_wrapped_segment(
+                            is_cursor_line,
+                            cursor_column,
+                            line_char_len,
+                            segment_start_column,
+                            segment_end_column,
+                            is_last_segment,
+                        );
                         let line_number = if wrapped_index == 0 {
                             (line_index + 1).to_string()
                         } else {
@@ -189,7 +214,9 @@ impl PaneView {
                                     }))
                                     .whitespace_nowrap()
                                     .child(render_wrapped_line_content(
-                                        wrapped_line,
+                                        &wrapped_line,
+                                        selected_range,
+                                        caret_column,
                                         suppress_caret_blink,
                                     )),
                             )
@@ -211,41 +238,142 @@ impl PaneView {
     }
 }
 
-fn line_with_caret_marker(line: &str, column: usize) -> String {
-    let char_len = line.chars().count();
-    let target = column.min(char_len);
-    let mut rendered = String::with_capacity(line.len() + 1);
-
-    for (index, ch) in line.chars().enumerate() {
-        if index == target {
-            rendered.push(CARET_MARKER);
-        }
-        rendered.push(ch);
+fn selected_column_range_for_line(
+    selection: Selection,
+    line_index: usize,
+    line_char_len: usize,
+) -> Option<Range<usize>> {
+    if selection.is_caret() {
+        return None;
     }
 
-    if target == char_len {
-        rendered.push(CARET_MARKER);
+    let start = selection.start();
+    let end = selection.end();
+    let line = u32::try_from(line_index).unwrap_or(u32::MAX);
+    if line < start.line || line > end.line {
+        return None;
     }
 
-    rendered
+    let mut from = if line == start.line {
+        start.column as usize
+    } else {
+        0
+    };
+    let mut to = if line == end.line {
+        end.column as usize
+    } else {
+        line_char_len
+    };
+
+    from = from.min(line_char_len);
+    to = to.min(line_char_len);
+    (from < to).then_some(from..to)
 }
 
-fn render_wrapped_line_content(wrapped_line: String, suppress_caret_blink: bool) -> AnyElement {
-    if let Some((before, after)) = wrapped_line.split_once(CARET_MARKER) {
+fn selected_range_in_wrapped_segment(
+    selected_columns_in_line: Option<&Range<usize>>,
+    segment_start_column: usize,
+    segment_end_column: usize,
+) -> Option<Range<usize>> {
+    let selected_columns_in_line = selected_columns_in_line?;
+    let from = selected_columns_in_line.start.max(segment_start_column);
+    let to = selected_columns_in_line.end.min(segment_end_column);
+    (from < to).then_some((from - segment_start_column)..(to - segment_start_column))
+}
+
+fn caret_column_in_wrapped_segment(
+    is_cursor_line: bool,
+    cursor_column: usize,
+    line_char_len: usize,
+    segment_start_column: usize,
+    segment_end_column: usize,
+    is_last_segment: bool,
+) -> Option<usize> {
+    if !is_cursor_line {
+        return None;
+    }
+    let clamped_column = cursor_column.min(line_char_len);
+    if clamped_column < segment_start_column || clamped_column > segment_end_column {
+        return None;
+    }
+    if clamped_column == segment_end_column && !is_last_segment {
+        return None;
+    }
+    Some(clamped_column - segment_start_column)
+}
+
+fn render_wrapped_line_content(
+    wrapped_line: &str,
+    selected_range: Option<Range<usize>>,
+    caret_column: Option<usize>,
+    suppress_caret_blink: bool,
+) -> AnyElement {
+    if selected_range.is_none() && caret_column.is_none() {
         return div()
             .flex()
             .items_center()
-            .child(before.to_string())
-            .child(render_caret(suppress_caret_blink))
-            .child(after.to_string())
+            .child(wrapped_line.to_string())
             .into_any_element();
+    }
+
+    let chars = wrapped_line.chars().collect::<Vec<_>>();
+    let len = chars.len();
+    let caret_column = caret_column.filter(|column| *column <= len);
+    let selected_range = selected_range.unwrap_or(0..0);
+    let mut children = Vec::new();
+    let mut cursor = 0usize;
+
+    while cursor < len {
+        if caret_column == Some(cursor) {
+            children.push(render_caret(suppress_caret_blink).into_any_element());
+        }
+
+        let is_selected = selected_range.start <= cursor && cursor < selected_range.end;
+        let mut end = cursor + 1;
+        while end < len {
+            if caret_column == Some(end) {
+                break;
+            }
+            let end_selected = selected_range.start <= end && end < selected_range.end;
+            if end_selected != is_selected {
+                break;
+            }
+            end += 1;
+        }
+
+        let text = chars[cursor..end].iter().collect::<String>();
+        children.push(render_text_chunk(text, is_selected));
+        cursor = end;
+    }
+
+    if caret_column == Some(len) {
+        children.push(render_caret(suppress_caret_blink).into_any_element());
+    }
+
+    if children.is_empty() {
+        if caret_column == Some(0) {
+            children.push(render_caret(suppress_caret_blink).into_any_element());
+        } else {
+            children.push(render_text_chunk(String::new(), false));
+        }
     }
 
     div()
         .flex()
         .items_center()
-        .child(wrapped_line)
+        .children(children)
         .into_any_element()
+}
+
+fn render_text_chunk(text: String, selected: bool) -> AnyElement {
+    if selected {
+        div()
+            .bg(rgb(color::COLOR_BG_ACTIVE))
+            .child(text)
+            .into_any_element()
+    } else {
+        div().child(text).into_any_element()
+    }
 }
 
 fn render_caret(suppress_caret_blink: bool) -> impl IntoElement {
@@ -300,17 +428,12 @@ fn cursor_visual_row_index(
             visual_row += wrap_visual_line(line, wrap_max_chars).len().max(1);
             continue;
         }
-
-        let rendered_line = line_with_caret_marker(line, cursor_column);
-        for (wrapped_index, wrapped_line) in wrap_visual_line(&rendered_line, wrap_max_chars)
-            .into_iter()
-            .enumerate()
-        {
-            if wrapped_line.contains(CARET_MARKER) {
-                return visual_row + wrapped_index;
-            }
-        }
-        return visual_row;
+        let wrapped_lines = wrap_visual_line(line, wrap_max_chars);
+        let line_char_len = line.chars().count();
+        let clamped_column = cursor_column.min(line_char_len);
+        let wrapped_index =
+            (clamped_column / wrap_max_chars.max(1)).min(wrapped_lines.len().saturating_sub(1));
+        return visual_row + wrapped_index;
     }
 
     visual_row
