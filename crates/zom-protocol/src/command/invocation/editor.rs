@@ -13,14 +13,30 @@ pub enum EditorAction {
     MoveUp,
     /// 光标向下移动。
     MoveDown,
-    /// 移动到当前行起点。
+    /// 光标移动到当前行起点。
     MoveToStart,
-    /// 移动到当前行终点。
+    /// 光标移动到当前行终点。
     MoveToEnd,
-    /// 向上翻一页。
+    /// 光标向上移动一页。
     MovePageUp,
-    /// 向下翻一页。
+    /// 光标向下移动一页。
     MovePageDown,
+    /// 向左扩展选区。
+    SelectLeft,
+    /// 向右扩展选区。
+    SelectRight,
+    /// 向上扩展选区。
+    SelectUp,
+    /// 向下扩展选区。
+    SelectDown,
+    /// 向当前行起点扩展选区。
+    SelectToStart,
+    /// 向当前行终点扩展选区。
+    SelectToEnd,
+    /// 向上扩展一页选区。
+    SelectPageUp,
+    /// 向下扩展一页选区。
+    SelectPageDown,
     /// 向后删除一个字符。
     DeleteBackward,
     /// 向前删除一个字符。

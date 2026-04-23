@@ -27,6 +27,22 @@ pub enum CommandKind {
     EditorMovePageUp,
     /// 编辑器向下翻页。
     EditorMovePageDown,
+    /// 编辑器向左扩展选区。
+    EditorSelectLeft,
+    /// 编辑器向右扩展选区。
+    EditorSelectRight,
+    /// 编辑器向上扩展选区。
+    EditorSelectUp,
+    /// 编辑器向下扩展选区。
+    EditorSelectDown,
+    /// 编辑器向当前行起点扩展选区。
+    EditorSelectToStart,
+    /// 编辑器向当前行终点扩展选区。
+    EditorSelectToEnd,
+    /// 编辑器向上扩展一页选区。
+    EditorSelectPageUp,
+    /// 编辑器向下扩展一页选区。
+    EditorSelectPageDown,
     /// 编辑器向后删除一个字符。
     EditorDeleteBackward,
     /// 编辑器向前删除一个字符。
@@ -202,6 +218,10 @@ pub struct DefaultShortcutBinding {
 
 pub(crate) const fn plain(key: KeyCode) -> Keystroke {
     Keystroke::new(key, Modifiers::new(false, false, false, false))
+}
+
+pub(crate) const fn shift(key: KeyCode) -> Keystroke {
+    Keystroke::new(key, Modifiers::new(false, false, true, false))
 }
 
 pub(crate) const fn meta_char(c: char) -> Keystroke {

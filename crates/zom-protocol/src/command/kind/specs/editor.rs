@@ -2,7 +2,7 @@
 
 use crate::command::kind::{
     Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope,
-    types::{meta_char, meta_shift_char, plain},
+    types::{meta_char, meta_shift_char, plain, shift},
 };
 use crate::{CommandInvocation, EditorAction, FocusTarget, KeyCode};
 
@@ -120,6 +120,102 @@ pub const SPECS: &[CommandKindSpec] = &[
         &[CommandShortcut::new(
             ShortcutScope::Focus(FocusTarget::Editor),
             plain(KeyCode::PageDown),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectLeft,
+        "editor.select_left",
+        "向左扩展选区",
+        "将选区活动端向左移动一个字符。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectLeft)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::Left),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectRight,
+        "editor.select_right",
+        "向右扩展选区",
+        "将选区活动端向右移动一个字符。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectRight)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::Right),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectUp,
+        "editor.select_up",
+        "向上扩展选区",
+        "将选区活动端向上移动一行。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectUp)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::Up),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectDown,
+        "editor.select_down",
+        "向下扩展选区",
+        "将选区活动端向下移动一行。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectDown)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::Down),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectToStart,
+        "editor.select_to_start",
+        "向行起点扩展选区",
+        "将选区活动端移动到当前行起点。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectToStart)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::Home),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectToEnd,
+        "editor.select_to_end",
+        "向行终点扩展选区",
+        "将选区活动端移动到当前行终点。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectToEnd)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::End),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectPageUp,
+        "editor.select_page_up",
+        "向上扩展一页选区",
+        "将选区活动端向上移动一页。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectPageUp)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::PageUp),
+        )
+        .with_priority(120)],
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorSelectPageDown,
+        "editor.select_page_down",
+        "向下扩展一页选区",
+        "将选区活动端向下移动一页。",
+        Buildability::Static(|| CommandInvocation::from(EditorAction::SelectPageDown)),
+        &[CommandShortcut::new(
+            ShortcutScope::Focus(FocusTarget::Editor),
+            shift(KeyCode::PageDown),
         )
         .with_priority(120)],
     ),

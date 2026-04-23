@@ -507,4 +507,68 @@ mod tests {
             InputContext::new(FocusTarget::Editor),
         );
     }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_left_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectLeft),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_right_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectRight),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_up_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectUp),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_down_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectDown),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_home_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectToStart),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_end_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectToEnd),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_page_up_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectPageUp),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
+
+    #[test]
+    fn default_keymap_resolves_editor_shift_page_down_selection_shortcut() {
+        assert_default_shortcut_resolves(
+            CommandInvocation::from(EditorAction::SelectPageDown),
+            InputContext::new(FocusTarget::Editor),
+        );
+    }
 }
