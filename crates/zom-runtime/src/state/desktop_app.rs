@@ -677,6 +677,30 @@ mod tests {
     }
 
     #[test]
+    fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.pane.tabs = vec![crate::state::TabState {
+            buffer_id: zom_protocol::BufferId::new(1),
+            title: "demo.rs".into(),
+            relative_path: "demo.rs".into(),
+            language: "Rust".into(),
+            line_ending: "LF".into(),
+            editor_state: zom_editor::EditorState::from_text("ab\ncd"),
+        }];
+        state.pane.active_tab_index = Some(0);
+        state.tool_bar.cursor = Position::new(1, 1);
+
+        state.handle_command(CommandInvocation::from(EditorAction::SelectAll));
+
+        let active_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(
+            active_tab.editor_state.selection(),
+            zom_protocol::Selection::new(Position::new(0, 0), Position::new(1, 2))
+        );
+        assert_eq!(state.tool_bar.cursor, Position::new(1, 2));
+    }
+
+    #[test]
     fn plain_character_keystroke_in_editor_focus_inserts_text() {
         let mut state = DesktopAppState::from_current_workspace();
         state.pane.tabs = vec![crate::state::TabState {
@@ -698,6 +722,41 @@ mod tests {
         let active_tab = state.pane.active_tab().expect("active tab should exist");
         assert_eq!(active_tab.text(), "axb");
         assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
+    }
+
+    #[test]
+    fn shift_left_then_backspace_deletes_selected_text_in_editor() {
+        let mut state = DesktopAppState::from_current_workspace();
+        state.pane.tabs = vec![crate::state::TabState {
+            buffer_id: zom_protocol::BufferId::new(1),
+            title: "demo.rs".into(),
+            relative_path: "demo.rs".into(),
+            language: "Rust".into(),
+            line_ending: "LF".into(),
+            editor_state: zom_editor::EditorState::from_text("ab"),
+        }];
+        state.pane.active_tab_index = Some(0);
+        state.focused_target = FocusTarget::Editor;
+        state.tool_bar.cursor = Position::new(0, 1);
+
+        let select_left = Keystroke::new(KeyCode::Left, Modifiers::new(false, false, true, false));
+        assert!(state.handle_keystroke(&select_left));
+        let selected_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(
+            selected_tab.editor_state.selection(),
+            zom_protocol::Selection::new(Position::new(0, 1), Position::new(0, 0))
+        );
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
+
+        let backspace = Keystroke::new(KeyCode::Backspace, Modifiers::default());
+        assert!(state.handle_keystroke(&backspace));
+        let active_tab = state.pane.active_tab().expect("active tab should exist");
+        assert_eq!(active_tab.text(), "b");
+        assert_eq!(
+            active_tab.editor_state.selection(),
+            zom_protocol::Selection::caret(Position::new(0, 0))
+        );
+        assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
     }
 
     #[test]
