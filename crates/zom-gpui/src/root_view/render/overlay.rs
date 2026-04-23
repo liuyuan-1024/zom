@@ -1,13 +1,13 @@
 //! 设置悬浮层与遮罩交互渲染。
 
-use gpui::{Context, Div, ParentElement, Stateful, Styled, div, px, rgb};
+use gpui::{Context, Div, InteractiveElement, ParentElement, Stateful, Styled, div, px, rgb};
 
 use super::super::ZomRootView;
 use crate::{components::settings_overlay, theme::color};
 
 impl ZomRootView {
     /// 渲染设置浮层（含遮罩与中间卡片）。
-    pub(super) fn render_settings_overlay(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+    pub(super) fn render_settings_overlay(&self, _cx: &mut Context<Self>) -> Stateful<Div> {
         div()
             .id("settings-overlay-layer")
             .absolute()
