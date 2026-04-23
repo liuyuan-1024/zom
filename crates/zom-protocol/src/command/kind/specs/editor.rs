@@ -2,7 +2,7 @@
 
 use crate::command::kind::{
     Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope,
-    types::{meta_char, meta_shift_char, plain, shift},
+    types::{plain, primary_char, primary_shift_char, shift},
 };
 use crate::{CommandInvocation, EditorAction, FocusTarget, KeyCode};
 
@@ -226,7 +226,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         "全选当前编辑器中的内容。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::SelectAll)),
         &[
-            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), meta_char('a'))
+            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), primary_char('a'))
                 .with_priority(120),
         ],
     ),
@@ -277,7 +277,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         "撤销最近一次编辑。",
         Buildability::Static(|| CommandInvocation::from(EditorAction::Undo)),
         &[
-            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), meta_char('z'))
+            CommandShortcut::new(ShortcutScope::Focus(FocusTarget::Editor), primary_char('z'))
                 .with_priority(120),
         ],
     ),
@@ -289,7 +289,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| CommandInvocation::from(EditorAction::Redo)),
         &[CommandShortcut::new(
             ShortcutScope::Focus(FocusTarget::Editor),
-            meta_shift_char('z'),
+            primary_shift_char('z'),
         )
         .with_priority(120)],
     ),

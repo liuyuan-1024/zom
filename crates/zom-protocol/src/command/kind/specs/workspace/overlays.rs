@@ -1,7 +1,7 @@
 //! 悬浮层相关命令规范声明。
 
 use crate::command::kind::{
-    Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope, types::meta_char,
+    Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope, types::primary_char,
 };
 use crate::{CommandInvocation, OverlayTarget, WorkspaceAction};
 
@@ -13,5 +13,5 @@ pub const SPECS: &[CommandKindSpec] = &[CommandKindSpec::new(
     Buildability::Static(|| {
         CommandInvocation::from(WorkspaceAction::FocusOverlay(OverlayTarget::Settings))
     }),
-    &[CommandShortcut::new(ShortcutScope::Global, meta_char(',')).with_priority(80)],
+    &[CommandShortcut::new(ShortcutScope::Global, primary_char(',')).with_priority(80)],
 )];

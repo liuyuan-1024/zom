@@ -1,6 +1,6 @@
 //! 标签页相关命令规范声明。
 
-use crate::command::kind::types::meta_char;
+use crate::command::kind::types::primary_char;
 use crate::command::kind::{Buildability, CommandKind, CommandKindSpec};
 use crate::{CommandInvocation, CommandShortcut, ShortcutScope, TabAction};
 
@@ -19,7 +19,10 @@ pub const SPECS: &[CommandKindSpec] = &[
         "激活前一个标签页",
         "激活前一个标签页。",
         Buildability::Static(|| CommandInvocation::from(TabAction::ActivatePrevTab)),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char('h'))],
+        &[CommandShortcut::new(
+            ShortcutScope::Global,
+            primary_char('h'),
+        )],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceTabActivateNext,
@@ -27,6 +30,9 @@ pub const SPECS: &[CommandKindSpec] = &[
         "激活下一个标签页",
         "激活下一个标签页。",
         Buildability::Static(|| CommandInvocation::from(TabAction::ActivateNextTab)),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char('l'))],
+        &[CommandShortcut::new(
+            ShortcutScope::Global,
+            primary_char('l'),
+        )],
     ),
 ];

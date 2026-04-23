@@ -287,6 +287,27 @@ mod tests {
             .unwrap_or_else(|| panic!("default shortcut should exist for command: {command:?}"))
     }
 
+    #[test]
+    fn close_focused_shortcut_uses_primary_modifier_on_current_platform() {
+        let key = shortcut_for(&CommandInvocation::from(WorkspaceAction::CloseFocused));
+
+        assert_eq!(key.key, KeyCode::Char('w'));
+        assert!(!key.modifiers.has_shift);
+        assert!(!key.modifiers.has_alt);
+
+        #[cfg(target_os = "macos")]
+        {
+            assert!(key.modifiers.has_meta);
+            assert!(!key.modifiers.has_ctrl);
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            assert!(key.modifiers.has_ctrl);
+            assert!(!key.modifiers.has_meta);
+        }
+    }
+
     fn assert_default_shortcut_resolves(command: CommandInvocation, context: InputContext) {
         let keymap = default_keymap();
         let key = shortcut_for(&command);

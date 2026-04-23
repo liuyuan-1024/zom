@@ -224,14 +224,101 @@ pub(crate) const fn shift(key: KeyCode) -> Keystroke {
     Keystroke::new(key, Modifiers::new(false, false, true, false))
 }
 
-pub(crate) const fn meta_char(c: char) -> Keystroke {
-    Keystroke::new(KeyCode::Char(c), Modifiers::new(false, false, false, true))
+/// 主命令修饰键（Primary）：
+/// macOS 为 Command，Windows/Linux 为 Ctrl。
+pub(crate) const fn primary_char(c: char) -> Keystroke {
+    Keystroke::new(
+        KeyCode::Char(c),
+        with_logical_modifiers(false, true, false, false),
+    )
 }
 
-pub(crate) const fn meta_shift_char(c: char) -> Keystroke {
-    Keystroke::new(KeyCode::Char(c), Modifiers::new(false, false, true, true))
+/// 主命令修饰键 + Shift：
+/// macOS 为 Command+Shift，Windows/Linux 为 Ctrl+Shift。
+pub(crate) const fn primary_shift_char(c: char) -> Keystroke {
+    Keystroke::new(
+        KeyCode::Char(c),
+        with_logical_modifiers(true, true, false, false),
+    )
 }
 
-pub(crate) const fn ctrl_char(c: char) -> Keystroke {
-    Keystroke::new(KeyCode::Char(c), Modifiers::new(true, false, false, false))
+/// 次命令修饰键（Secondary）：
+/// macOS 为 Ctrl，Windows/Linux 为 Alt。
+#[allow(dead_code)]
+pub(crate) const fn secondary_char(c: char) -> Keystroke {
+    Keystroke::new(
+        KeyCode::Char(c),
+        with_logical_modifiers(false, false, true, false),
+    )
+}
+
+/// 单词导航修饰键（WordNav）：
+/// macOS 为 Alt，Windows/Linux 为 Ctrl。
+#[allow(dead_code)]
+pub(crate) const fn word_nav_char(c: char) -> Keystroke {
+    Keystroke::new(
+        KeyCode::Char(c),
+        with_logical_modifiers(false, false, false, true),
+    )
+}
+
+const fn with_logical_modifiers(
+    shift: bool,
+    primary: bool,
+    secondary: bool,
+    word_nav: bool,
+) -> Modifiers {
+    let mut modifiers = Modifiers::new(false, false, shift, false);
+    if primary {
+        modifiers = merge_modifiers(modifiers, primary_modifier());
+    }
+    if secondary {
+        modifiers = merge_modifiers(modifiers, secondary_modifier());
+    }
+    if word_nav {
+        modifiers = merge_modifiers(modifiers, word_nav_modifier());
+    }
+    modifiers
+}
+
+const fn merge_modifiers(base: Modifiers, extra: Modifiers) -> Modifiers {
+    Modifiers::new(
+        base.has_ctrl || extra.has_ctrl,
+        base.has_alt || extra.has_alt,
+        base.has_shift || extra.has_shift,
+        base.has_meta || extra.has_meta,
+    )
+}
+
+const fn primary_modifier() -> Modifiers {
+    #[cfg(target_os = "macos")]
+    {
+        Modifiers::new(false, false, false, true)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Modifiers::new(true, false, false, false)
+    }
+}
+
+const fn secondary_modifier() -> Modifiers {
+    #[cfg(target_os = "macos")]
+    {
+        Modifiers::new(true, false, false, false)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Modifiers::new(false, true, false, false)
+    }
+}
+
+const fn word_nav_modifier() -> Modifiers {
+    #[cfg(target_os = "macos")]
+    {
+        Modifiers::new(false, true, false, false)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Modifiers::new(true, false, false, false)
+    }
 }

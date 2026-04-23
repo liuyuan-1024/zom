@@ -5,7 +5,7 @@
 use crate::FocusTarget;
 use crate::command::kind::{
     Buildability, CommandKind, CommandKindSpec, CommandShortcut, ShortcutScope,
-    types::{meta_char, meta_shift_char},
+    types::{primary_char, primary_shift_char},
 };
 use crate::{CommandInvocation, WorkspaceAction};
 
@@ -18,7 +18,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::Editor))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char('e')).with_priority(100)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_char('e')).with_priority(100)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::Palette),
@@ -28,7 +28,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::Palette))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char('p')).with_priority(100)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_char('p')).with_priority(100)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::FileTreePanel),
@@ -38,7 +38,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::FileTreePanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('e')).with_priority(100)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_shift_char('e')).with_priority(100)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::GitPanel),
@@ -48,7 +48,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::GitPanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('g')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_shift_char('g')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::OutlinePanel),
@@ -58,7 +58,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::OutlinePanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('o')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_shift_char('o')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::ProjectSearchPanel),
@@ -68,7 +68,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::ProjectSearchPanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('f')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_shift_char('f')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::LanguageServersPanel),
@@ -80,7 +80,7 @@ pub const SPECS: &[CommandKindSpec] = &[
                 FocusTarget::LanguageServersPanel,
             ))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('l')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_shift_char('l')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::TerminalPanel),
@@ -90,7 +90,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::TerminalPanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_char('.')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_char('.')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::DebugPanel),
@@ -100,7 +100,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::DebugPanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('d')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_shift_char('d')).with_priority(80)],
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::NotificationPanel),
@@ -110,6 +110,6 @@ pub const SPECS: &[CommandKindSpec] = &[
         Buildability::Static(|| {
             CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::NotificationPanel))
         }),
-        &[CommandShortcut::new(ShortcutScope::Global, meta_shift_char('n')).with_priority(80)],
+        &[CommandShortcut::new(ShortcutScope::Global, primary_shift_char('n')).with_priority(80)],
     ),
 ];
