@@ -1,8 +1,6 @@
 //! 编辑窗格与标签页状态模型。
 
-use zom_editor::EditorState;
 use zom_protocol::{BufferId, PaneId};
-use zom_text::split_lines;
 
 /// 窗格模型（带有标签页和具体内容展示区）
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,21 +33,9 @@ pub struct TabState {
     pub language: String,
     /// 原始文件换行符格式（用于保存时 preserve）。
     pub line_ending: String,
-    /// 编辑器状态。
-    pub editor_state: EditorState,
 }
 
 impl TabState {
-    /// 返回用于查看器渲染的文本行数据。
-    pub fn buffer_lines(&self) -> Vec<String> {
-        split_lines(self.editor_state.text())
-    }
-
-    /// 返回完整文本内容。
-    pub fn text(&self) -> &str {
-        self.editor_state.text()
-    }
-
     /// 返回该标签页的语言。
     pub fn language(&self) -> &str {
         &self.language

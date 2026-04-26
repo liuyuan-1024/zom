@@ -25,7 +25,8 @@ impl DesktopAppState {
             return;
         }
 
-        self.pane.tabs.remove(active_index);
+        let closed_tab = self.pane.tabs.remove(active_index);
+        self.remove_editor_state(closed_tab.buffer_id);
         if self.pane.tabs.is_empty() {
             self.pane.active_tab_index = None;
             self.sync_tool_bar_with_active_tab();
@@ -82,12 +83,14 @@ impl DesktopAppState {
 
     pub(super) fn sync_tool_bar_with_active_tab(&mut self) {
         if let Some(active_tab) = self.pane.active_tab() {
-            self.tool_bar.cursor = active_tab.editor_state.selection().active();
-            self.tool_bar.language = active_tab.language().to_string();
-        } else {
-            self.tool_bar.cursor = Position::zero();
-            self.tool_bar.language.clear();
+            if let Some(editor_state) = self.editor_state(active_tab.buffer_id) {
+                self.tool_bar.cursor = editor_state.selection().active();
+                self.tool_bar.language = active_tab.language().to_string();
+                return;
+            }
         }
+        self.tool_bar.cursor = Position::zero();
+        self.tool_bar.language.clear();
     }
 
     pub(super) fn sync_file_tree_with_active_tab(&mut self) {

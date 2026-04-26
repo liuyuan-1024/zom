@@ -1,6 +1,6 @@
 //! 应用初始状态装配逻辑。
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use zom_protocol::{
     FocusTarget, PaneId, Position, ToolBarSide, WorkspaceAction, command::CommandInvocation,
@@ -43,6 +43,7 @@ impl DesktopAppState {
                 tabs: Vec::new(),
                 active_tab_index: None,
             },
+            editor_states: HashMap::new(),
             focused_target: FocusTarget::Editor,
             visible_panels: default_visible_panels(),
             active_overlay: None,

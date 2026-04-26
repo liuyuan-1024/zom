@@ -57,18 +57,21 @@ impl DesktopAppState {
 
     /// 处理编辑器命令，并把结果写回当前活动标签页与工具栏状态。
     fn handle_editor_command(&mut self, command: EditorInvocation) {
-        let Some(active_index) = self.pane.active_tab_index else {
+        let Some(active_buffer_id) = self.active_buffer_id() else {
+            if self.pane.active_tab_index.is_some() {
+                self.pane.active_tab_index = None;
+                self.sync_tool_bar_with_active_tab();
+            }
             return;
         };
-        let Some(active_tab) = self.pane.tabs.get_mut(active_index) else {
+        let Some(current_state) = self.take_editor_state(active_buffer_id) else {
             self.pane.active_tab_index = None;
             self.sync_tool_bar_with_active_tab();
             return;
         };
 
-        let result =
-            apply_editor_invocation(&active_tab.editor_state, self.tool_bar.cursor, &command);
-        active_tab.editor_state = result.state;
+        let result = apply_editor_invocation(&current_state, self.tool_bar.cursor, &command);
+        self.replace_editor_state(active_buffer_id, result.state);
         self.sync_tool_bar_with_active_tab();
     }
 

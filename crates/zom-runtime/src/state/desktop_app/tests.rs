@@ -5,9 +5,9 @@ use std::{
 };
 
 use zom_protocol::{
-    command::{FileTreeAction, TabAction, WorkspaceAction},
     CommandInvocation, EditorAction, EditorInvocation, FocusTarget, KeyCode, Keystroke, Modifiers,
     OverlayTarget, Position,
+    command::{FileTreeAction, TabAction, WorkspaceAction},
 };
 
 use super::{DesktopAppState, DesktopUiAction};
@@ -36,7 +36,13 @@ fn activating_file_tree_file_opens_tab_and_activates_it() {
     assert_eq!(state.pane.tabs.len(), before_len + 1);
     let active_tab = state.pane.active_tab().expect("active tab should exist");
     assert_eq!(active_tab.relative_path, "main.rs");
-    assert!(!active_tab.buffer_lines().is_empty());
+    assert!(
+        !state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text
+            .is_empty()
+    );
     assert_eq!(state.focused_target, FocusTarget::Editor);
     assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
 
@@ -104,7 +110,13 @@ fn close_focused_hides_focused_file_tree_and_falls_back_to_editor() {
 fn close_focused_closes_active_tab_when_editor_is_focused() {
     let mut state = DesktopAppState::from_current_workspace();
     state.focused_target = FocusTarget::Editor;
-    state.pane.tabs = vec![zom_runtime_test_tab("a.rs"), zom_runtime_test_tab("b.rs")];
+    set_tabs(
+        &mut state,
+        vec![
+            zom_runtime_test_tab("a.rs", 1),
+            zom_runtime_test_tab("b.rs", 2),
+        ],
+    );
     state.pane.active_tab_index = Some(1);
 
     state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
@@ -117,11 +129,14 @@ fn close_focused_closes_active_tab_when_editor_is_focused() {
 #[test]
 fn tab_activation_commands_cycle_tabs_and_sync_toolbar_state() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.pane.tabs = vec![
-        zom_runtime_test_tab_with_text_and_cursor("a.rs", "first\nline", 0),
-        zom_runtime_test_tab_with_text_and_cursor("b.py", "x\r\ny", 1),
-        zom_runtime_test_tab_with_text_and_cursor("c.md", "tail", 2),
-    ];
+    set_tabs(
+        &mut state,
+        vec![
+            zom_runtime_test_tab_with_text_and_cursor("a.rs", "first\nline", 0),
+            zom_runtime_test_tab_with_text_and_cursor("b.py", "x\r\ny", 1),
+            zom_runtime_test_tab_with_text_and_cursor("c.md", "tail", 2),
+        ],
+    );
     state.pane.active_tab_index = Some(0);
     state.tool_bar.cursor = Position::new(99, 99);
     state.tool_bar.language = "Plain Text".into();
@@ -194,10 +209,13 @@ fn tab_activation_commands_sync_file_tree_selection_to_active_tab() {
 fn keyboard_shortcut_can_activate_next_tab() {
     let mut state = DesktopAppState::from_current_workspace();
     state.focused_target = FocusTarget::FileTreePanel;
-    state.pane.tabs = vec![
-        zom_runtime_test_tab_with_text_and_cursor("a.rs", "a", 0),
-        zom_runtime_test_tab_with_text_and_cursor("b.ts", "bc", 1),
-    ];
+    set_tabs(
+        &mut state,
+        vec![
+            zom_runtime_test_tab_with_text_and_cursor("a.rs", "a", 0),
+            zom_runtime_test_tab_with_text_and_cursor("b.ts", "bc", 1),
+        ],
+    );
     state.pane.active_tab_index = Some(0);
 
     let next_tab = shortcut_for(CommandInvocation::from(TabAction::ActivateNextTab));
@@ -230,48 +248,58 @@ fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command()
 #[test]
 fn editor_command_updates_active_tab_buffer_and_cursor() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.pane.tabs = vec![crate::state::TabState {
-        buffer_id: zom_protocol::BufferId::new(1),
-        title: "demo.rs".into(),
-        relative_path: "demo.rs".into(),
-        language: "Rust".into(),
-        line_ending: "LF".into(),
-        editor_state: zom_editor::EditorState::from_text("ab"),
-    }];
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            zom_editor::EditorState::from_text("ab"),
+        )],
+    );
     state.pane.active_tab_index = Some(0);
     state.tool_bar.cursor = Position::new(0, 1);
 
     state.handle_command(CommandInvocation::from(EditorInvocation::insert_text("X")));
 
-    let active_tab = state.pane.active_tab().expect("active tab should exist");
-    assert_eq!(active_tab.text(), "aXb");
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "aXb"
+    );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
 
     state.handle_command(CommandInvocation::from(EditorAction::DeleteBackward));
-    let active_tab = state.pane.active_tab().expect("active tab should exist");
-    assert_eq!(active_tab.text(), "ab");
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "ab"
+    );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
 }
 
 #[test]
 fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.pane.tabs = vec![crate::state::TabState {
-        buffer_id: zom_protocol::BufferId::new(1),
-        title: "demo.rs".into(),
-        relative_path: "demo.rs".into(),
-        language: "Rust".into(),
-        line_ending: "LF".into(),
-        editor_state: zom_editor::EditorState::from_text("ab\ncd"),
-    }];
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            zom_editor::EditorState::from_text("ab\ncd"),
+        )],
+    );
     state.pane.active_tab_index = Some(0);
     state.tool_bar.cursor = Position::new(1, 1);
 
     state.handle_command(CommandInvocation::from(EditorAction::SelectAll));
 
-    let active_tab = state.pane.active_tab().expect("active tab should exist");
     assert_eq!(
-        active_tab.editor_state.selection(),
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .selection,
         zom_protocol::Selection::new(Position::new(0, 0), Position::new(1, 2))
     );
     assert_eq!(state.tool_bar.cursor, Position::new(1, 2));
@@ -280,14 +308,13 @@ fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
 #[test]
 fn plain_character_keystroke_in_editor_focus_inserts_text() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.pane.tabs = vec![crate::state::TabState {
-        buffer_id: zom_protocol::BufferId::new(1),
-        title: "demo.rs".into(),
-        relative_path: "demo.rs".into(),
-        language: "Rust".into(),
-        line_ending: "LF".into(),
-        editor_state: zom_editor::EditorState::from_text("ab"),
-    }];
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            zom_editor::EditorState::from_text("ab"),
+        )],
+    );
     state.pane.active_tab_index = Some(0);
     state.focused_target = FocusTarget::Editor;
     state.tool_bar.cursor = Position::new(0, 1);
@@ -295,41 +322,55 @@ fn plain_character_keystroke_in_editor_focus_inserts_text() {
     let handled = state.handle_keystroke(&Keystroke::new(KeyCode::Char('x'), Modifiers::default()));
 
     assert!(handled);
-    let active_tab = state.pane.active_tab().expect("active tab should exist");
-    assert_eq!(active_tab.text(), "axb");
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "axb"
+    );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
 }
 
 #[test]
 fn shift_left_then_backspace_deletes_selected_text_in_editor() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.pane.tabs = vec![crate::state::TabState {
-        buffer_id: zom_protocol::BufferId::new(1),
-        title: "demo.rs".into(),
-        relative_path: "demo.rs".into(),
-        language: "Rust".into(),
-        line_ending: "LF".into(),
-        editor_state: zom_editor::EditorState::from_text("ab"),
-    }];
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            zom_editor::EditorState::from_text("ab"),
+        )],
+    );
     state.pane.active_tab_index = Some(0);
     state.focused_target = FocusTarget::Editor;
     state.tool_bar.cursor = Position::new(0, 1);
 
     let select_left = Keystroke::new(KeyCode::Left, Modifiers::new(false, false, true, false));
     assert!(state.handle_keystroke(&select_left));
-    let selected_tab = state.pane.active_tab().expect("active tab should exist");
     assert_eq!(
-        selected_tab.editor_state.selection(),
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .selection,
         zom_protocol::Selection::new(Position::new(0, 1), Position::new(0, 0))
     );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
 
     let backspace = Keystroke::new(KeyCode::Backspace, Modifiers::default());
     assert!(state.handle_keystroke(&backspace));
-    let active_tab = state.pane.active_tab().expect("active tab should exist");
-    assert_eq!(active_tab.text(), "b");
     assert_eq!(
-        active_tab.editor_state.selection(),
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "b"
+    );
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .selection,
         zom_protocol::Selection::caret(Position::new(0, 0))
     );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
@@ -564,7 +605,7 @@ fn switch_project_reloads_real_file_tree_and_clears_tabs() {
     fs::write(workspace.join("src/lib.rs"), "pub fn answer() -> u8 { 42 }").expect("write lib.rs");
 
     let mut state = DesktopAppState::from_current_workspace();
-    state.pane.tabs.push(zom_runtime_test_tab("old.rs"));
+    set_tabs(&mut state, vec![zom_runtime_test_tab("old.rs", 999)]);
     state.pane.active_tab_index = Some(0);
 
     state.switch_project(workspace.clone());
@@ -575,6 +616,7 @@ fn switch_project_reloads_real_file_tree_and_clears_tabs() {
     );
     assert_eq!(state.pane.tabs.len(), 0);
     assert!(state.pane.active_tab_index.is_none());
+    assert!(state.active_editor_snapshot().is_none());
     assert_eq!(
         state.file_tree.roots[0]
             .children
@@ -601,7 +643,10 @@ fn open_file_reads_from_selected_project_root() {
 
     let active_tab = state.pane.active_tab().expect("active tab should exist");
     assert_eq!(active_tab.relative_path, "src/main.rs");
-    assert_eq!(active_tab.buffer_lines()[0], "fn main() {}");
+    let active_editor = state
+        .active_editor_snapshot()
+        .expect("active editor should exist");
+    assert_eq!(active_editor.text.split('\n').next(), Some("fn main() {}"));
     assert_eq!(active_tab.language(), "Rust");
     assert_eq!(active_tab.line_ending(), &expected_platform_line_ending());
     assert_eq!(state.tool_bar.cursor, Position::zero());
@@ -649,14 +694,27 @@ fn remove_temp_workspace(path: PathBuf) {
     fs::remove_dir_all(path).expect("remove temp workspace");
 }
 
-fn zom_runtime_test_tab(relative_path: &str) -> crate::state::TabState {
+fn zom_runtime_test_tab(
+    relative_path: &str,
+    buffer_id: u64,
+) -> (crate::state::TabState, zom_editor::EditorState) {
+    (
+        runtime_test_tab_state(relative_path, zom_protocol::BufferId::new(buffer_id), "LF"),
+        zom_editor::EditorState::from_text("old"),
+    )
+}
+
+fn runtime_test_tab_state(
+    relative_path: &str,
+    buffer_id: zom_protocol::BufferId,
+    line_ending: &str,
+) -> crate::state::TabState {
     crate::state::TabState {
-        buffer_id: zom_protocol::BufferId::new(999),
+        buffer_id,
         title: "old".into(),
         relative_path: relative_path.into(),
         language: crate::workspace_paths::language_from_path(relative_path),
-        line_ending: "LF".into(),
-        editor_state: zom_editor::EditorState::from_text("old"),
+        line_ending: line_ending.into(),
     }
 }
 
@@ -664,7 +722,7 @@ fn zom_runtime_test_tab_with_text_and_cursor(
     relative_path: &str,
     text: &str,
     cursor_column: u32,
-) -> crate::state::TabState {
+) -> (crate::state::TabState, zom_editor::EditorState) {
     let mut editor_state = zom_editor::EditorState::from_text(text);
     let mut cursor = Position::zero();
     for _ in 0..cursor_column {
@@ -676,13 +734,25 @@ fn zom_runtime_test_tab_with_text_and_cursor(
         editor_state = result.state;
         cursor = result.cursor;
     }
-    crate::state::TabState {
-        buffer_id: zom_protocol::BufferId::new((1000 + cursor_column).into()),
-        title: relative_path.into(),
-        relative_path: relative_path.into(),
-        language: crate::workspace_paths::language_from_path(relative_path),
-        line_ending: zom_text::detect_line_ending(editor_state.text()),
+    let buffer_id = zom_protocol::BufferId::new((1000 + cursor_column).into());
+    let line_ending = zom_text::detect_line_ending(editor_state.text());
+    (
+        runtime_test_tab_state(relative_path, buffer_id, &line_ending),
         editor_state,
+    )
+}
+
+fn set_tabs(
+    state: &mut DesktopAppState,
+    tabs_with_states: Vec<(crate::state::TabState, zom_editor::EditorState)>,
+) {
+    state.pane.tabs = tabs_with_states
+        .iter()
+        .map(|(tab, _)| tab.clone())
+        .collect();
+    state.clear_editor_states();
+    for (tab, editor_state) in tabs_with_states {
+        state.replace_editor_state(tab.buffer_id, editor_state);
     }
 }
 

@@ -23,6 +23,7 @@ impl DesktopAppState {
         // 旧项目打开的标签页路径不再可信，切换项目时统一清空。
         self.pane.tabs.clear();
         self.pane.active_tab_index = None;
+        self.clear_editor_states();
         self.sync_tool_bar_with_active_tab();
     }
 
@@ -60,9 +61,10 @@ impl DesktopAppState {
             .position(|tab| tab.relative_path == relative_path)
         {
             if let Some(existing_tab) = self.pane.tabs.get_mut(tab_index) {
-                existing_tab.editor_state = editor_state;
+                let buffer_id = existing_tab.buffer_id;
                 existing_tab.language = language;
                 existing_tab.line_ending = line_ending;
+                self.replace_editor_state(buffer_id, editor_state);
             }
             self.pane.active_tab_index = Some(tab_index);
             self.sync_file_tree_with_active_tab();
@@ -79,13 +81,14 @@ impl DesktopAppState {
             .unwrap_or(0)
             + 1;
 
+        let buffer_id = BufferId::new(next_buffer_id);
+        self.replace_editor_state(buffer_id, editor_state);
         self.pane.tabs.push(TabState {
-            buffer_id: BufferId::new(next_buffer_id),
+            buffer_id,
             title: workspace_paths::file_name_from_path(relative_path),
             relative_path: relative_path.to_string(),
             language,
             line_ending,
-            editor_state,
         });
         self.pane.active_tab_index = Some(self.pane.tabs.len() - 1);
         self.sync_file_tree_with_active_tab();

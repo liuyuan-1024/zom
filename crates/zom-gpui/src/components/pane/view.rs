@@ -13,7 +13,7 @@ use gpui::{
 use zom_protocol::{BufferId, Position, Selection};
 use zom_runtime::{
     projection::wrap_visual_line,
-    state::{PaneState, TabState},
+    state::{ActiveEditorSnapshot, PaneState},
 };
 
 use crate::{
@@ -43,6 +43,7 @@ const CARET_BLINK_PAUSE_AFTER_MOVE_MS: u64 = 500;
 /// 中央编辑窗格视图，负责标签栏与当前内容区渲染。
 pub struct PaneView {
     state: PaneState,
+    active_editor: Option<ActiveEditorSnapshot>,
     cursor: Position,
     last_cursor_moved_at: Option<Instant>,
     pending_scroll_to_cursor: bool,
@@ -77,9 +78,18 @@ struct WrappedRow {
 
 impl PaneView {
     /// 用初始 Pane 状态构建视图实体。
-    pub fn new(state: PaneState, cursor: Position, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        state: PaneState,
+        active_editor: Option<ActiveEditorSnapshot>,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let cursor = active_editor
+            .as_ref()
+            .map(|editor| editor.selection.active())
+            .unwrap_or_else(Position::zero);
         Self {
             state,
+            active_editor,
             cursor,
             last_cursor_moved_at: None,
             pending_scroll_to_cursor: true,
@@ -90,13 +100,23 @@ impl PaneView {
     }
 
     /// 覆盖 Pane 状态，用于响应外部交互（例如文件树激活）。
-    pub fn set_state(&mut self, state: PaneState, cursor: Position, cx: &mut Context<Self>) {
-        if self.cursor != cursor {
+    pub fn set_state(
+        &mut self,
+        state: PaneState,
+        active_editor: Option<ActiveEditorSnapshot>,
+        cx: &mut Context<Self>,
+    ) {
+        let next_cursor = active_editor
+            .as_ref()
+            .map(|editor| editor.selection.active())
+            .unwrap_or_else(Position::zero);
+        if self.cursor != next_cursor {
             self.last_cursor_moved_at = Some(Instant::now());
             self.pending_scroll_to_cursor = true;
         }
         self.state = state;
-        self.cursor = cursor;
+        self.active_editor = active_editor;
+        self.cursor = next_cursor;
         cx.notify();
     }
 }
@@ -129,11 +149,13 @@ impl PaneView {
         window: &Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        if let Some(active_tab) = self.state.active_tab() {
+        if let (Some(_), Some(active_editor)) =
+            (self.state.active_tab(), self.active_editor.as_ref())
+        {
             let viewport_width_px: f32 = window.viewport_size().width.into();
             let scroll_width_px: f32 = self.scroll_handle.bounds().size.width.into();
-            let line_count = cached_line_count(self.viewer_layout_cache.as_ref(), active_tab)
-                .unwrap_or_else(|| line_count_from_text(active_tab.text()));
+            let line_count = cached_line_count(self.viewer_layout_cache.as_ref(), active_editor)
+                .unwrap_or_else(|| line_count_from_text(&active_editor.text));
             let gutter_width_px = gutter_width_for_line_count(line_count);
             let wrap_chunk =
                 soft_wrap_max_chars(scroll_width_px, viewport_width_px, gutter_width_px).max(1);
@@ -143,7 +165,7 @@ impl PaneView {
                 let row_index = {
                     let cache = ensure_viewer_layout_cache(
                         &mut self.viewer_layout_cache,
-                        active_tab,
+                        active_editor,
                         wrap_chunk,
                     );
                     cursor_visual_row_index(cache, self.cursor)
@@ -152,9 +174,12 @@ impl PaneView {
                 self.pending_scroll_to_cursor = false;
             }
 
-            let layout_cache =
-                ensure_viewer_layout_cache(&mut self.viewer_layout_cache, active_tab, wrap_chunk);
-            let selection = active_tab.editor_state.selection();
+            let layout_cache = ensure_viewer_layout_cache(
+                &mut self.viewer_layout_cache,
+                active_editor,
+                wrap_chunk,
+            );
+            let selection = active_editor.selection;
             let scroll_handle = self.scroll_handle.clone();
             let editor_has_focus = self.focus_handle.is_focused(window);
             let cursor = self.cursor;
@@ -289,23 +314,26 @@ fn render_viewer_content(
         .children(children)
 }
 
-fn cached_line_count(cache: Option<&ViewerLayoutCache>, active_tab: &TabState) -> Option<usize> {
+fn cached_line_count(
+    cache: Option<&ViewerLayoutCache>,
+    active_editor: &ActiveEditorSnapshot,
+) -> Option<usize> {
     let cache = cache?;
-    layout_cache_matches(cache, active_tab, cache.wrap_chunk).then_some(cache.line_count)
+    layout_cache_matches(cache, active_editor, cache.wrap_chunk).then_some(cache.line_count)
 }
 
 fn ensure_viewer_layout_cache<'a>(
     cache: &'a mut Option<ViewerLayoutCache>,
-    active_tab: &TabState,
+    active_editor: &ActiveEditorSnapshot,
     wrap_chunk: usize,
 ) -> &'a ViewerLayoutCache {
     let wrap_chunk = wrap_chunk.max(1);
     let should_rebuild = match cache.as_ref() {
-        Some(existing) => !layout_cache_matches(existing, active_tab, wrap_chunk),
+        Some(existing) => !layout_cache_matches(existing, active_editor, wrap_chunk),
         None => true,
     };
     if should_rebuild {
-        *cache = Some(build_viewer_layout_cache(active_tab, wrap_chunk));
+        *cache = Some(build_viewer_layout_cache(active_editor, wrap_chunk));
     }
     cache
         .as_ref()
@@ -314,17 +342,20 @@ fn ensure_viewer_layout_cache<'a>(
 
 fn layout_cache_matches(
     cache: &ViewerLayoutCache,
-    active_tab: &TabState,
+    active_editor: &ActiveEditorSnapshot,
     wrap_chunk: usize,
 ) -> bool {
-    cache.buffer_id == active_tab.buffer_id
-        && cache.doc_version == active_tab.editor_state.version().get()
+    cache.buffer_id == active_editor.buffer_id
+        && cache.doc_version == active_editor.doc_version
         && cache.wrap_chunk == wrap_chunk.max(1)
 }
 
-fn build_viewer_layout_cache(active_tab: &TabState, wrap_chunk: usize) -> ViewerLayoutCache {
+fn build_viewer_layout_cache(
+    active_editor: &ActiveEditorSnapshot,
+    wrap_chunk: usize,
+) -> ViewerLayoutCache {
     let wrap_chunk = wrap_chunk.max(1);
-    let buffer_lines = active_tab.buffer_lines();
+    let buffer_lines = split_lines_for_viewer(&active_editor.text);
     let line_count = buffer_lines.len();
     let mut line_char_lens = Vec::with_capacity(line_count);
     let mut line_wrap_counts = Vec::with_capacity(line_count);
@@ -359,8 +390,8 @@ fn build_viewer_layout_cache(active_tab: &TabState, wrap_chunk: usize) -> Viewer
     }
 
     ViewerLayoutCache {
-        buffer_id: active_tab.buffer_id,
-        doc_version: active_tab.editor_state.version().get(),
+        buffer_id: active_editor.buffer_id,
+        doc_version: active_editor.doc_version,
         wrap_chunk,
         line_count,
         line_char_lens,
@@ -368,6 +399,10 @@ fn build_viewer_layout_cache(active_tab: &TabState, wrap_chunk: usize) -> Viewer
         line_start_rows,
         wrapped_rows,
     }
+}
+
+fn split_lines_for_viewer(text: &str) -> Vec<String> {
+    text.split('\n').map(|line| line.to_string()).collect()
 }
 
 fn line_count_from_text(text: &str) -> usize {

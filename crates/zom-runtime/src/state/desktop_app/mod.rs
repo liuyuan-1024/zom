@@ -1,12 +1,13 @@
 //! 桌面应用状态与命令分发主状态机。
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-use zom_protocol::{FocusTarget, OverlayTarget};
+use zom_editor::EditorState;
+use zom_protocol::{BufferId, FocusTarget, OverlayTarget, Selection};
 
 use crate::state::{
-    dock_targets, FileTreeState, PaneState, PanelDock, TitleBarState, ToolBarState,
+    FileTreeState, PaneState, PanelDock, TitleBarState, ToolBarState, dock_targets,
 };
 
 mod command;
@@ -28,6 +29,19 @@ pub enum DesktopUiAction {
     OpenProjectPicker,
 }
 
+/// 当前激活编辑器的渲染快照（面向 UI，只读）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveEditorSnapshot {
+    /// 所属 buffer id。
+    pub buffer_id: BufferId,
+    /// 文档版本号。
+    pub doc_version: u64,
+    /// 当前选区。
+    pub selection: Selection,
+    /// 当前完整文本。
+    pub text: String,
+}
+
 /// 桌面端根界面使用的应用状态。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DesktopAppState {
@@ -39,6 +53,8 @@ pub struct DesktopAppState {
     pub file_tree: FileTreeState,
     /// 窗格
     pub pane: PaneState,
+    /// 活跃标签页对应的编辑器状态仓库（key = buffer id）。
+    pub(crate) editor_states: HashMap<BufferId, EditorState>,
     /// 当前聚焦目标。
     pub focused_target: FocusTarget,
     /// 当前可见的工作台面板集合。
@@ -98,5 +114,41 @@ impl DesktopAppState {
     /// 消费一次待处理 UI 动作（供 UI 层在下一帧应用）。
     pub fn take_pending_ui_action(&mut self) -> Option<DesktopUiAction> {
         self.pending_ui_action.take()
+    }
+
+    /// 返回当前激活编辑器的只读快照（用于渲染层）。
+    pub fn active_editor_snapshot(&self) -> Option<ActiveEditorSnapshot> {
+        let active_tab = self.pane.active_tab()?;
+        let editor_state = self.editor_states.get(&active_tab.buffer_id)?;
+        Some(ActiveEditorSnapshot {
+            buffer_id: active_tab.buffer_id,
+            doc_version: editor_state.version().get(),
+            selection: editor_state.selection(),
+            text: editor_state.text().to_string(),
+        })
+    }
+
+    pub(super) fn active_buffer_id(&self) -> Option<BufferId> {
+        self.pane.active_tab().map(|tab| tab.buffer_id)
+    }
+
+    pub(super) fn editor_state(&self, buffer_id: BufferId) -> Option<&EditorState> {
+        self.editor_states.get(&buffer_id)
+    }
+
+    pub(super) fn replace_editor_state(&mut self, buffer_id: BufferId, next_state: EditorState) {
+        self.editor_states.insert(buffer_id, next_state);
+    }
+
+    pub(super) fn take_editor_state(&mut self, buffer_id: BufferId) -> Option<EditorState> {
+        self.editor_states.remove(&buffer_id)
+    }
+
+    pub(super) fn remove_editor_state(&mut self, buffer_id: BufferId) {
+        self.editor_states.remove(&buffer_id);
+    }
+
+    pub(super) fn clear_editor_states(&mut self) {
+        self.editor_states.clear();
     }
 }
