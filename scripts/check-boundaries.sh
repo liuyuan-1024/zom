@@ -20,17 +20,18 @@ fi
 
 # Keep this mapping aligned with docs/standards/开发规范手册.md -> "Crate 边界契约"
 # Current enforced architecture:
-#   zom-protocol(含 input) -> zom-text -> zom-editor -> zom-workspace -> zom-runtime -> zom-gpui -> apps/zom-desktop
+#   zom-protocol(含 input) -> zom-text -> zom-editor -> zom-runtime -> zom-gpui -> apps/zom-desktop
+#                                           └-> zom-workspace -> zom-runtime
 # Optional crates (e.g. zom-workspace, zom-editor) must still obey single-direction dependencies.
 allowed_deps_for() {
   case "$1" in
     zom-protocol) echo "" ;;
     zom-text) echo "zom-protocol" ;;
     zom-editor) echo "zom-protocol zom-text" ;;
-    zom-workspace) echo "zom-protocol zom-text zom-editor" ;;
+    zom-workspace) echo "zom-protocol" ;;
     zom-runtime) echo "zom-protocol zom-text zom-editor zom-workspace" ;;
     zom-gpui) echo "zom-protocol zom-runtime" ;;
-    zom-desktop) echo "zom-runtime zom-gpui" ;;
+    zom-desktop) echo "zom-gpui" ;;
     *) return 1 ;;
   esac
 }

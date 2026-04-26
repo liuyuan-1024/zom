@@ -1,6 +1,6 @@
 # Crate Boundary Checklist
 
-版本：`v0.2`  
+版本：`v0.3`  
 适用范围：`/Users/liuyuan/project/zom` workspace 内部 crate 依赖关系（只讨论 workspace crate 之间的直接依赖）
 
 ## 1. 目标
@@ -17,15 +17,15 @@
 ```text
 zom-protocol
   ↑
-zom-text      zom-editor
-   ↑            ↑
-   └─────── zom-workspace
-             ↑
-          zom-runtime
-             ↑
-          zom-gpui
-             ↑
-        apps/zom-desktop
+zom-text
+  ↑
+zom-editor      zom-workspace
+      ↑            ↑
+      └─────── zom-runtime
+                 ↑
+              zom-gpui
+                 ↑
+            apps/zom-desktop
 ```
 
 补充说明：
@@ -41,10 +41,10 @@ zom-text      zom-editor
 | `zom-protocol` | 无 | `zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
 | `zom-text` | `zom-protocol` | `zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
 | `zom-editor` | `zom-protocol`、`zom-text` | `zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-workspace` | `zom-protocol`、`zom-text`、`zom-editor` | `zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-workspace` | `zom-protocol` | `zom-text`、`zom-editor`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
 | `zom-runtime` | `zom-protocol`、`zom-text`、`zom-editor`、`zom-workspace` | `zom-gpui`、`zom-desktop` |
 | `zom-gpui` | `zom-protocol`、`zom-runtime` | `zom-text`、`zom-editor`、`zom-workspace`、`zom-desktop` |
-| `zom-desktop` | `zom-runtime`、`zom-gpui` | `zom-protocol`、`zom-text`、`zom-editor`、`zom-workspace` |
+| `zom-desktop` | `zom-gpui` | `zom-protocol`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime` |
 
 ## 4. 层内附加约束
 
