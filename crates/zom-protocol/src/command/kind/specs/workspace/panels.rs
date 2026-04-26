@@ -1,5 +1,3 @@
-//! 面板聚焦命令规范声明。
-
 //！ 聚焦并显示指定面板的命令元信息
 
 use crate::FocusTarget;
@@ -10,16 +8,6 @@ use crate::command::kind::{
 use crate::{CommandInvocation, WorkspaceAction};
 
 pub const SPECS: &[CommandKindSpec] = &[
-    CommandKindSpec::new(
-        CommandKind::WorkspaceFocusPanel(FocusTarget::Editor),
-        "workspace.focus_panel.editor",
-        "聚焦编辑器",
-        "聚焦编辑器窗格。",
-        Buildability::Static(|| {
-            CommandInvocation::from(WorkspaceAction::FocusPanel(FocusTarget::Editor))
-        }),
-        &[CommandShortcut::new(ShortcutScope::Global, primary_char('e')).with_priority(100)],
-    ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::Palette),
         "workspace.focus_panel.palette",

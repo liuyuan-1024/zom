@@ -72,11 +72,6 @@ pub enum CommandKind {
     /// 关闭当前聚焦组件。
     WorkspaceCloseFocused,
 
-    /// 打开代码操作入口。
-    WorkspaceOpenCodeActions,
-    /// 启动调试流程。
-    WorkspaceStartDebugging,
-
     /// 文件树选择上一项。
     WorkspaceFileTreeSelectPrev,
     /// 文件树选择下一项。
