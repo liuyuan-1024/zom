@@ -27,6 +27,10 @@ const SOFT_WRAP_MIN_CHARS: usize = 16;
 const APPROX_MONO_CHAR_WIDTH_PX: f32 = 8.0;
 /// 行号栏最小位数（减少 1~9 行时抖动）。
 const GUTTER_MIN_DIGITS: usize = 2;
+/// 单个可视行的估算高度（用于虚拟滚动窗口计算）。
+const VISUAL_ROW_HEIGHT_PX: f32 = size::FONT_MD;
+/// 可视区外额外渲染的行数，减少滚动时空白闪烁。
+const VIRTUAL_OVERSCAN_ROWS: usize = 12;
 /// 细线光标宽度。
 const CARET_WIDTH_PX: f32 = 1.5;
 /// 细线光标高度。
@@ -133,6 +137,7 @@ impl PaneView {
             let gutter_width_px = gutter_width_for_line_count(line_count);
             let wrap_chunk =
                 soft_wrap_max_chars(scroll_width_px, viewport_width_px, gutter_width_px).max(1);
+            let mut scroll_to_row = None;
 
             if self.pending_scroll_to_cursor {
                 let row_index = {
@@ -143,7 +148,7 @@ impl PaneView {
                     );
                     cursor_visual_row_index(cache, self.cursor)
                 };
-                self.scroll_handle.scroll_to_item(row_index);
+                scroll_to_row = Some(row_index);
                 self.pending_scroll_to_cursor = false;
             }
 
@@ -165,6 +170,7 @@ impl PaneView {
                     selection,
                     cursor,
                     last_cursor_moved_at,
+                    scroll_to_row,
                     cx,
                 ))
                 .into_any_element();
@@ -189,6 +195,7 @@ fn render_viewer_content(
     selection: Selection,
     cursor: Position,
     last_cursor_moved_at: Option<Instant>,
+    scroll_to_row: Option<usize>,
     _cx: &mut Context<PaneView>,
 ) -> impl IntoElement {
     let suppress_caret_blink = last_cursor_moved_at.is_some_and(|moved_at| {
@@ -196,13 +203,36 @@ fn render_viewer_content(
     });
     let cursor_line = usize::try_from(cursor.line).unwrap_or(usize::MAX);
     let cursor_column = usize::try_from(cursor.column).unwrap_or(usize::MAX);
-    let line_selected_ranges = selection_ranges_by_line(selection, &layout_cache.line_char_lens);
-    let line_elements = layout_cache.wrapped_rows.iter().map(move |row| {
-        let line_selected_range = line_selected_ranges
-            .get(row.line_index)
-            .and_then(|range| range.as_ref());
+    let total_rows = layout_cache.wrapped_rows.len();
+    let scroll_offset_y_px = (-f32::from(scroll_handle.offset().y)).max(0.0);
+    let viewport_height_px =
+        f32::from(scroll_handle.bounds().size.height).max(VISUAL_ROW_HEIGHT_PX);
+    let visible_range = virtual_row_window(
+        total_rows,
+        scroll_offset_y_px,
+        viewport_height_px,
+        VIRTUAL_OVERSCAN_ROWS,
+        scroll_to_row,
+    );
+    if let Some(target_row) = scroll_to_row {
+        if target_row >= visible_range.start && target_row < visible_range.end {
+            let local_row_index = target_row - visible_range.start;
+            // children 顺序固定为：上占位、可视行片段、下占位。
+            scroll_handle.scroll_to_item(1 + local_row_index);
+        }
+    }
+
+    let top_spacer_height_px = visible_range.start as f32 * VISUAL_ROW_HEIGHT_PX;
+    let bottom_spacer_height_px =
+        total_rows.saturating_sub(visible_range.end) as f32 * VISUAL_ROW_HEIGHT_PX;
+    let mut children = Vec::with_capacity(visible_range.len() + 2);
+    children.push(render_virtual_spacer(top_spacer_height_px));
+
+    for row in &layout_cache.wrapped_rows[visible_range.clone()] {
+        let line_selected_range =
+            selected_column_range_for_line(selection, row.line_index, row.line_char_len);
         let selected_range = selected_range_in_wrapped_segment(
-            line_selected_range,
+            line_selected_range.as_ref(),
             row.segment_start_column,
             row.segment_end_column,
         );
@@ -215,23 +245,27 @@ fn render_viewer_content(
             row.segment_end_column,
             row.is_last_segment,
         );
-        div()
-            .id(row.row_id.clone())
-            .w_full()
-            .flex()
-            .flex_row()
-            .flex_none()
-            .gap(px(size::GAP_3))
-            .items_center()
-            .child(render_gutter_cell(row.line_number, gutter_width_px))
-            .child(render_text_cell(
-                &row.wrapped_line,
-                selected_range,
-                caret_column,
-                suppress_caret_blink,
-                is_cursor_line,
-            ))
-    });
+        children.push(
+            div()
+                .id(row.row_id.clone())
+                .w_full()
+                .flex()
+                .flex_row()
+                .flex_none()
+                .gap(px(size::GAP_3))
+                .items_center()
+                .child(render_gutter_cell(row.line_number, gutter_width_px))
+                .child(render_text_cell(
+                    &row.wrapped_line,
+                    selected_range,
+                    caret_column,
+                    suppress_caret_blink,
+                    is_cursor_line,
+                ))
+                .into_any_element(),
+        );
+    }
+    children.push(render_virtual_spacer(bottom_spacer_height_px));
 
     div()
         // 建议：后续如果支持多 Tab，这里的 ID 应该加上当前 Tab 的唯一标识，防止切换文件时滚动条位置串位。
@@ -244,7 +278,7 @@ fn render_viewer_content(
         .p(px(size::PADDING_SM))
         .overflow_scroll()
         .track_scroll(scroll_handle)
-        .children(line_elements)
+        .children(children)
 }
 
 fn cached_line_count(cache: Option<&ViewerLayoutCache>, active_tab: &TabState) -> Option<usize> {
@@ -335,17 +369,50 @@ fn line_count_from_text(text: &str) -> usize {
         .saturating_add(1)
 }
 
-fn selection_ranges_by_line(
-    selection: Selection,
-    line_char_lens: &[usize],
-) -> Vec<Option<Range<usize>>> {
-    line_char_lens
-        .iter()
-        .enumerate()
-        .map(|(line_index, line_char_len)| {
-            selected_column_range_for_line(selection, line_index, *line_char_len)
-        })
-        .collect()
+fn virtual_row_window(
+    total_rows: usize,
+    scroll_offset_y_px: f32,
+    viewport_height_px: f32,
+    overscan_rows: usize,
+    force_row: Option<usize>,
+) -> Range<usize> {
+    if total_rows == 0 {
+        return 0..0;
+    }
+
+    let row_height_px = VISUAL_ROW_HEIGHT_PX.max(1.0);
+    let first_visible =
+        ((scroll_offset_y_px.max(0.0) / row_height_px).floor() as usize).min(total_rows - 1);
+    let viewport_rows = (viewport_height_px.max(row_height_px) / row_height_px)
+        .ceil()
+        .max(1.0) as usize;
+    let start = first_visible
+        .saturating_sub(overscan_rows)
+        .min(total_rows.saturating_sub(1));
+    let end = (first_visible + viewport_rows + overscan_rows).min(total_rows);
+    let mut range = start..end.max(start + 1).min(total_rows);
+
+    if let Some(target_row) = force_row {
+        let target_row = target_row.min(total_rows.saturating_sub(1));
+        if target_row < range.start || target_row >= range.end {
+            let focus_start = target_row.saturating_sub(viewport_rows / 2 + overscan_rows);
+            let focus_end = (focus_start + viewport_rows + overscan_rows * 2).min(total_rows);
+            let normalized_start = focus_end
+                .saturating_sub(viewport_rows + overscan_rows * 2)
+                .min(focus_start);
+            range = normalized_start..focus_end.max(normalized_start + 1).min(total_rows);
+        }
+    }
+
+    range
+}
+
+fn render_virtual_spacer(height_px: f32) -> AnyElement {
+    div()
+        .w_full()
+        .h(px(height_px.max(0.0)))
+        .flex_none()
+        .into_any_element()
 }
 
 fn render_gutter_cell(line_number: Option<usize>, gutter_width_px: f32) -> AnyElement {
@@ -603,7 +670,7 @@ fn cursor_visual_row_index(layout_cache: &ViewerLayoutCache, cursor: Position) -
 mod tests {
     use super::{
         ViewerLayoutCache, cursor_visual_row_index, gutter_width_for_line_count,
-        line_count_from_text, soft_wrap_max_chars,
+        line_count_from_text, soft_wrap_max_chars, virtual_row_window,
     };
     use zom_protocol::{BufferId, Position};
 
@@ -637,6 +704,18 @@ mod tests {
     #[test]
     fn line_count_from_text_counts_trailing_newline() {
         assert_eq!(line_count_from_text("a\n"), 2);
+    }
+
+    #[test]
+    fn virtual_row_window_limits_to_visible_slice_with_overscan() {
+        let range = virtual_row_window(1_000, 160.0, 160.0, 4, None);
+        assert_eq!(range, 6..24);
+    }
+
+    #[test]
+    fn virtual_row_window_includes_forced_row() {
+        let range = virtual_row_window(100, 0.0, 64.0, 2, Some(80));
+        assert!(range.contains(&80));
     }
 
     fn cache_for_cursor_test(
