@@ -10,8 +10,11 @@ use gpui::{
     IntoElement, ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
     div, px, rgb,
 };
-use zom_protocol::{Position, Selection};
-use zom_runtime::{projection::wrap_visual_line, state::PaneState};
+use zom_protocol::{BufferId, Position, Selection};
+use zom_runtime::{
+    projection::wrap_visual_line,
+    state::{PaneState, TabState},
+};
 
 use crate::{
     components::pane::tab_bar,
@@ -39,18 +42,33 @@ pub struct PaneView {
     cursor: Position,
     last_cursor_moved_at: Option<Instant>,
     pending_scroll_to_cursor: bool,
+    viewer_layout_cache: Option<ViewerLayoutCache>,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
 }
 
-/// 渲染层的可视行投影，解耦“行号栏”和“文本内容”的构建逻辑。
-struct VisualRow {
+/// 软换行后的静态布局缓存（仅随文档版本和换行宽度变化）。
+struct ViewerLayoutCache {
+    buffer_id: BufferId,
+    doc_version: u64,
+    wrap_chunk: usize,
+    line_count: usize,
+    line_char_lens: Vec<usize>,
+    line_wrap_counts: Vec<usize>,
+    line_start_rows: Vec<usize>,
+    wrapped_rows: Vec<WrappedRow>,
+}
+
+/// 单个可视行的静态布局数据。
+struct WrappedRow {
     row_id: gpui::SharedString,
     line_number: Option<usize>,
+    line_index: usize,
+    line_char_len: usize,
+    segment_start_column: usize,
+    segment_end_column: usize,
+    is_last_segment: bool,
     wrapped_line: String,
-    selected_range: Option<Range<usize>>,
-    caret_column: Option<usize>,
-    is_cursor_line: bool,
 }
 
 impl PaneView {
@@ -61,6 +79,7 @@ impl PaneView {
             cursor,
             last_cursor_moved_at: None,
             pending_scroll_to_cursor: true,
+            viewer_layout_cache: None,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
         }
@@ -107,28 +126,45 @@ impl PaneView {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         if let Some(active_tab) = self.state.active_tab() {
-            let buffer_lines = active_tab.buffer_lines();
             let viewport_width_px: f32 = window.viewport_size().width.into();
             let scroll_width_px: f32 = self.scroll_handle.bounds().size.width.into();
-            let gutter_width_px = gutter_width_for_line_count(buffer_lines.len());
-            let wrap_max_chars =
-                soft_wrap_max_chars(scroll_width_px, viewport_width_px, gutter_width_px);
+            let line_count = cached_line_count(self.viewer_layout_cache.as_ref(), active_tab)
+                .unwrap_or_else(|| line_count_from_text(active_tab.text()));
+            let gutter_width_px = gutter_width_for_line_count(line_count);
+            let wrap_chunk =
+                soft_wrap_max_chars(scroll_width_px, viewport_width_px, gutter_width_px).max(1);
 
             if self.pending_scroll_to_cursor {
-                let row_index = cursor_visual_row_index(&buffer_lines, self.cursor, wrap_max_chars);
+                let row_index = {
+                    let cache = ensure_viewer_layout_cache(
+                        &mut self.viewer_layout_cache,
+                        active_tab,
+                        wrap_chunk,
+                    );
+                    cursor_visual_row_index(cache, self.cursor)
+                };
                 self.scroll_handle.scroll_to_item(row_index);
                 self.pending_scroll_to_cursor = false;
             }
+
+            let layout_cache =
+                ensure_viewer_layout_cache(&mut self.viewer_layout_cache, active_tab, wrap_chunk);
+            let selection = active_tab.editor_state.selection();
+            let scroll_handle = self.scroll_handle.clone();
+            let cursor = self.cursor;
+            let last_cursor_moved_at = self.last_cursor_moved_at;
             return div()
                 .flex()
                 .flex_col()
                 .flex_1()
                 .overflow_hidden()
-                .child(self.render_viewer_content(
-                    buffer_lines,
-                    wrap_max_chars,
+                .child(render_viewer_content(
+                    &scroll_handle,
+                    layout_cache,
                     gutter_width_px,
-                    active_tab.editor_state.selection(),
+                    selection,
+                    cursor,
+                    last_cursor_moved_at,
                     cx,
                 ))
                 .into_any_element();
@@ -143,113 +179,171 @@ impl PaneView {
             .child("No Active Editor")
             .into_any_element()
     }
+}
 
-    /// 渲染实际的文件内容查看器
-    fn render_viewer_content(
-        &self,
-        buffer_lines: Vec<String>,
-        wrap_max_chars: usize,
-        gutter_width_px: f32,
-        selection: Selection,
-        _cx: &mut Context<Self>,
-    ) -> impl IntoElement + '_ {
-        let wrap_chunk = wrap_max_chars.max(1);
-        let suppress_caret_blink = self.last_cursor_moved_at.is_some_and(|moved_at| {
-            moved_at.elapsed() < Duration::from_millis(CARET_BLINK_PAUSE_AFTER_MOVE_MS)
-        });
-        let cursor_line = usize::try_from(self.cursor.line).unwrap_or(usize::MAX);
-        let cursor_column = usize::try_from(self.cursor.column).unwrap_or(usize::MAX);
-        let visual_rows = build_visual_rows(
-            &buffer_lines,
-            wrap_chunk,
-            selection,
-            cursor_line,
-            cursor_column,
+/// 渲染实际的文件内容查看器
+fn render_viewer_content(
+    scroll_handle: &ScrollHandle,
+    layout_cache: &ViewerLayoutCache,
+    gutter_width_px: f32,
+    selection: Selection,
+    cursor: Position,
+    last_cursor_moved_at: Option<Instant>,
+    _cx: &mut Context<PaneView>,
+) -> impl IntoElement {
+    let suppress_caret_blink = last_cursor_moved_at.is_some_and(|moved_at| {
+        moved_at.elapsed() < Duration::from_millis(CARET_BLINK_PAUSE_AFTER_MOVE_MS)
+    });
+    let cursor_line = usize::try_from(cursor.line).unwrap_or(usize::MAX);
+    let cursor_column = usize::try_from(cursor.column).unwrap_or(usize::MAX);
+    let line_selected_ranges = selection_ranges_by_line(selection, &layout_cache.line_char_lens);
+    let line_elements = layout_cache.wrapped_rows.iter().map(move |row| {
+        let line_selected_range = line_selected_ranges
+            .get(row.line_index)
+            .and_then(|range| range.as_ref());
+        let selected_range = selected_range_in_wrapped_segment(
+            line_selected_range,
+            row.segment_start_column,
+            row.segment_end_column,
         );
-        let line_elements = visual_rows.into_iter().map(move |row| {
-            div()
-                .id(row.row_id)
-                .w_full()
-                .flex()
-                .flex_row()
-                .flex_none()
-                .gap(px(size::GAP_3))
-                .items_center()
-                .child(render_gutter_cell(row.line_number, gutter_width_px))
-                .child(render_text_cell(
-                    &row.wrapped_line,
-                    row.selected_range,
-                    row.caret_column,
-                    suppress_caret_blink,
-                    row.is_cursor_line,
-                ))
-        });
-
+        let is_cursor_line = row.line_index == cursor_line;
+        let caret_column = caret_column_in_wrapped_segment(
+            is_cursor_line,
+            cursor_column,
+            row.line_char_len,
+            row.segment_start_column,
+            row.segment_end_column,
+            row.is_last_segment,
+        );
         div()
-            // 建议：后续如果支持多 Tab，这里的 ID 应该加上当前 Tab 的唯一标识，防止切换文件时滚动条位置串位。
-            .id("file-viewer-scroll")
+            .id(row.row_id.clone())
             .w_full()
-            .flex_1()
             .flex()
-            .flex_col()
-            .bg(rgb(color::COLOR_BG_APP))
-            .p(px(size::PADDING_SM))
-            .overflow_scroll()
-            .track_scroll(&self.scroll_handle)
-            .children(line_elements)
+            .flex_row()
+            .flex_none()
+            .gap(px(size::GAP_3))
+            .items_center()
+            .child(render_gutter_cell(row.line_number, gutter_width_px))
+            .child(render_text_cell(
+                &row.wrapped_line,
+                selected_range,
+                caret_column,
+                suppress_caret_blink,
+                is_cursor_line,
+            ))
+    });
+
+    div()
+        // 建议：后续如果支持多 Tab，这里的 ID 应该加上当前 Tab 的唯一标识，防止切换文件时滚动条位置串位。
+        .id("file-viewer-scroll")
+        .w_full()
+        .flex_1()
+        .flex()
+        .flex_col()
+        .bg(rgb(color::COLOR_BG_APP))
+        .p(px(size::PADDING_SM))
+        .overflow_scroll()
+        .track_scroll(scroll_handle)
+        .children(line_elements)
+}
+
+fn cached_line_count(cache: Option<&ViewerLayoutCache>, active_tab: &TabState) -> Option<usize> {
+    let cache = cache?;
+    layout_cache_matches(cache, active_tab, cache.wrap_chunk).then_some(cache.line_count)
+}
+
+fn ensure_viewer_layout_cache<'a>(
+    cache: &'a mut Option<ViewerLayoutCache>,
+    active_tab: &TabState,
+    wrap_chunk: usize,
+) -> &'a ViewerLayoutCache {
+    let wrap_chunk = wrap_chunk.max(1);
+    let should_rebuild = match cache.as_ref() {
+        Some(existing) => !layout_cache_matches(existing, active_tab, wrap_chunk),
+        None => true,
+    };
+    if should_rebuild {
+        *cache = Some(build_viewer_layout_cache(active_tab, wrap_chunk));
+    }
+    cache
+        .as_ref()
+        .expect("viewer layout cache should exist after ensure")
+}
+
+fn layout_cache_matches(
+    cache: &ViewerLayoutCache,
+    active_tab: &TabState,
+    wrap_chunk: usize,
+) -> bool {
+    cache.buffer_id == active_tab.buffer_id
+        && cache.doc_version == active_tab.editor_state.version().get()
+        && cache.wrap_chunk == wrap_chunk.max(1)
+}
+
+fn build_viewer_layout_cache(active_tab: &TabState, wrap_chunk: usize) -> ViewerLayoutCache {
+    let wrap_chunk = wrap_chunk.max(1);
+    let buffer_lines = active_tab.buffer_lines();
+    let line_count = buffer_lines.len();
+    let mut line_char_lens = Vec::with_capacity(line_count);
+    let mut line_wrap_counts = Vec::with_capacity(line_count);
+    let mut line_start_rows = Vec::with_capacity(line_count);
+    let mut wrapped_rows = Vec::new();
+
+    for (line_index, line) in buffer_lines.iter().enumerate() {
+        line_start_rows.push(wrapped_rows.len());
+        let line_char_len = line.chars().count();
+        line_char_lens.push(line_char_len);
+        let wrapped_lines = wrap_visual_line(line, wrap_chunk);
+        let wrapped_count = wrapped_lines.len().max(1);
+        line_wrap_counts.push(wrapped_count);
+
+        for (wrapped_index, wrapped_line) in wrapped_lines.into_iter().enumerate() {
+            let segment_start_column = wrapped_index * wrap_chunk;
+            let segment_end_column = segment_start_column + wrapped_line.chars().count();
+            let is_last_segment = wrapped_index + 1 == wrapped_count;
+            wrapped_rows.push(WrappedRow {
+                row_id: gpui::SharedString::from(format!(
+                    "viewer-row-{line_index}-{wrapped_index}"
+                )),
+                line_number: (wrapped_index == 0).then_some(line_index + 1),
+                line_index,
+                line_char_len,
+                segment_start_column,
+                segment_end_column,
+                is_last_segment,
+                wrapped_line,
+            });
+        }
+    }
+
+    ViewerLayoutCache {
+        buffer_id: active_tab.buffer_id,
+        doc_version: active_tab.editor_state.version().get(),
+        wrap_chunk,
+        line_count,
+        line_char_lens,
+        line_wrap_counts,
+        line_start_rows,
+        wrapped_rows,
     }
 }
 
-fn build_visual_rows(
-    buffer_lines: &[String],
-    wrap_chunk: usize,
+fn line_count_from_text(text: &str) -> usize {
+    text.bytes()
+        .filter(|byte| *byte == b'\n')
+        .count()
+        .saturating_add(1)
+}
+
+fn selection_ranges_by_line(
     selection: Selection,
-    cursor_line: usize,
-    cursor_column: usize,
-) -> Vec<VisualRow> {
-    buffer_lines
+    line_char_lens: &[usize],
+) -> Vec<Option<Range<usize>>> {
+    line_char_lens
         .iter()
         .enumerate()
-        .flat_map(|(line_index, line)| {
-            let is_cursor_line = line_index == cursor_line;
-            let line_char_len = line.chars().count();
-            let line_selected_range =
-                selected_column_range_for_line(selection, line_index, line_char_len);
-            let wrapped_lines = wrap_visual_line(line, wrap_chunk);
-            let wrapped_count = wrapped_lines.len();
-
-            wrapped_lines
-                .into_iter()
-                .enumerate()
-                .map(move |(wrapped_index, wrapped_line)| {
-                    let segment_start_column = wrapped_index * wrap_chunk;
-                    let segment_end_column = segment_start_column + wrapped_line.chars().count();
-                    let is_last_segment = wrapped_index + 1 == wrapped_count;
-                    let selected_range = selected_range_in_wrapped_segment(
-                        line_selected_range.as_ref(),
-                        segment_start_column,
-                        segment_end_column,
-                    );
-                    let caret_column = caret_column_in_wrapped_segment(
-                        is_cursor_line,
-                        cursor_column,
-                        line_char_len,
-                        segment_start_column,
-                        segment_end_column,
-                        is_last_segment,
-                    );
-
-                    VisualRow {
-                        row_id: gpui::SharedString::from(format!(
-                            "viewer-row-{line_index}-{wrapped_index}"
-                        )),
-                        line_number: (wrapped_index == 0).then_some(line_index + 1),
-                        wrapped_line,
-                        selected_range,
-                        caret_column,
-                        is_cursor_line,
-                    }
-                })
+        .map(|(line_index, line_char_len)| {
+            selected_column_range_for_line(selection, line_index, *line_char_len)
         })
         .collect()
 }
@@ -475,40 +569,43 @@ fn soft_wrap_max_chars(
     ((content_width_px / APPROX_MONO_CHAR_WIDTH_PX).floor() as usize).max(SOFT_WRAP_MIN_CHARS)
 }
 
-fn cursor_visual_row_index(
-    buffer_lines: &[String],
-    cursor: Position,
-    wrap_max_chars: usize,
-) -> usize {
-    if buffer_lines.is_empty() {
+fn cursor_visual_row_index(layout_cache: &ViewerLayoutCache, cursor: Position) -> usize {
+    if layout_cache.line_count == 0 {
         return 0;
     }
 
     let mut cursor_line = usize::try_from(cursor.line).unwrap_or(usize::MAX);
-    cursor_line = cursor_line.min(buffer_lines.len() - 1);
+    cursor_line = cursor_line.min(layout_cache.line_count.saturating_sub(1));
     let cursor_column = usize::try_from(cursor.column).unwrap_or(usize::MAX);
-
-    let mut visual_row = 0usize;
-    for (line_index, line) in buffer_lines.iter().enumerate() {
-        if line_index < cursor_line {
-            visual_row += wrap_visual_line(line, wrap_max_chars).len().max(1);
-            continue;
-        }
-        let wrapped_lines = wrap_visual_line(line, wrap_max_chars);
-        let line_char_len = line.chars().count();
-        let clamped_column = cursor_column.min(line_char_len);
-        let wrapped_index =
-            (clamped_column / wrap_max_chars.max(1)).min(wrapped_lines.len().saturating_sub(1));
-        return visual_row + wrapped_index;
-    }
-
-    visual_row
+    let line_char_len = layout_cache
+        .line_char_lens
+        .get(cursor_line)
+        .copied()
+        .unwrap_or(0);
+    let clamped_column = cursor_column.min(line_char_len);
+    let wrap_count = layout_cache
+        .line_wrap_counts
+        .get(cursor_line)
+        .copied()
+        .unwrap_or(1)
+        .max(1);
+    let wrapped_index =
+        (clamped_column / layout_cache.wrap_chunk.max(1)).min(wrap_count.saturating_sub(1));
+    layout_cache
+        .line_start_rows
+        .get(cursor_line)
+        .copied()
+        .unwrap_or(0)
+        + wrapped_index
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{cursor_visual_row_index, gutter_width_for_line_count, soft_wrap_max_chars};
-    use zom_protocol::Position;
+    use super::{
+        ViewerLayoutCache, cursor_visual_row_index, gutter_width_for_line_count,
+        line_count_from_text, soft_wrap_max_chars,
+    };
+    use zom_protocol::{BufferId, Position};
 
     #[test]
     fn soft_wrap_max_chars_uses_scroll_width_when_available() {
@@ -525,15 +622,38 @@ mod tests {
 
     #[test]
     fn cursor_visual_row_index_counts_wrapped_rows_before_cursor_line() {
-        let lines = vec!["abcdefgh".to_string(), "xyz".to_string()];
-        let row_index = cursor_visual_row_index(&lines, Position::new(1, 1), 4);
+        let cache = cache_for_cursor_test(vec![8, 3], vec![2, 1], vec![0, 2], 4);
+        let row_index = cursor_visual_row_index(&cache, Position::new(1, 1));
         assert_eq!(row_index, 2);
     }
 
     #[test]
     fn cursor_visual_row_index_clamps_out_of_range_cursor_line() {
-        let lines = vec!["abc".to_string()];
-        let row_index = cursor_visual_row_index(&lines, Position::new(9, 0), 4);
+        let cache = cache_for_cursor_test(vec![3], vec![1], vec![0], 4);
+        let row_index = cursor_visual_row_index(&cache, Position::new(9, 0));
         assert_eq!(row_index, 0);
+    }
+
+    #[test]
+    fn line_count_from_text_counts_trailing_newline() {
+        assert_eq!(line_count_from_text("a\n"), 2);
+    }
+
+    fn cache_for_cursor_test(
+        line_char_lens: Vec<usize>,
+        line_wrap_counts: Vec<usize>,
+        line_start_rows: Vec<usize>,
+        wrap_chunk: usize,
+    ) -> ViewerLayoutCache {
+        ViewerLayoutCache {
+            buffer_id: BufferId::new(1),
+            doc_version: 0,
+            wrap_chunk,
+            line_count: line_char_lens.len(),
+            line_char_lens,
+            line_wrap_counts,
+            line_start_rows,
+            wrapped_rows: Vec::new(),
+        }
     }
 }
