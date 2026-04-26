@@ -18,7 +18,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 2
 fi
 
-# Keep this mapping aligned with docs/开发规范手册.md -> "Crate 边界契约"
+# Keep this mapping aligned with docs/standards/开发规范手册.md -> "Crate 边界契约"
 # Current enforced architecture:
 #   zom-protocol(含 input) -> zom-text -> zom-editor -> zom-workspace -> zom-runtime -> zom-gpui -> apps/zom-desktop
 # Optional crates (e.g. zom-workspace, zom-editor) must still obey single-direction dependencies.
@@ -91,7 +91,7 @@ done <<< "$internal_edges"
 if (( errors > 0 )); then
   echo >&2
   echo "Boundary check failed with $errors issue(s)." >&2
-  echo "See: docs/开发规范手册.md (Crate 边界契约)" >&2
+  echo "See: docs/standards/开发规范手册.md (Crate 边界契约)" >&2
   exit 1
 fi
 

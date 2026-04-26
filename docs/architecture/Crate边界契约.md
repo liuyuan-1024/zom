@@ -57,7 +57,7 @@ zom-text      zom-editor
 ### 4.1 边界执行纪律（强制）
 
 1. 开发前必须先判定主 crate 与职责归属，禁止先实现后迁移。
-2. 禁止以“先跑通”为理由在错误层放实现；职责不明确时先补文档/ADR。
+2. 禁止以“先跑通”为理由在错误层放实现；职责不明确时先补 SoT 文档并在 PR 中说明。
 3. 禁止跨层重复定义已存在的稳定类型或能力（含 1:1 镜像结构与重复实现）。
 4. 一旦发现职责漂移，必须先回收边界，再继续叠加功能。
 5. 评审发现边界问题可直接拒绝合入，不以“功能可用”作为放行理由。
@@ -66,8 +66,9 @@ zom-text      zom-editor
 
 1. 若新增/调整依赖方向，必须同步更新：
    - 本文档；
+   - `docs/architecture/架构哲学与模块宪章.md`（若涉及治理/职责变化）；
    - `scripts/check-boundaries.sh`；
-   - 必要时新增 ADR 记录（`docs/adr/`）。
+   - PR 中的“架构变化”字段（见 `.github/pull_request_template.md`）。
 2. PR 合入前必须执行：
 
 ```bash
@@ -79,6 +80,8 @@ cargo check
 
 ## 6. 关联文档
 
-1. [开发规范手册](./开发规范手册.md)
-2. [面板开发契约](./面板开发契约.md)
-3. [ADR 0001：工作台命令与输入路由收敛](./adr/0001-workspace-command-and-input-routing.md)
+1. [docs 导航与分工](../README.md)
+2. [架构哲学与模块宪章](./架构哲学与模块宪章.md)
+3. [开发规范手册](../standards/开发规范手册.md)
+4. [面板开发契约](../playbooks/面板开发契约.md)
+5. [PR 模板](../../.github/pull_request_template.md)
