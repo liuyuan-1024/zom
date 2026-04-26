@@ -1,46 +1,7 @@
 //! 面板停靠位规则与目标映射。
+//! 元数据单一来源位于 `zom-protocol::focus`，此模块仅做转发导出。
 
-use zom_protocol::FocusTarget;
-
-/// 工作台面板停靠区域。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PanelDock {
-    /// 左侧面板列。
-    Left,
-    /// 右侧面板列。
-    Right,
-    /// 中央列底部面板区域。
-    Bottom,
-}
-
-/// 返回目标面板所属停靠区域。
-pub fn panel_dock(target: FocusTarget) -> Option<PanelDock> {
-    match target {
-        FocusTarget::FileTreePanel
-        | FocusTarget::GitPanel
-        | FocusTarget::OutlinePanel
-        | FocusTarget::ProjectSearchPanel
-        | FocusTarget::LanguageServersPanel => Some(PanelDock::Left),
-        FocusTarget::NotificationPanel => Some(PanelDock::Right),
-        FocusTarget::TerminalPanel | FocusTarget::DebugPanel => Some(PanelDock::Bottom),
-        _ => None,
-    }
-}
-
-/// 返回指定停靠区域允许挂载的面板目标列表。
-pub fn dock_targets(dock: PanelDock) -> &'static [FocusTarget] {
-    match dock {
-        PanelDock::Left => &[
-            FocusTarget::FileTreePanel,
-            FocusTarget::GitPanel,
-            FocusTarget::OutlinePanel,
-            FocusTarget::ProjectSearchPanel,
-            FocusTarget::LanguageServersPanel,
-        ],
-        PanelDock::Right => &[FocusTarget::NotificationPanel],
-        PanelDock::Bottom => &[FocusTarget::TerminalPanel, FocusTarget::DebugPanel],
-    }
-}
+pub use zom_protocol::{PanelDock, dock_targets, panel_dock};
 
 #[cfg(test)]
 mod tests {

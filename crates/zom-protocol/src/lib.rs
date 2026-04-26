@@ -1,5 +1,3 @@
-//! zom-protocol 的公共入口与稳定协议导出。
-
 //! `zom-protocol` 是整个工程共享的协议层。
 //! 这里只放跨 crate 都成立的基础类型、命令语义和输入协议。
 
@@ -30,8 +28,8 @@ pub use command::{
 };
 /// 统一导出方向类型。
 pub use direction::{Axis, Direction};
-/// 统一导出焦点与悬浮层目标
-pub use focus::{FocusTarget, OverlayTarget};
+/// 统一导出焦点、面板停靠位与悬浮层目标。
+pub use focus::{FocusTarget, OverlayTarget, PanelDock, ToolBarSide, dock_targets, panel_dock};
 /// 统一导出强类型 ID。
 pub use ids::{BufferId, PaneId, WorkspaceId};
 /// 统一导出输入协议类型。

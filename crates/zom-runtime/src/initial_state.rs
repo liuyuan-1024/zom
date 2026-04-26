@@ -2,7 +2,9 @@
 
 use std::collections::HashSet;
 
-use zom_protocol::{FocusTarget, PaneId, Position, WorkspaceAction, command::CommandInvocation};
+use zom_protocol::{
+    FocusTarget, PaneId, Position, ToolBarSide, WorkspaceAction, command::CommandInvocation,
+};
 
 use crate::{
     state::{
@@ -28,52 +30,10 @@ impl DesktopAppState {
                 }],
             },
             tool_bar: ToolBarState {
-                left_tools: vec![
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::FileTreePanel,
-                        )),
-                    },
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::GitPanel,
-                        )),
-                    },
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::OutlinePanel,
-                        )),
-                    },
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::ProjectSearchPanel,
-                        )),
-                    },
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::LanguageServersPanel,
-                        )),
-                    },
-                ],
+                left_tools: panel_toolbar_entries(ToolBarSide::Left),
                 cursor: Position::zero(),
                 language: String::new(),
-                right_tools: vec![
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::TerminalPanel,
-                        )),
-                    },
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::DebugPanel,
-                        )),
-                    },
-                    ToolBarEntry {
-                        command: CommandInvocation::from(WorkspaceAction::FocusPanel(
-                            FocusTarget::NotificationPanel,
-                        )),
-                    },
-                ],
+                right_tools: panel_toolbar_entries(ToolBarSide::Right),
             },
             file_tree: FileTreeState::from_workspace_root(&workspace_root),
             project_name: workspace_name.clone(),
@@ -97,6 +57,16 @@ fn default_visible_panels() -> HashSet<FocusTarget> {
     FocusTarget::VISIBILITY_MANAGED_PANELS
         .into_iter()
         .filter(|target| target.is_visible_by_default())
+        .collect()
+}
+
+fn panel_toolbar_entries(side: ToolBarSide) -> Vec<ToolBarEntry> {
+    FocusTarget::VISIBILITY_MANAGED_PANELS
+        .into_iter()
+        .filter(|target| target.tool_bar_side() == Some(side))
+        .map(|target| ToolBarEntry {
+            command: CommandInvocation::from(WorkspaceAction::FocusPanel(target)),
+        })
         .collect()
 }
 
