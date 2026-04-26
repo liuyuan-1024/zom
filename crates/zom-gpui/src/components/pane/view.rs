@@ -156,6 +156,7 @@ impl PaneView {
                 ensure_viewer_layout_cache(&mut self.viewer_layout_cache, active_tab, wrap_chunk);
             let selection = active_tab.editor_state.selection();
             let scroll_handle = self.scroll_handle.clone();
+            let editor_has_focus = self.focus_handle.is_focused(window);
             let cursor = self.cursor;
             let last_cursor_moved_at = self.last_cursor_moved_at;
             return div()
@@ -168,6 +169,7 @@ impl PaneView {
                     layout_cache,
                     gutter_width_px,
                     selection,
+                    editor_has_focus,
                     cursor,
                     last_cursor_moved_at,
                     scroll_to_row,
@@ -193,6 +195,7 @@ fn render_viewer_content(
     layout_cache: &ViewerLayoutCache,
     gutter_width_px: f32,
     selection: Selection,
+    editor_has_focus: bool,
     cursor: Position,
     last_cursor_moved_at: Option<Instant>,
     scroll_to_row: Option<usize>,
@@ -237,14 +240,19 @@ fn render_viewer_content(
             row.segment_end_column,
         );
         let is_cursor_line = row.line_index == cursor_line;
-        let caret_column = caret_column_in_wrapped_segment(
-            is_cursor_line,
-            cursor_column,
-            row.line_char_len,
-            row.segment_start_column,
-            row.segment_end_column,
-            row.is_last_segment,
-        );
+        let show_cursor_line_emphasis = is_cursor_line && editor_has_focus;
+        let caret_column = if editor_has_focus {
+            caret_column_in_wrapped_segment(
+                is_cursor_line,
+                cursor_column,
+                row.line_char_len,
+                row.segment_start_column,
+                row.segment_end_column,
+                row.is_last_segment,
+            )
+        } else {
+            None
+        };
         children.push(
             div()
                 .id(row.row_id.clone())
@@ -260,7 +268,7 @@ fn render_viewer_content(
                     selected_range,
                     caret_column,
                     suppress_caret_blink,
-                    is_cursor_line,
+                    show_cursor_line_emphasis,
                 ))
                 .into_any_element(),
         );
