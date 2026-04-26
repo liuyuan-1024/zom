@@ -22,6 +22,8 @@ use crate::{
 const SOFT_WRAP_MIN_CHARS: usize = 16;
 /// 等宽字体单字符宽度近似值（用于从像素宽度估算换行阈值）。
 const APPROX_MONO_CHAR_WIDTH_PX: f32 = 8.0;
+/// 行号栏最小位数（减少 1~9 行时抖动）。
+const GUTTER_MIN_DIGITS: usize = 2;
 /// 细线光标宽度。
 const CARET_WIDTH_PX: f32 = 1.5;
 /// 细线光标高度。
@@ -39,6 +41,16 @@ pub struct PaneView {
     pending_scroll_to_cursor: bool,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
+}
+
+/// 渲染层的可视行投影，解耦“行号栏”和“文本内容”的构建逻辑。
+struct VisualRow {
+    row_id: gpui::SharedString,
+    line_number: Option<usize>,
+    wrapped_line: String,
+    selected_range: Option<Range<usize>>,
+    caret_column: Option<usize>,
+    is_cursor_line: bool,
 }
 
 impl PaneView {
@@ -98,7 +110,9 @@ impl PaneView {
             let buffer_lines = active_tab.buffer_lines();
             let viewport_width_px: f32 = window.viewport_size().width.into();
             let scroll_width_px: f32 = self.scroll_handle.bounds().size.width.into();
-            let wrap_max_chars = soft_wrap_max_chars(scroll_width_px, viewport_width_px);
+            let gutter_width_px = gutter_width_for_line_count(buffer_lines.len());
+            let wrap_max_chars =
+                soft_wrap_max_chars(scroll_width_px, viewport_width_px, gutter_width_px);
 
             if self.pending_scroll_to_cursor {
                 let row_index = cursor_visual_row_index(&buffer_lines, self.cursor, wrap_max_chars);
@@ -113,6 +127,7 @@ impl PaneView {
                 .child(self.render_viewer_content(
                     buffer_lines,
                     wrap_max_chars,
+                    gutter_width_px,
                     active_tab.editor_state.selection(),
                     cx,
                 ))
@@ -134,6 +149,7 @@ impl PaneView {
         &self,
         buffer_lines: Vec<String>,
         wrap_max_chars: usize,
+        gutter_width_px: f32,
         selection: Selection,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + '_ {
@@ -143,85 +159,31 @@ impl PaneView {
         });
         let cursor_line = usize::try_from(self.cursor.line).unwrap_or(usize::MAX);
         let cursor_column = usize::try_from(self.cursor.column).unwrap_or(usize::MAX);
-        let line_elements = buffer_lines
-            .iter()
-            .enumerate()
-            .flat_map(|(line_index, line)| {
-                let is_cursor_line = line_index == cursor_line;
-                let line_char_len = line.chars().count();
-                let line_selected_range =
-                    selected_column_range_for_line(selection, line_index, line_char_len);
-                let wrapped_lines = wrap_visual_line(line, wrap_chunk);
-                let wrapped_count = wrapped_lines.len();
-                wrapped_lines
-                    .into_iter()
-                    .enumerate()
-                    .map(move |(wrapped_index, wrapped_line)| {
-                        let segment_start_column = wrapped_index * wrap_chunk;
-                        let segment_end_column =
-                            segment_start_column + wrapped_line.chars().count();
-                        let is_last_segment = wrapped_index + 1 == wrapped_count;
-                        let selected_range = selected_range_in_wrapped_segment(
-                            line_selected_range.as_ref(),
-                            segment_start_column,
-                            segment_end_column,
-                        );
-                        let caret_column = caret_column_in_wrapped_segment(
-                            is_cursor_line,
-                            cursor_column,
-                            line_char_len,
-                            segment_start_column,
-                            segment_end_column,
-                            is_last_segment,
-                        );
-                        let line_number = if wrapped_index == 0 {
-                            (line_index + 1).to_string()
-                        } else {
-                            String::new()
-                        };
-                        let row_id = gpui::SharedString::from(format!(
-                            "viewer-row-{line_index}-{wrapped_index}"
-                        ));
-
-                        div()
-                            .id(row_id)
-                            .w_full()
-                            .flex()
-                            .flex_row()
-                            .flex_none()
-                            .gap(px(size::GAP_3))
-                            .items_center()
-                            .child(
-                                div()
-                                    .w(px(size::GUTTER_MD))
-                                    .flex_shrink_0()
-                                    .text_right()
-                                    .text_sm()
-                                    .line_height(px(size::FONT_MD))
-                                    .text_color(rgb(color::COLOR_FG_MUTED))
-                                    .child(line_number),
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .w_full()
-                                    .text_sm()
-                                    .line_height(px(size::FONT_MD))
-                                    .text_color(rgb(if is_cursor_line {
-                                        color::COLOR_FG_PRIMARY
-                                    } else {
-                                        color::COLOR_FG_MUTED
-                                    }))
-                                    .whitespace_nowrap()
-                                    .child(render_wrapped_line_content(
-                                        &wrapped_line,
-                                        selected_range,
-                                        caret_column,
-                                        suppress_caret_blink,
-                                    )),
-                            )
-                    })
-            });
+        let visual_rows = build_visual_rows(
+            &buffer_lines,
+            wrap_chunk,
+            selection,
+            cursor_line,
+            cursor_column,
+        );
+        let line_elements = visual_rows.into_iter().map(move |row| {
+            div()
+                .id(row.row_id)
+                .w_full()
+                .flex()
+                .flex_row()
+                .flex_none()
+                .gap(px(size::GAP_3))
+                .items_center()
+                .child(render_gutter_cell(row.line_number, gutter_width_px))
+                .child(render_text_cell(
+                    &row.wrapped_line,
+                    row.selected_range,
+                    row.caret_column,
+                    suppress_caret_blink,
+                    row.is_cursor_line,
+                ))
+        });
 
         div()
             // 建议：后续如果支持多 Tab，这里的 ID 应该加上当前 Tab 的唯一标识，防止切换文件时滚动条位置串位。
@@ -236,6 +198,99 @@ impl PaneView {
             .track_scroll(&self.scroll_handle)
             .children(line_elements)
     }
+}
+
+fn build_visual_rows(
+    buffer_lines: &[String],
+    wrap_chunk: usize,
+    selection: Selection,
+    cursor_line: usize,
+    cursor_column: usize,
+) -> Vec<VisualRow> {
+    buffer_lines
+        .iter()
+        .enumerate()
+        .flat_map(|(line_index, line)| {
+            let is_cursor_line = line_index == cursor_line;
+            let line_char_len = line.chars().count();
+            let line_selected_range =
+                selected_column_range_for_line(selection, line_index, line_char_len);
+            let wrapped_lines = wrap_visual_line(line, wrap_chunk);
+            let wrapped_count = wrapped_lines.len();
+
+            wrapped_lines
+                .into_iter()
+                .enumerate()
+                .map(move |(wrapped_index, wrapped_line)| {
+                    let segment_start_column = wrapped_index * wrap_chunk;
+                    let segment_end_column = segment_start_column + wrapped_line.chars().count();
+                    let is_last_segment = wrapped_index + 1 == wrapped_count;
+                    let selected_range = selected_range_in_wrapped_segment(
+                        line_selected_range.as_ref(),
+                        segment_start_column,
+                        segment_end_column,
+                    );
+                    let caret_column = caret_column_in_wrapped_segment(
+                        is_cursor_line,
+                        cursor_column,
+                        line_char_len,
+                        segment_start_column,
+                        segment_end_column,
+                        is_last_segment,
+                    );
+
+                    VisualRow {
+                        row_id: gpui::SharedString::from(format!(
+                            "viewer-row-{line_index}-{wrapped_index}"
+                        )),
+                        line_number: (wrapped_index == 0).then_some(line_index + 1),
+                        wrapped_line,
+                        selected_range,
+                        caret_column,
+                        is_cursor_line,
+                    }
+                })
+        })
+        .collect()
+}
+
+fn render_gutter_cell(line_number: Option<usize>, gutter_width_px: f32) -> AnyElement {
+    div()
+        .w(px(gutter_width_px))
+        .flex_shrink_0()
+        .text_right()
+        .text_sm()
+        .line_height(px(size::FONT_MD))
+        .text_color(rgb(color::COLOR_FG_MUTED))
+        .child(line_number.map_or_else(String::new, |number| number.to_string()))
+        .into_any_element()
+}
+
+fn render_text_cell(
+    wrapped_line: &str,
+    selected_range: Option<Range<usize>>,
+    caret_column: Option<usize>,
+    suppress_caret_blink: bool,
+    is_cursor_line: bool,
+) -> AnyElement {
+    div()
+        .flex_1()
+        .w_full()
+        .text_sm()
+        .line_height(px(size::FONT_MD))
+        .text_color(rgb(if is_cursor_line {
+            color::COLOR_FG_PRIMARY
+        } else {
+            color::COLOR_FG_MUTED
+        }))
+        .whitespace_nowrap()
+        .child(render_wrapped_line_content(
+            wrapped_line,
+            selected_range,
+            caret_column,
+            suppress_caret_blink,
+        ))
+        .into_any_element()
 }
 
 fn selected_column_range_for_line(
@@ -398,14 +453,25 @@ fn render_caret(suppress_caret_blink: bool) -> impl IntoElement {
         )
 }
 
-fn soft_wrap_max_chars(scroll_width_px: f32, viewport_width_px: f32) -> usize {
+fn gutter_width_for_line_count(line_count: usize) -> f32 {
+    let digits = line_count.max(1).to_string().len().max(GUTTER_MIN_DIGITS);
+    let content_width_px = digits as f32 * APPROX_MONO_CHAR_WIDTH_PX;
+    let horizontal_padding_px = size::GAP_1 * 2.0;
+    (content_width_px + horizontal_padding_px).max(size::GUTTER_MD)
+}
+
+fn soft_wrap_max_chars(
+    scroll_width_px: f32,
+    viewport_width_px: f32,
+    gutter_width_px: f32,
+) -> usize {
     let width_px = if scroll_width_px > 1.0 {
         scroll_width_px
     } else {
         viewport_width_px
     };
     let content_width_px =
-        (width_px - (size::PADDING_SM * 2.0) - size::GUTTER_MD - size::GAP_3).max(1.0);
+        (width_px - (size::PADDING_SM * 2.0) - gutter_width_px - size::GAP_3).max(1.0);
     ((content_width_px / APPROX_MONO_CHAR_WIDTH_PX).floor() as usize).max(SOFT_WRAP_MIN_CHARS)
 }
 
@@ -441,13 +507,20 @@ fn cursor_visual_row_index(
 
 #[cfg(test)]
 mod tests {
-    use super::{cursor_visual_row_index, soft_wrap_max_chars};
+    use super::{cursor_visual_row_index, gutter_width_for_line_count, soft_wrap_max_chars};
     use zom_protocol::Position;
 
     #[test]
     fn soft_wrap_max_chars_uses_scroll_width_when_available() {
-        let chars = soft_wrap_max_chars(320.0, 1000.0);
+        let chars = soft_wrap_max_chars(320.0, 1000.0, 40.0);
         assert!(chars < 60);
+    }
+
+    #[test]
+    fn gutter_width_expands_for_large_line_counts() {
+        let narrow = gutter_width_for_line_count(99);
+        let wide = gutter_width_for_line_count(100_000);
+        assert!(wide > narrow);
     }
 
     #[test]
