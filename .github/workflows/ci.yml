@@ -52,10 +52,10 @@ jobs:
       - name: Check crate boundaries
         run: ./scripts/check-boundaries.sh
 
-      - name: Check architecture naming sync
+      - name: Check keyboard naming sync
         run: |
-          if rg -n "zom-input|zom_input" Cargo.toml crates apps docs scripts; then
-            echo "Found stale zom-input references; please migrate to zom-core::input." >&2
+          if rg -n "zom_protocol::input|zom-protocol::input|pub mod input;|pub use input::" crates apps docs scripts; then
+            echo "Found stale protocol input module references; please migrate to zom-protocol::keyboard." >&2
             exit 1
           fi
 
