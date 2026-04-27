@@ -16,6 +16,18 @@ pub const SPECS: &[CommandKindSpec] = &[
         "在当前光标位置插入一个新行。",
     ),
     CommandKindSpec::new(
+        CommandKind::EditorInsertIndent,
+        "editor.insert_indent",
+        "插入缩进",
+        "在当前光标位置插入一个缩进，或对选中行整体缩进。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorOutdent,
+        "editor.outdent",
+        "反缩进",
+        "对当前行或选中行执行一次反缩进。",
+    ),
+    CommandKindSpec::new(
         CommandKind::EditorMoveLeft,
         "editor.move_left",
         "光标左移",

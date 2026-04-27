@@ -5,6 +5,10 @@
 pub enum EditorAction {
     /// 插入换行。
     InsertNewline,
+    /// 插入缩进。
+    InsertIndent,
+    /// 反缩进。
+    Outdent,
     /// 光标向左移动。
     MoveLeft,
     /// 光标向右移动。

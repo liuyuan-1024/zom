@@ -9,6 +9,10 @@ pub enum CommandKind {
     EditorInsertText,
     /// 编辑器插入换行。
     EditorInsertNewline,
+    /// 编辑器插入缩进。
+    EditorInsertIndent,
+    /// 编辑器反缩进。
+    EditorOutdent,
     /// 编辑器光标左移。
     EditorMoveLeft,
     /// 编辑器光标右移。

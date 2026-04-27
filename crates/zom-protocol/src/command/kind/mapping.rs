@@ -14,6 +14,10 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorInsertNewline => {
             Some(CommandInvocation::from(EditorAction::InsertNewline))
         }
+        CommandKind::EditorInsertIndent => {
+            Some(CommandInvocation::from(EditorAction::InsertIndent))
+        }
+        CommandKind::EditorOutdent => Some(CommandInvocation::from(EditorAction::Outdent)),
         CommandKind::EditorMoveLeft => Some(CommandInvocation::from(EditorAction::MoveLeft)),
         CommandKind::EditorMoveRight => Some(CommandInvocation::from(EditorAction::MoveRight)),
         CommandKind::EditorMoveUp => Some(CommandInvocation::from(EditorAction::MoveUp)),
