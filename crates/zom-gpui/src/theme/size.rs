@@ -2,7 +2,6 @@
 
 // --- 间距与网格 (Spacing & Grid) ---
 // 逻辑：以 6px 为基础网格，提供线性递增的间距单位，用于 padding, margin, gap
-pub(crate) const GAP_0_5: f32 = GAP_1 * 0.5; // 3.0px (一般是绝对定位保持居中的计算需要)
 pub(crate) const GAP_1: f32 = 6.0; // 6.0px (极小间距/微调)
 pub(crate) const GAP_1_5: f32 = GAP_1 * 1.5; // 9.0px (紧凑图标簇间距)
 pub(crate) const GAP_2: f32 = GAP_1 * 2.0; // 12.0px (组件内容间距)
