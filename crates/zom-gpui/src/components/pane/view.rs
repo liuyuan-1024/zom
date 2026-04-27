@@ -15,6 +15,7 @@ use zom_runtime::{
     projection::wrap_visual_line,
     state::{ActiveEditorSnapshot, PaneState},
 };
+use zom_text_tokens::{LF_BYTE, LF_CHAR};
 
 use crate::{
     components::pane::tab_bar,
@@ -402,12 +403,12 @@ fn build_viewer_layout_cache(
 }
 
 fn split_lines_for_viewer(text: &str) -> Vec<String> {
-    text.split('\n').map(|line| line.to_string()).collect()
+    text.split(LF_CHAR).map(|line| line.to_string()).collect()
 }
 
 fn line_count_from_text(text: &str) -> usize {
     text.bytes()
-        .filter(|byte| *byte == b'\n')
+        .filter(|byte| *byte == LF_BYTE)
         .count()
         .saturating_add(1)
 }

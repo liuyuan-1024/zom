@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 zom-protocol = { workspace = true }
 zom-runtime = { workspace = true }
+zom-text-tokens = { workspace = true }
 gpui = { workspace = true }

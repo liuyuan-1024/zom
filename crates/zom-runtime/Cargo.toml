@@ -8,4 +8,5 @@ zom-protocol = { workspace = true }
 zom-input = { workspace = true }
 zom-editor = { workspace = true }
 zom-text = { workspace = true }
+zom-text-tokens = { workspace = true }
 zom-workspace = { workspace = true }

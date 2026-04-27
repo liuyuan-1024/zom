@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use ropey::Rope;
 use zom_protocol::Position;
+use zom_text_tokens::{CR_BYTE, CR_CHAR, LF_BYTE, LF_CHAR, LineEnding};
 
 /// 轻量文本缓冲区，提供基础插入/删除与位置映射能力。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -90,10 +91,10 @@ impl TextBuffer {
         let mut visual_column = 0u32;
         let mut relative_char_index = 0usize;
         for ch in line.chars() {
-            if ch == '\n' || visual_column == target.column {
+            if ch == LF_CHAR || visual_column == target.column {
                 break;
             }
-            if ch != '\r' {
+            if ch != CR_CHAR {
                 visual_column = visual_column.saturating_add(1);
             }
             relative_char_index += 1;
@@ -113,7 +114,7 @@ impl TextBuffer {
         let line_start_char = self.rope.line_to_char(line_index);
         let mut column = 0u32;
         for ch in self.rope.slice(line_start_char..char_index).chars() {
-            if ch != '\r' {
+            if ch != CR_CHAR {
                 column = column.saturating_add(1);
             }
         }
@@ -137,8 +138,8 @@ impl TextBuffer {
         let mut column = 0u32;
         for ch in self.rope.line(line_index).chars() {
             match ch {
-                '\n' => break,
-                '\r' => {}
+                LF_CHAR => break,
+                CR_CHAR => {}
                 _ => column = column.saturating_add(1),
             }
         }
@@ -235,11 +236,11 @@ pub fn position_to_offset(text: &str, position: Position) -> usize {
         }
 
         match ch {
-            '\n' => {
+            LF_CHAR => {
                 line += 1;
                 column = 0;
             }
-            '\r' => {}
+            CR_CHAR => {}
             _ => {
                 if line == target.line {
                     column += 1;
@@ -268,11 +269,11 @@ pub fn offset_to_position(text: &str, offset: usize) -> Position {
         }
         current += ch.len_utf8();
         match ch {
-            '\n' => {
+            LF_CHAR => {
                 line += 1;
                 column = 0;
             }
-            '\r' => {}
+            CR_CHAR => {}
             _ => column += 1,
         }
     }
@@ -288,7 +289,7 @@ pub fn clamp_position_to_text(text: &str, position: Position) -> Position {
 }
 
 fn line_count(text: &str) -> u32 {
-    let line_breaks = text.chars().filter(|ch| *ch == '\n').count();
+    let line_breaks = text.chars().filter(|ch| *ch == LF_CHAR).count();
     let line_count = line_breaks.saturating_add(1);
     u32::try_from(line_count).unwrap_or(u32::MAX)
 }
@@ -299,15 +300,15 @@ fn line_len(text: &str, target_line: u32) -> u32 {
 
     for ch in text.chars() {
         if line != target_line {
-            if ch == '\n' {
+            if ch == LF_CHAR {
                 line += 1;
             }
             continue;
         }
 
         match ch {
-            '\n' => break,
-            '\r' => {}
+            LF_CHAR => break,
+            CR_CHAR => {}
             _ => column += 1,
         }
     }
@@ -318,8 +319,8 @@ fn line_len(text: &str, target_line: u32) -> u32 {
 /// 按编辑器视角拆分文本行，并保留空行。
 pub fn split_lines(text: &str) -> Vec<String> {
     let mut lines = text
-        .split('\n')
-        .map(|line| line.trim_end_matches('\r').to_string())
+        .split(LF_CHAR)
+        .map(|line| line.trim_end_matches(CR_CHAR).to_string())
         .collect::<Vec<_>>();
 
     if lines.is_empty() {
@@ -339,8 +340,8 @@ pub fn detect_line_ending(text: &str) -> String {
     let mut index = 0usize;
     while index < bytes.len() {
         match bytes[index] {
-            b'\r' => {
-                if bytes.get(index + 1) == Some(&b'\n') {
+            CR_BYTE => {
+                if bytes.get(index + 1) == Some(&LF_BYTE) {
                     has_crlf = true;
                     index += 2;
                     continue;
@@ -348,7 +349,7 @@ pub fn detect_line_ending(text: &str) -> String {
                 has_cr = true;
                 index += 1;
             }
-            b'\n' => {
+            LF_BYTE => {
                 has_lf = true;
                 index += 1;
             }
@@ -360,13 +361,13 @@ pub fn detect_line_ending(text: &str) -> String {
     if kinds > 1 {
         "Mixed".into()
     } else if has_crlf {
-        "CRLF".into()
+        LineEnding::Crlf.label().into()
     } else if has_lf {
-        "LF".into()
+        LineEnding::Lf.label().into()
     } else if has_cr {
-        "CR".into()
+        LineEnding::Cr.label().into()
     } else {
-        "LF".into()
+        LineEnding::Lf.label().into()
     }
 }
 

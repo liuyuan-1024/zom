@@ -4,6 +4,7 @@ use std::{fs, path::Path};
 
 use zom_editor::EditorState;
 use zom_text::detect_line_ending;
+use zom_text_tokens::{CR_CHAR, CRLF, LF};
 
 /// 文件加载后的预览数据。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,7 +35,7 @@ pub fn load_buffer_preview(path: &Path) -> Result<BufferPreview, LoadBufferPrevi
 }
 
 fn normalize_to_lf(text: &str) -> String {
-    text.replace("\r\n", "\n").replace('\r', "\n")
+    text.replace(CRLF, LF).replace(CR_CHAR, LF)
 }
 
 #[cfg(test)]

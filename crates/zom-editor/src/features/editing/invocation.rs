@@ -2,6 +2,7 @@
 
 use zom_protocol::{EditorAction, EditorInvocation, Position, Selection};
 use zom_text::TextBuffer;
+use zom_text_tokens::{LF, TAB, TAB_CHAR};
 
 use super::{
     state::{EditorState, clamp_selection_to_text},
@@ -9,6 +10,8 @@ use super::{
         TextChange, TransactionMeta, TransactionSource, TransactionSpec, apply_transaction,
     },
 };
+
+const OUTDENT_SPACES: usize = 4;
 
 /// 编辑命令执行结果。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,7 +42,9 @@ fn apply_action(
 ) -> InvocationResult {
     let active = selection.active();
     match action {
-        EditorAction::InsertNewline => insert_text(state, selection, "\n"),
+        EditorAction::InsertNewline => insert_newline(state, selection),
+        EditorAction::InsertIndent => insert_indent(state, selection),
+        EditorAction::Outdent => outdent(state, selection),
         EditorAction::MoveLeft => move_left_without_selection(state, selection),
         EditorAction::MoveRight => move_right_without_selection(state, selection),
         EditorAction::MoveUp => apply_selection_move(
@@ -156,6 +161,137 @@ fn insert_text(state: &EditorState, selection: Selection, text: &str) -> Invocat
             expected_version: None,
         },
     )
+}
+
+fn insert_newline(state: &EditorState, selection: Selection) -> InvocationResult {
+    let indent = auto_indent_for_newline(state, selection.active());
+    let mut text = String::from(LF);
+    text.push_str(&indent);
+    insert_text(state, selection, &text)
+}
+
+fn auto_indent_for_newline(state: &EditorState, cursor: Position) -> String {
+    let line = cursor.line;
+    let line_start = state.position_to_offset(Position::new(line, 0));
+    let line_end = state.position_to_offset(Position::new(line, line_len(state.buffer(), line)));
+    let Ok(line_text) = state.buffer().slice(line_start..line_end) else {
+        return String::new();
+    };
+    leading_whitespace_prefix(&line_text).to_string()
+}
+
+fn insert_indent(state: &EditorState, selection: Selection) -> InvocationResult {
+    if selection.is_caret() {
+        return insert_text(state, selection, TAB);
+    }
+
+    let (start_line, end_line) = touched_line_range(selection);
+
+    let changes = (start_line..=end_line)
+        .map(|line| {
+            let offset = state.position_to_offset(Position::new(line, 0));
+            TextChange::new(offset, offset, TAB)
+        })
+        .collect::<Vec<_>>();
+
+    apply_with_selection(
+        state,
+        selection,
+        TransactionSpec {
+            changes,
+            selection: None,
+            meta: TransactionMeta::from_source(TransactionSource::Keyboard),
+            expected_version: None,
+        },
+    )
+}
+
+fn outdent(state: &EditorState, selection: Selection) -> InvocationResult {
+    let (start_line, end_line) = if selection.is_caret() {
+        let line = selection.active().line;
+        (line, line)
+    } else {
+        touched_line_range(selection)
+    };
+
+    let mut current_state = state.clone();
+    let mut current_selection = selection;
+    let mut changed = false;
+
+    for line in start_line..=end_line {
+        let line_start = current_state.position_to_offset(Position::new(line, 0));
+        let line_end = current_state
+            .position_to_offset(Position::new(line, line_len(current_state.buffer(), line)));
+        let Ok(line_text) = current_state.buffer().slice(line_start..line_end) else {
+            continue;
+        };
+
+        let remove_len = removable_outdent_prefix_len(&line_text);
+        if remove_len == 0 {
+            continue;
+        }
+
+        let result = apply_with_selection(
+            &current_state,
+            current_selection,
+            TransactionSpec {
+                changes: vec![TextChange::new(line_start, line_start + remove_len, "")],
+                selection: None,
+                meta: TransactionMeta::from_source(TransactionSource::Keyboard),
+                expected_version: None,
+            },
+        );
+        current_selection = result.state.selection();
+        current_state = result.state;
+        changed = true;
+    }
+
+    if !changed {
+        return InvocationResult {
+            state: state.clone(),
+            cursor: selection.active(),
+        };
+    }
+
+    InvocationResult {
+        cursor: current_selection.active(),
+        state: current_state,
+    }
+}
+
+fn touched_line_range(selection: Selection) -> (u32, u32) {
+    if selection.is_caret() {
+        let line = selection.active().line;
+        return (line, line);
+    }
+
+    let start = selection.start();
+    let end = selection.end();
+    let mut end_line = end.line;
+    if end.column == 0 && end_line > start.line {
+        end_line -= 1;
+    }
+    (start.line, end_line.max(start.line))
+}
+
+fn leading_whitespace_prefix(text: &str) -> &str {
+    let end = text
+        .char_indices()
+        .find(|(_, ch)| !matches!(*ch, ' ' | TAB_CHAR))
+        .map(|(index, _)| index)
+        .unwrap_or(text.len());
+    &text[..end]
+}
+
+fn removable_outdent_prefix_len(text: &str) -> usize {
+    if text.starts_with(TAB) {
+        return TAB.len();
+    }
+
+    text.chars()
+        .take(OUTDENT_SPACES)
+        .take_while(|ch| *ch == ' ')
+        .count()
 }
 
 fn move_left_without_selection(state: &EditorState, selection: Selection) -> InvocationResult {
@@ -451,6 +587,92 @@ mod tests {
     fn state_with_selection(text: &str, selection: Selection) -> EditorState {
         let state = EditorState::from_text(text);
         EditorState::from_parts(state.buffer().clone(), selection, state.version())
+    }
+
+    #[test]
+    fn insert_newline_applies_auto_indent_strategy() {
+        let state = state_with_selection(
+            "    foo",
+            Selection::caret(zom_protocol::Position::new(0, 7)),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 7),
+            &EditorInvocation::from(EditorAction::InsertNewline),
+        );
+
+        assert_eq!(result.state.text(), "    foo\n    ");
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(zom_protocol::Position::new(1, 4))
+        );
+        assert_eq!(result.cursor, zom_protocol::Position::new(1, 4));
+    }
+
+    #[test]
+    fn insert_indent_indents_selected_lines() {
+        let state = state_with_selection(
+            "a\nb\nc",
+            Selection::new(
+                zom_protocol::Position::new(0, 0),
+                zom_protocol::Position::new(2, 0),
+            ),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(2, 0),
+            &EditorInvocation::from(EditorAction::InsertIndent),
+        );
+
+        assert_eq!(result.state.text(), "\ta\n\tb\nc");
+        assert_eq!(
+            result.state.selection(),
+            Selection::new(
+                zom_protocol::Position::new(0, 1),
+                zom_protocol::Position::new(2, 0)
+            )
+        );
+        assert_eq!(result.cursor, zom_protocol::Position::new(2, 0));
+    }
+
+    #[test]
+    fn outdent_removes_indent_prefix_for_current_line() {
+        let state =
+            state_with_selection("\tfoo", Selection::caret(zom_protocol::Position::new(0, 1)));
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 1),
+            &EditorInvocation::from(EditorAction::Outdent),
+        );
+
+        assert_eq!(result.state.text(), "foo");
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(zom_protocol::Position::new(0, 0))
+        );
+        assert_eq!(result.cursor, zom_protocol::Position::new(0, 0));
+    }
+
+    #[test]
+    fn outdent_removes_up_to_four_spaces_for_selected_lines() {
+        let state = state_with_selection(
+            "    a\n  b\nc",
+            Selection::new(
+                zom_protocol::Position::new(0, 0),
+                zom_protocol::Position::new(2, 1),
+            ),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(2, 1),
+            &EditorInvocation::from(EditorAction::Outdent),
+        );
+
+        assert_eq!(result.state.text(), "a\nb\nc");
     }
 
     #[test]
