@@ -59,5 +59,8 @@ jobs:
             exit 1
           fi
 
+      - name: Check control-char literal usage
+        run: ./scripts/check-control-char-literals.sh
+
       - name: Run tests
         run: cargo test --workspace --locked
