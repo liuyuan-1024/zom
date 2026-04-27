@@ -2,6 +2,7 @@
 resolver = "2"
 
 members = [
+    "crates/zom-text-tokens",
     "crates/zom-protocol",
     "crates/zom-input",
     "crates/zom-text",
@@ -19,7 +20,9 @@ default-members = [
 
 # 统一依赖版本（非常重要，避免版本漂移）
 [workspace.dependencies]
-# ===== 核心层（最底层）=====
+# ===== 文本符号（最底层）=====
+zom-text-tokens = { path = "crates/zom-text-tokens" }
+# ===== 协议层（最底层）=====
 zom-protocol = { path = "crates/zom-protocol" }
 # ===== 文本层 =====
 zom-text = { path = "crates/zom-text" }

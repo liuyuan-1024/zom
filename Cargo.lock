@@ -7169,6 +7169,7 @@ version = "0.1.0"
 dependencies = [
  "zom-protocol",
  "zom-text",
+ "zom-text-tokens",
 ]
 
 [[package]]
@@ -7178,6 +7179,7 @@ dependencies = [
  "gpui",
  "zom-protocol",
  "zom-runtime",
+ "zom-text-tokens",
 ]
 
 [[package]]
@@ -7199,6 +7201,7 @@ dependencies = [
  "zom-input",
  "zom-protocol",
  "zom-text",
+ "zom-text-tokens",
  "zom-workspace",
 ]
 
@@ -7208,7 +7211,12 @@ version = "0.1.0"
 dependencies = [
  "ropey",
  "zom-protocol",
+ "zom-text-tokens",
 ]
+
+[[package]]
+name = "zom-text-tokens"
+version = "0.1.0"
 
 [[package]]
 name = "zom-workspace"
