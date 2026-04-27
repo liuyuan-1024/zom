@@ -1,17 +1,16 @@
 //! 命令语义族目录（Command Kind Catalog）。
-//! 单一声明源：所有命令元信息集中在 `CommandKindSpec` 分片声明并汇总投影。
+//! 单一声明源：所有命令元信息集中在 `CommandKindSpec` 分片声明并汇总。
 
 use std::{collections::HashMap, sync::LazyLock};
 
 mod specs;
 mod types;
 
-pub use types::{
-    Buildability, CommandKind, CommandKindId, CommandKindSpec, CommandMeta, CommandShortcut,
-    DefaultShortcutBinding, ShortcutScope,
-};
+pub use types::{CommandKind, CommandKindId, CommandKindSpec, CommandMeta};
 
-use super::{CommandInvocation, EditorInvocation};
+use super::{
+    CommandInvocation, EditorAction, EditorInvocation, FileTreeAction, TabAction, WorkspaceAction,
+};
 
 impl CommandInvocation {
     /// 返回运行时调用所属的稳定语义族。
@@ -27,11 +26,6 @@ impl CommandInvocation {
     /// 返回命令元信息。
     pub fn meta(&self) -> CommandMeta {
         command_meta(self)
-    }
-
-    /// 返回命令默认快捷键。
-    pub fn default_shortcuts(&self) -> Vec<CommandShortcut> {
-        default_shortcuts(self)
     }
 }
 
@@ -77,44 +71,6 @@ pub fn command_kind_spec(command: &CommandInvocation) -> &'static CommandKindSpe
     command_kind_spec_by_kind(kind).expect("必须声明所有命令类型。")
 }
 
-/// 读取命令默认快捷键。
-pub fn default_shortcuts(command: &CommandInvocation) -> Vec<CommandShortcut> {
-    command_kind_spec(command).default_shortcuts.to_vec()
-}
-
-/// 根据语义族反向构造运行时调用。
-/// 注意：`EditorInsertText` 需要动态 payload，无法在此函数中构造。
-pub fn invocation_from_kind(kind: CommandKind) -> Option<CommandInvocation> {
-    let spec = command_kind_spec_by_kind(kind)?;
-    match spec.buildability {
-        Buildability::Static(builder) => Some(builder()),
-        Buildability::RequiresArgs => None,
-    }
-}
-
-/// 从统一命令声明自动投影默认快捷键绑定（输入层可直接消费）。
-pub fn default_shortcut_bindings() -> Vec<DefaultShortcutBinding> {
-    let mut bindings = Vec::new();
-
-    for spec in command_kind_specs() {
-        if spec.default_shortcuts.is_empty() {
-            continue;
-        }
-        let Some(command) = invocation_from_kind(spec.kind) else {
-            continue;
-        };
-
-        for shortcut in spec.default_shortcuts {
-            bindings.push(DefaultShortcutBinding {
-                command: command.clone(),
-                shortcut: *shortcut,
-            });
-        }
-    }
-
-    bindings
-}
-
 static COMMAND_KIND_SPECS: LazyLock<Vec<CommandKindSpec>> = LazyLock::new(specs::collect_specs);
 static COMMAND_KIND_LOOKUP: LazyLock<HashMap<CommandInvocation, CommandKind>> =
     LazyLock::new(build_command_kind_lookup);
@@ -132,22 +88,110 @@ fn build_command_kind_lookup() -> HashMap<CommandInvocation, CommandKind> {
     let mut lookup = HashMap::new();
 
     for spec in command_kind_specs() {
-        let Buildability::Static(builder) = spec.buildability else {
+        let Some(invocation) = invocation_for_kind(spec.kind) else {
             continue;
         };
-        lookup.insert(builder(), spec.kind);
+        lookup.insert(invocation, spec.kind);
     }
 
     lookup
 }
 
+fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation> {
+    match kind {
+        CommandKind::EditorInsertText => None,
+        CommandKind::EditorInsertNewline => {
+            Some(CommandInvocation::from(EditorAction::InsertNewline))
+        }
+        CommandKind::EditorMoveLeft => Some(CommandInvocation::from(EditorAction::MoveLeft)),
+        CommandKind::EditorMoveRight => Some(CommandInvocation::from(EditorAction::MoveRight)),
+        CommandKind::EditorMoveUp => Some(CommandInvocation::from(EditorAction::MoveUp)),
+        CommandKind::EditorMoveDown => Some(CommandInvocation::from(EditorAction::MoveDown)),
+        CommandKind::EditorMoveToStart => Some(CommandInvocation::from(EditorAction::MoveToStart)),
+        CommandKind::EditorMoveToEnd => Some(CommandInvocation::from(EditorAction::MoveToEnd)),
+        CommandKind::EditorMovePageUp => Some(CommandInvocation::from(EditorAction::MovePageUp)),
+        CommandKind::EditorMovePageDown => {
+            Some(CommandInvocation::from(EditorAction::MovePageDown))
+        }
+        CommandKind::EditorSelectLeft => Some(CommandInvocation::from(EditorAction::SelectLeft)),
+        CommandKind::EditorSelectRight => Some(CommandInvocation::from(EditorAction::SelectRight)),
+        CommandKind::EditorSelectUp => Some(CommandInvocation::from(EditorAction::SelectUp)),
+        CommandKind::EditorSelectDown => Some(CommandInvocation::from(EditorAction::SelectDown)),
+        CommandKind::EditorSelectToStart => {
+            Some(CommandInvocation::from(EditorAction::SelectToStart))
+        }
+        CommandKind::EditorSelectToEnd => Some(CommandInvocation::from(EditorAction::SelectToEnd)),
+        CommandKind::EditorSelectPageUp => {
+            Some(CommandInvocation::from(EditorAction::SelectPageUp))
+        }
+        CommandKind::EditorSelectPageDown => {
+            Some(CommandInvocation::from(EditorAction::SelectPageDown))
+        }
+        CommandKind::EditorSelectAll => Some(CommandInvocation::from(EditorAction::SelectAll)),
+        CommandKind::EditorDeleteBackward => {
+            Some(CommandInvocation::from(EditorAction::DeleteBackward))
+        }
+        CommandKind::EditorDeleteForward => {
+            Some(CommandInvocation::from(EditorAction::DeleteForward))
+        }
+        CommandKind::EditorDeleteWordBackward => {
+            Some(CommandInvocation::from(EditorAction::DeleteWordBackward))
+        }
+        CommandKind::EditorDeleteWordForward => {
+            Some(CommandInvocation::from(EditorAction::DeleteWordForward))
+        }
+        CommandKind::EditorUndo => Some(CommandInvocation::from(EditorAction::Undo)),
+        CommandKind::EditorRedo => Some(CommandInvocation::from(EditorAction::Redo)),
+        CommandKind::WorkspaceQuitApp => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),
+        CommandKind::WorkspaceMinimizeWindow => {
+            Some(CommandInvocation::from(WorkspaceAction::MinimizeWindow))
+        }
+        CommandKind::WorkspaceOpenProjectPicker => {
+            Some(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
+        }
+        CommandKind::WorkspaceFocusPanel(target) => {
+            Some(CommandInvocation::from(WorkspaceAction::FocusPanel(target)))
+        }
+        CommandKind::WorkspaceFocusOverlay(target) => Some(CommandInvocation::from(
+            WorkspaceAction::FocusOverlay(target),
+        )),
+        CommandKind::WorkspaceCloseFocused => {
+            Some(CommandInvocation::from(WorkspaceAction::CloseFocused))
+        }
+        CommandKind::WorkspaceFileTreeSelectPrev => {
+            Some(CommandInvocation::from(FileTreeAction::SelectPrev))
+        }
+        CommandKind::WorkspaceFileTreeSelectNext => {
+            Some(CommandInvocation::from(FileTreeAction::SelectNext))
+        }
+        CommandKind::WorkspaceFileTreeExpandOrDescend => {
+            Some(CommandInvocation::from(FileTreeAction::ExpandOrDescend))
+        }
+        CommandKind::WorkspaceFileTreeCollapseOrAscend => {
+            Some(CommandInvocation::from(FileTreeAction::CollapseOrAscend))
+        }
+        CommandKind::WorkspaceFileTreeActivateSelection => {
+            Some(CommandInvocation::from(FileTreeAction::ActivateSelection))
+        }
+        CommandKind::WorkspaceTabCloseActive => {
+            Some(CommandInvocation::from(TabAction::CloseActiveTab))
+        }
+        CommandKind::WorkspaceTabActivatePrev => {
+            Some(CommandInvocation::from(TabAction::ActivatePrevTab))
+        }
+        CommandKind::WorkspaceTabActivateNext => {
+            Some(CommandInvocation::from(TabAction::ActivateNextTab))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{CommandInvocation, FocusTarget, OverlayTarget, WorkspaceAction};
+    use crate::{CommandInvocation, EditorInvocation, FocusTarget, OverlayTarget, WorkspaceAction};
 
     use super::{
-        CommandKind, CommandKindId, command_kind_spec_by_id, command_kind_spec_by_kind,
-        command_meta, default_shortcut_bindings, invocation_from_kind,
+        CommandKind, CommandKindId, command_kind, command_kind_spec_by_id,
+        command_kind_spec_by_kind, command_meta,
     };
 
     #[test]
@@ -180,35 +224,17 @@ mod tests {
     }
 
     #[test]
-    fn default_shortcut_bindings_are_emitted_from_catalog() {
-        let bindings = default_shortcut_bindings();
-        let has_project_picker = bindings.iter().any(|binding| {
-            binding.command == CommandInvocation::from(WorkspaceAction::OpenProjectPicker)
-        });
-        let has_settings = bindings.iter().any(|binding| {
-            binding.command
-                == CommandInvocation::from(WorkspaceAction::FocusOverlay(OverlayTarget::Settings))
-        });
-
-        assert!(has_project_picker);
-        assert!(has_settings);
-    }
-
-    #[test]
-    fn editor_insert_text_declares_empty_default_shortcuts() {
-        let spec = command_kind_spec_by_kind(CommandKind::EditorInsertText)
-            .expect("editor.insert_text should be declared");
-
-        assert!(spec.default_shortcuts.is_empty());
-        assert_eq!(spec.meta.id, CommandKindId("editor.insert_text"));
-    }
-
-    #[test]
-    fn invocation_from_kind_returns_none_for_dynamic_payload_commands() {
-        assert!(invocation_from_kind(CommandKind::EditorInsertText).is_none());
-        assert!(
-            invocation_from_kind(CommandKind::WorkspaceFocusOverlay(OverlayTarget::Settings))
-                .is_some()
+    fn command_kind_maps_static_invocations() {
+        let command = CommandInvocation::from(WorkspaceAction::OpenProjectPicker);
+        assert_eq!(
+            command_kind(&command),
+            CommandKind::WorkspaceOpenProjectPicker
         );
+    }
+
+    #[test]
+    fn editor_insert_text_uses_dynamic_kind_mapping() {
+        let command = CommandInvocation::from(EditorInvocation::insert_text("hello"));
+        assert_eq!(command_kind(&command), CommandKind::EditorInsertText);
     }
 }

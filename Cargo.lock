@@ -7165,6 +7165,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "zom-input"
+version = "0.1.0"
+dependencies = [
+ "zom-protocol",
+]
+
+[[package]]
 name = "zom-protocol"
 version = "0.1.0"
 
@@ -7173,6 +7180,7 @@ name = "zom-runtime"
 version = "0.1.0"
 dependencies = [
  "zom-editor",
+ "zom-input",
  "zom-protocol",
  "zom-text",
  "zom-workspace",

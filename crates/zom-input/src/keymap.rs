@@ -2,11 +2,9 @@
 
 use std::collections::HashMap;
 
-use crate::FocusTarget;
+use zom_protocol::{FocusTarget, InputContext, InputResolution, Keystroke};
 
-use super::{
-    InputContext, InputResolution, Keystroke, ShortcutBinding, ShortcutRegistry, ShortcutScope,
-};
+use crate::{ShortcutBinding, ShortcutRegistry, ShortcutScope};
 
 /// 输入键位解析表，按全局与焦点作用域组织快捷键。
 #[derive(Debug, Clone, Default)]
@@ -27,13 +25,11 @@ impl Keymap {
     pub fn bind_shortcut(&mut self, binding: &ShortcutBinding) {
         match binding.scope {
             ShortcutScope::Global => {
-                self.bind_global(binding.keystroke.clone(), binding.resolution.clone())
+                self.bind_global(binding.keystroke, binding.resolution.clone())
             }
-            ShortcutScope::Focus(target) => self.bind_for_focus(
-                target,
-                binding.keystroke.clone(),
-                binding.resolution.clone(),
-            ),
+            ShortcutScope::Focus(target) => {
+                self.bind_for_focus(target, binding.keystroke, binding.resolution.clone())
+            }
         }
     }
 

@@ -14,7 +14,7 @@ use super::{DesktopAppState, DesktopUiAction};
 use crate::state::{FileTreeNodeKind, PanelDock};
 
 fn shortcut_for(command: CommandInvocation) -> Keystroke {
-    zom_protocol::input::default_shortcut_registry()
+    zom_input::default_shortcut_registry()
         .bindings()
         .iter()
         .find(|binding| binding.command == command)

@@ -3,6 +3,7 @@ resolver = "2"
 
 members = [
     "crates/zom-protocol",
+    "crates/zom-input",
     "crates/zom-text",
     "crates/zom-editor",
     "crates/zom-workspace",
@@ -22,6 +23,8 @@ default-members = [
 zom-protocol = { path = "crates/zom-protocol" }
 # ===== 文本层 =====
 zom-text = { path = "crates/zom-text" }
+# ===== 输入策略层 =====
+zom-input = { path = "crates/zom-input" }
 # ===== 领域层 =====
 zom-editor = { path = "crates/zom-editor" }
 zom-workspace = { path = "crates/zom-workspace" }

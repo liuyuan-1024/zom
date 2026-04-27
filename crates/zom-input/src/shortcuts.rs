@@ -1,11 +1,15 @@
 //! 快捷键绑定模型与注册表实现。
 
-use crate::{CommandInvocation, command::ShortcutScope as CoreShortcutScope};
+use zom_protocol::{CommandInvocation, FocusTarget, InputResolution, KeyCode, Keystroke};
 
-use super::{InputResolution, KeyCode, Keystroke};
-
-/// 快捷键作用域（源自 `zom-protocol::command::ShortcutScope`）。
-pub type ShortcutScope = CoreShortcutScope;
+/// 快捷键作用域。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ShortcutScope {
+    /// 全局快捷键。
+    Global,
+    /// 仅在指定焦点下生效。
+    Focus(FocusTarget),
+}
 
 /// 快捷键绑定契约（不含运行时解析结果）。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,23 +52,6 @@ pub struct ShortcutBinding {
     pub priority: u8,
     /// 解析后的执行结果。
     pub resolution: InputResolution,
-}
-
-impl ShortcutBinding {
-    /// 从声明规范构造运行时绑定条目。
-    pub(crate) fn from_spec(
-        spec: ShortcutBindingSpec,
-        scope: ShortcutScope,
-        resolution: InputResolution,
-    ) -> Self {
-        Self {
-            command: spec.command,
-            scope,
-            keystroke: spec.keystroke,
-            priority: spec.priority,
-            resolution,
-        }
-    }
 }
 
 /// 默认快捷键注册表（单一事实源）。

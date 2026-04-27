@@ -1,7 +1,7 @@
 //！ 命令解析与分发
 
 use zom_editor::apply_editor_invocation;
-use zom_protocol::input::resolve_default;
+use zom_input::resolve_default;
 use zom_protocol::{
     CommandInvocation, EditorInvocation, InputContext, InputResolution, Keystroke,
     command::{FileTreeAction, WorkspaceAction},

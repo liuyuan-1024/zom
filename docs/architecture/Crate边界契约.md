@@ -1,6 +1,6 @@
 # Crate Boundary Checklist
 
-版本：`v0.4`  
+版本：`v0.5`  
 适用范围：`/Users/liuyuan/project/zom` workspace 内部 crate 依赖关系（只讨论 workspace crate 之间的直接依赖）
 
 ## 1. 目标
@@ -23,8 +23,8 @@ apps/zom-desktop
         ▼
     zom-runtime ─────────────► zom-workspace ───────► zom-protocol
       │    │
+      │    ├─────────────────► zom-input ───────────► zom-protocol
       │    └─────────────────► zom-text ────────────► zom-protocol
-      │
       └──────────────────────► zom-editor ──────────► zom-text
                                       └──────────────► zom-protocol
 ```
@@ -40,13 +40,14 @@ apps/zom-desktop
 
 | Crate | Allowed（仅 workspace 内） | Forbidden（仅 workspace 内） |
 |---|---|---|
-| `zom-protocol` | 无 | `zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-text` | `zom-protocol` | `zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-editor` | `zom-protocol`、`zom-text` | `zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-workspace` | `zom-protocol` | `zom-text`、`zom-editor`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-runtime` | `zom-protocol`、`zom-text`、`zom-editor`、`zom-workspace` | `zom-gpui`、`zom-desktop` |
-| `zom-gpui` | `zom-protocol`、`zom-runtime` | `zom-text`、`zom-editor`、`zom-workspace`、`zom-desktop` |
-| `zom-desktop` | `zom-gpui` | `zom-protocol`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime` |
+| `zom-protocol` | 无 | `zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-input` | `zom-protocol` | `zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-text` | `zom-protocol` | `zom-input`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-editor` | `zom-protocol`、`zom-text` | `zom-input`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-workspace` | `zom-protocol` | `zom-input`、`zom-text`、`zom-editor`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-runtime` | `zom-protocol`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace` | `zom-gpui`、`zom-desktop` |
+| `zom-gpui` | `zom-protocol`、`zom-runtime` | `zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-desktop` |
+| `zom-desktop` | `zom-gpui` | `zom-protocol`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime` |
 
 ## 4. 层内附加约束
 
