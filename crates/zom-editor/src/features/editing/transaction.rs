@@ -1,7 +1,7 @@
 //! 事务定义与状态推进逻辑。
 
 use zom_protocol::Selection;
-use zom_text::{TextBuffer, TextBufferError, offset_to_position, position_to_offset};
+use zom_text::{TextBuffer, TextBufferError};
 
 use super::state::{DocVersion, EditorState, Offset, clamp_selection_to_text};
 
@@ -123,26 +123,18 @@ pub fn apply_transaction(
     apply_sorted_changes(&mut next_buffer, &changes)?;
 
     let previous_selection = state.selection();
+    let previous_anchor = state.position_to_offset(previous_selection.anchor());
+    let previous_active = state.position_to_offset(previous_selection.active());
     let mapped_selection = Selection::new(
-        offset_to_position(
-            next_buffer.as_str(),
-            map_offset(
-                position_to_offset(state.text(), previous_selection.anchor()),
-                &changes,
-            ),
-        ),
-        offset_to_position(
-            next_buffer.as_str(),
-            map_offset(
-                position_to_offset(state.text(), previous_selection.active()),
-                &changes,
-            ),
-        ),
+        next_buffer
+            .offset_to_position(map_offset(previous_anchor, &changes))
+            .expect("mapped anchor offset should be valid"),
+        next_buffer
+            .offset_to_position(map_offset(previous_active, &changes))
+            .expect("mapped active offset should be valid"),
     );
-    let next_selection = clamp_selection_to_text(
-        next_buffer.as_str(),
-        spec.selection.unwrap_or(mapped_selection),
-    );
+    let next_selection =
+        clamp_selection_to_text(&next_buffer, spec.selection.unwrap_or(mapped_selection));
 
     let is_document_changed = !changes.is_empty();
     let is_selection_changed = next_selection != previous_selection;
@@ -171,7 +163,7 @@ fn validate_changes(buffer: &TextBuffer, changes: &[TextChange]) -> Result<(), A
         }
         previous_to = change.to;
 
-        if let Err(error) = buffer.slice(change.from..change.to) {
+        if let Err(error) = buffer.validate_byte_range(change.from..change.to) {
             return Err(ApplyError::InvalidChangeRange { index, error });
         }
     }

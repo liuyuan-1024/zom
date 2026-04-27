@@ -124,7 +124,7 @@ impl DesktopAppState {
             buffer_id: active_tab.buffer_id,
             doc_version: editor_state.version().get(),
             selection: editor_state.selection(),
-            text: editor_state.text().to_string(),
+            text: editor_state.text(),
         })
     }
 

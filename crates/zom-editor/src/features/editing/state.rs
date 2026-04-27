@@ -1,7 +1,7 @@
 //! 编辑器核心状态定义。
 
 use zom_protocol::{Position, Selection};
-use zom_text::{TextBuffer, offset_to_position, position_to_offset};
+use zom_text::TextBuffer;
 
 /// 文档版本号。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -51,9 +51,9 @@ impl EditorState {
         }
     }
 
-    /// 返回当前完整文本。
-    pub fn text(&self) -> &str {
-        self.buffer.as_str()
+    /// 返回当前完整文本副本（面向快照/序列化场景）。
+    pub fn text(&self) -> String {
+        self.buffer.to_string()
     }
 
     /// 返回文本长度（字节）。
@@ -73,7 +73,9 @@ impl EditorState {
 
     /// 将字节偏移映射到逻辑位置（越界时夹紧到文档边界）。
     pub fn offset_to_position(&self, offset: Offset) -> Position {
-        offset_to_position(self.text(), offset)
+        self.buffer
+            .offset_to_position(offset.min(self.buffer.len()))
+            .expect("clamped offset should always map to a position")
     }
 
     /// 返回当前版本号。
@@ -99,19 +101,22 @@ impl EditorState {
 }
 
 /// 将选区夹紧到给定文本范围内。
-pub fn clamp_selection_to_text(text: &str, selection: Selection) -> Selection {
-    let anchor_offset = position_to_offset(text, selection.anchor());
-    let active_offset = position_to_offset(text, selection.active());
+pub fn clamp_selection_to_text(buffer: &TextBuffer, selection: Selection) -> Selection {
+    let anchor_offset = buffer.position_to_offset(selection.anchor());
+    let active_offset = buffer.position_to_offset(selection.active());
     Selection::new(
-        offset_to_position(text, anchor_offset),
-        offset_to_position(text, active_offset),
+        buffer
+            .offset_to_position(anchor_offset)
+            .expect("mapped anchor offset should be valid"),
+        buffer
+            .offset_to_position(active_offset)
+            .expect("mapped active offset should be valid"),
     )
 }
 
 #[cfg(test)]
 mod tests {
     use zom_protocol::{Position, Selection};
-    use zom_text::{offset_to_position, position_to_offset};
 
     use super::{DocVersion, EditorState};
 
@@ -126,9 +131,8 @@ mod tests {
 
     #[test]
     fn position_and_offset_mapping_roundtrip() {
-        let text = "ab\n中d";
-        let offset = position_to_offset(text, Position::new(1, 1));
-
-        assert_eq!(offset_to_position(text, offset), Position::new(1, 1));
+        let state = EditorState::from_text("ab\n中d");
+        let offset = state.position_to_offset(Position::new(1, 1));
+        assert_eq!(state.offset_to_position(offset), Position::new(1, 1));
     }
 }

@@ -735,7 +735,7 @@ fn zom_runtime_test_tab_with_text_and_cursor(
         cursor = result.cursor;
     }
     let buffer_id = zom_protocol::BufferId::new((1000 + cursor_column).into());
-    let line_ending = zom_text::detect_line_ending(editor_state.text());
+    let line_ending = zom_text::detect_line_ending(&editor_state.text());
     (
         runtime_test_tab_state(relative_path, buffer_id, &line_ending),
         editor_state,

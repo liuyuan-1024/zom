@@ -1,7 +1,7 @@
 //! 编辑命令到事务的核心转换与执行。
 
 use zom_protocol::{EditorAction, EditorInvocation, Position, Selection};
-use zom_text::{offset_to_position, split_lines};
+use zom_text::TextBuffer;
 
 use super::{
     state::{EditorState, clamp_selection_to_text},
@@ -23,7 +23,7 @@ pub fn apply_editor_invocation(
     cursor: Position,
     invocation: &EditorInvocation,
 ) -> InvocationResult {
-    let cursor = clamp_position(state.text(), cursor);
+    let cursor = clamp_position(state.buffer(), cursor);
     let selection = selection_for_invocation(state, cursor);
 
     match invocation {
@@ -62,7 +62,7 @@ fn apply_action(
             selection,
             Selection::caret(Position::new(
                 active.line,
-                line_len(state.text(), active.line),
+                line_len(state.buffer(), active.line),
             )),
         ),
         EditorAction::MovePageUp => apply_selection_move(
@@ -105,7 +105,7 @@ fn apply_action(
             selection,
             Selection::new(
                 selection.anchor(),
-                Position::new(active.line, line_len(state.text(), active.line)),
+                Position::new(active.line, line_len(state.buffer(), active.line)),
             ),
         ),
         EditorAction::SelectPageUp => apply_selection_move(
@@ -134,7 +134,7 @@ fn apply_action(
 }
 
 fn selection_for_invocation(state: &EditorState, cursor: Position) -> Selection {
-    let selection = clamp_selection_to_text(state.text(), state.selection());
+    let selection = clamp_selection_to_text(state.buffer(), state.selection());
     if selection.active() == cursor {
         selection
     } else {
@@ -200,7 +200,7 @@ fn delete_backward(state: &EditorState, selection: Selection) -> InvocationResul
     }
     let cursor = selection.active();
     let offset = state.position_to_offset(cursor);
-    let Some(start) = prev_char_start(state.text(), offset) else {
+    let Some(start) = prev_char_start(state.buffer(), offset) else {
         return InvocationResult {
             state: state.clone(),
             cursor,
@@ -224,7 +224,7 @@ fn delete_forward(state: &EditorState, selection: Selection) -> InvocationResult
     }
     let cursor = selection.active();
     let offset = state.position_to_offset(cursor);
-    let Some(end) = next_char_end(state.text(), offset) else {
+    let Some(end) = next_char_end(state.buffer(), offset) else {
         return InvocationResult {
             state: state.clone(),
             cursor,
@@ -250,8 +250,8 @@ fn delete_word_backward(state: &EditorState, selection: Selection) -> Invocation
     let offset = state.position_to_offset(cursor);
     let mut start = offset;
 
-    while let Some(prev) = prev_char_start(state.text(), start) {
-        let Some(ch) = char_at(state.text(), prev) else {
+    while let Some(prev) = prev_char_start(state.buffer(), start) {
+        let Some(ch) = char_at(state.buffer(), prev) else {
             break;
         };
         if !is_word_boundary_char(ch) {
@@ -260,8 +260,8 @@ fn delete_word_backward(state: &EditorState, selection: Selection) -> Invocation
         start = prev;
     }
 
-    while let Some(prev) = prev_char_start(state.text(), start) {
-        let Some(ch) = char_at(state.text(), prev) else {
+    while let Some(prev) = prev_char_start(state.buffer(), start) {
+        let Some(ch) = char_at(state.buffer(), prev) else {
             break;
         };
         if is_word_boundary_char(ch) {
@@ -297,8 +297,8 @@ fn delete_word_forward(state: &EditorState, selection: Selection) -> InvocationR
     let offset = state.position_to_offset(cursor);
     let mut end = offset;
 
-    while let Some(next_end) = next_char_end(state.text(), end) {
-        let Some(ch) = char_at(state.text(), end) else {
+    while let Some(next_end) = next_char_end(state.buffer(), end) {
+        let Some(ch) = char_at(state.buffer(), end) else {
             break;
         };
         if !is_word_boundary_char(ch) {
@@ -307,8 +307,8 @@ fn delete_word_forward(state: &EditorState, selection: Selection) -> InvocationR
         end = next_end;
     }
 
-    while let Some(next_end) = next_char_end(state.text(), end) {
-        let Some(ch) = char_at(state.text(), end) else {
+    while let Some(next_end) = next_char_end(state.buffer(), end) {
+        let Some(ch) = char_at(state.buffer(), end) else {
             break;
         };
         if is_word_boundary_char(ch) {
@@ -338,33 +338,30 @@ fn delete_word_forward(state: &EditorState, selection: Selection) -> InvocationR
 
 fn move_left(state: &EditorState, cursor: Position) -> Position {
     let offset = state.position_to_offset(cursor);
-    prev_char_start(state.text(), offset)
-        .map(|start| offset_to_position(state.text(), start))
+    prev_char_start(state.buffer(), offset)
+        .map(|start| state.offset_to_position(start))
         .unwrap_or(cursor)
 }
 
 fn move_right(state: &EditorState, cursor: Position) -> Position {
     let offset = state.position_to_offset(cursor);
-    next_char_end(state.text(), offset)
-        .map(|end| offset_to_position(state.text(), end))
+    next_char_end(state.buffer(), offset)
+        .map(|end| state.offset_to_position(end))
         .unwrap_or(cursor)
 }
 
 fn move_vertical(state: &EditorState, cursor: Position, delta: i32) -> Position {
-    let line_count = line_count(state.text()) as i32;
+    let line_count = line_count(state.buffer()) as i32;
     let next_line = (cursor.line as i32 + delta).clamp(0, line_count.saturating_sub(1));
     let next_line = u32::try_from(next_line).unwrap_or(0);
     Position::new(
         next_line,
-        cursor.column.min(line_len(state.text(), next_line)),
+        cursor.column.min(line_len(state.buffer(), next_line)),
     )
 }
 
 fn full_document_selection(state: &EditorState) -> Selection {
-    Selection::new(
-        Position::zero(),
-        offset_to_position(state.text(), state.text().len()),
-    )
+    Selection::new(Position::zero(), state.offset_to_position(state.len()))
 }
 
 fn apply_selection_move(
@@ -411,42 +408,30 @@ fn state_with_selection(state: &EditorState, selection: Selection) -> EditorStat
     EditorState::from_parts(state.buffer().clone(), selection, state.version())
 }
 
-fn prev_char_start(text: &str, offset: usize) -> Option<usize> {
-    if offset == 0 {
-        return None;
-    }
-    text[..offset].char_indices().last().map(|(start, _)| start)
+fn prev_char_start(buffer: &TextBuffer, offset: usize) -> Option<usize> {
+    buffer.prev_char_start(offset)
 }
 
-fn next_char_end(text: &str, offset: usize) -> Option<usize> {
-    if offset >= text.len() {
-        return None;
-    }
-    text[offset..]
-        .chars()
-        .next()
-        .map(|ch| offset + ch.len_utf8())
+fn next_char_end(buffer: &TextBuffer, offset: usize) -> Option<usize> {
+    buffer.next_char_end(offset)
 }
 
-fn char_at(text: &str, offset: usize) -> Option<char> {
-    text[offset..].chars().next()
+fn char_at(buffer: &TextBuffer, offset: usize) -> Option<char> {
+    buffer.char_at(offset)
 }
 
-fn line_count(text: &str) -> usize {
-    split_lines(text).len().max(1)
+fn line_count(buffer: &TextBuffer) -> usize {
+    usize::try_from(buffer.line_count())
+        .unwrap_or(usize::MAX)
+        .max(1)
 }
 
-fn line_len(text: &str, line: u32) -> u32 {
-    split_lines(text)
-        .get(line as usize)
-        .map(|line_text| line_text.chars().count() as u32)
-        .unwrap_or(0)
+fn line_len(buffer: &TextBuffer, line: u32) -> u32 {
+    buffer.line_len(line)
 }
 
-fn clamp_position(text: &str, cursor: Position) -> Position {
-    let line_count = u32::try_from(line_count(text)).unwrap_or(u32::MAX);
-    let line = cursor.line.min(line_count.saturating_sub(1));
-    Position::new(line, cursor.column.min(line_len(text, line)))
+fn clamp_position(buffer: &TextBuffer, cursor: Position) -> Position {
+    buffer.clamp_position(cursor)
 }
 
 fn is_word_boundary_char(ch: char) -> bool {

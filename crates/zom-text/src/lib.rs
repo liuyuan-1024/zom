@@ -2,12 +2,13 @@
 
 use std::ops::Range;
 
+use ropey::Rope;
 use zom_protocol::Position;
 
 /// 轻量文本缓冲区，提供基础插入/删除与位置映射能力。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TextBuffer {
-    text: String,
+    rope: Rope,
 }
 
 /// 文本区间校验错误。
@@ -31,28 +32,38 @@ impl TextBuffer {
 
     /// 用给定文本创建缓冲区。
     pub fn from_text(text: impl Into<String>) -> Self {
-        Self { text: text.into() }
+        let text = text.into();
+        Self {
+            rope: Rope::from_str(&text),
+        }
     }
 
-    /// 读取底层完整文本切片。
-    pub fn as_str(&self) -> &str {
-        &self.text
+    /// 返回底层 rope 只读视图。
+    pub fn rope(&self) -> &Rope {
+        &self.rope
+    }
+
+    /// 导出完整文本副本（按需生成）。
+    pub fn to_string(&self) -> String {
+        self.rope.to_string()
     }
 
     /// 返回缓冲区字节长度。
     pub fn len(&self) -> usize {
-        self.text.len()
+        self.rope.len_bytes()
     }
 
     /// 判断缓冲区是否为空。
     pub fn is_empty(&self) -> bool {
-        self.text.is_empty()
+        self.rope.len_bytes() == 0
     }
 
     /// 返回指定区间文本切片。
-    pub fn slice(&self, range: Range<usize>) -> Result<&str, TextBufferError> {
-        self.validate_range(range.clone())?;
-        Ok(&self.text[range])
+    pub fn slice(&self, range: Range<usize>) -> Result<String, TextBufferError> {
+        self.validate_byte_range(range.clone())?;
+        let start_char = self.rope.byte_to_char(range.start);
+        let end_char = self.rope.byte_to_char(range.end);
+        Ok(self.rope.slice(start_char..end_char).to_string())
     }
 
     /// 用 `text` 替换指定区间。
@@ -61,44 +72,148 @@ impl TextBuffer {
         range: Range<usize>,
         text: &str,
     ) -> Result<(), TextBufferError> {
-        self.validate_range(range.clone())?;
-        self.text.replace_range(range, text);
+        self.validate_byte_range(range.clone())?;
+        let start_char = self.rope.byte_to_char(range.start);
+        let end_char = self.rope.byte_to_char(range.end);
+        self.rope.remove(start_char..end_char);
+        self.rope.insert(start_char, text);
         Ok(())
     }
 
     /// 将逻辑位置映射到字节偏移（越界时夹紧到文档边界）。
     pub fn position_to_offset(&self, position: Position) -> usize {
-        position_to_offset(&self.text, position)
+        let target = self.clamp_position(position);
+        let line_index = target.line as usize;
+        let line_start_char = self.rope.line_to_char(line_index);
+        let line = self.rope.line(line_index);
+
+        let mut visual_column = 0u32;
+        let mut relative_char_index = 0usize;
+        for ch in line.chars() {
+            if ch == '\n' || visual_column == target.column {
+                break;
+            }
+            if ch != '\r' {
+                visual_column = visual_column.saturating_add(1);
+            }
+            relative_char_index += 1;
+        }
+
+        self.rope
+            .char_to_byte(line_start_char + relative_char_index)
     }
 
     /// 将字节偏移映射到行列坐标，越界时返回 `None`。
     pub fn offset_to_position(&self, offset: usize) -> Option<Position> {
-        if offset > self.text.len() {
+        if offset > self.rope.len_bytes() {
             return None;
         }
-        Some(offset_to_position(&self.text, offset))
+        let char_index = self.rope.byte_to_char(offset);
+        let line_index = self.rope.char_to_line(char_index);
+        let line_start_char = self.rope.line_to_char(line_index);
+        let mut column = 0u32;
+        for ch in self.rope.slice(line_start_char..char_index).chars() {
+            if ch != '\r' {
+                column = column.saturating_add(1);
+            }
+        }
+        Some(Position::new(
+            u32::try_from(line_index).unwrap_or(u32::MAX),
+            column,
+        ))
+    }
+
+    /// 文档总行数（最少为 1）。
+    pub fn line_count(&self) -> u32 {
+        u32::try_from(self.rope.len_lines()).unwrap_or(u32::MAX)
+    }
+
+    /// 指定行的可视列宽（忽略 `\r`，不计入换行符）。
+    pub fn line_len(&self, line: u32) -> u32 {
+        let line_index = line as usize;
+        if line_index >= self.rope.len_lines() {
+            return 0;
+        }
+        let mut column = 0u32;
+        for ch in self.rope.line(line_index).chars() {
+            match ch {
+                '\n' => break,
+                '\r' => {}
+                _ => column = column.saturating_add(1),
+            }
+        }
+        column
+    }
+
+    /// 将位置夹紧到当前文档范围。
+    pub fn clamp_position(&self, position: Position) -> Position {
+        let line = position.line.min(self.line_count().saturating_sub(1));
+        let column = position.column.min(self.line_len(line));
+        Position::new(line, column)
+    }
+
+    /// 返回指定字节偏移对应字符的起始偏移（前一个字符）。
+    pub fn prev_char_start(&self, offset: usize) -> Option<usize> {
+        if offset == 0 || offset > self.rope.len_bytes() {
+            return None;
+        }
+        let char_index = self.rope.byte_to_char(offset);
+        if self.rope.char_to_byte(char_index) != offset || char_index == 0 {
+            return None;
+        }
+        Some(self.rope.char_to_byte(char_index - 1))
+    }
+
+    /// 返回指定字节偏移处字符的结束偏移（下一个字符边界）。
+    pub fn next_char_end(&self, offset: usize) -> Option<usize> {
+        if offset >= self.rope.len_bytes() {
+            return None;
+        }
+        let char_index = self.rope.byte_to_char(offset);
+        if self.rope.char_to_byte(char_index) != offset || char_index >= self.rope.len_chars() {
+            return None;
+        }
+        Some(self.rope.char_to_byte(char_index + 1))
+    }
+
+    /// 读取指定字节偏移处的字符（需位于字符边界）。
+    pub fn char_at(&self, offset: usize) -> Option<char> {
+        if offset >= self.rope.len_bytes() {
+            return None;
+        }
+        let char_index = self.rope.byte_to_char(offset);
+        if self.rope.char_to_byte(char_index) != offset || char_index >= self.rope.len_chars() {
+            return None;
+        }
+        Some(self.rope.char(char_index))
+    }
+
+    /// 校验字节区间合法且位于 UTF-8 字符边界。
+    pub fn validate_byte_range(&self, range: Range<usize>) -> Result<(), TextBufferError> {
+        self.validate_range(range)
     }
 
     fn validate_offset(&self, offset: usize) -> Result<(), TextBufferError> {
-        if offset > self.text.len() {
+        if offset > self.rope.len_bytes() {
             return Err(TextBufferError::InvalidRange {
                 start: offset,
                 end: offset,
-                len: self.text.len(),
+                len: self.rope.len_bytes(),
             });
         }
-        if !self.text.is_char_boundary(offset) {
+        let char_index = self.rope.byte_to_char(offset);
+        if self.rope.char_to_byte(char_index) != offset {
             return Err(TextBufferError::NotCharBoundary { offset });
         }
         Ok(())
     }
 
     fn validate_range(&self, range: Range<usize>) -> Result<(), TextBufferError> {
-        if range.start > range.end || range.end > self.text.len() {
+        if range.start > range.end || range.end > self.rope.len_bytes() {
             return Err(TextBufferError::InvalidRange {
                 start: range.start,
                 end: range.end,
-                len: self.text.len(),
+                len: self.rope.len_bytes(),
             });
         }
         self.validate_offset(range.start)?;
@@ -270,7 +385,7 @@ mod tests {
             .replace_range(5..5, " world")
             .expect("replace should succeed");
 
-        assert_eq!(buffer.as_str(), "hello world");
+        assert_eq!(buffer.to_string(), "hello world");
         assert_eq!(buffer.slice(0..5).expect("slice should succeed"), "hello");
     }
 
