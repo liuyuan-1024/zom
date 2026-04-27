@@ -20,6 +20,7 @@ fi
 
 # Keep this mapping aligned with docs/standards/开发规范手册.md -> "Crate 边界契约"
 # Current enforced architecture:
+#   zom-text-tokens -> (zom-text, zom-editor, zom-runtime, zom-gpui)
 #   zom-protocol -> zom-input
 #                -> zom-text -> zom-editor
 #                -> zom-workspace
@@ -27,13 +28,14 @@ fi
 # Optional crates (e.g. zom-workspace, zom-editor) must still obey single-direction dependencies.
 allowed_deps_for() {
   case "$1" in
+    zom-text-tokens) echo "" ;;
     zom-protocol) echo "" ;;
     zom-input) echo "zom-protocol" ;;
-    zom-text) echo "zom-protocol" ;;
-    zom-editor) echo "zom-protocol zom-text" ;;
+    zom-text) echo "zom-protocol zom-text-tokens" ;;
+    zom-editor) echo "zom-protocol zom-text zom-text-tokens" ;;
     zom-workspace) echo "zom-protocol" ;;
-    zom-runtime) echo "zom-protocol zom-input zom-text zom-editor zom-workspace" ;;
-    zom-gpui) echo "zom-protocol zom-runtime" ;;
+    zom-runtime) echo "zom-protocol zom-input zom-text zom-editor zom-workspace zom-text-tokens" ;;
+    zom-gpui) echo "zom-protocol zom-runtime zom-text-tokens" ;;
     zom-desktop) echo "zom-gpui" ;;
     *) return 1 ;;
   esac

@@ -1,6 +1,6 @@
 # Crate Boundary Checklist
 
-版本：`v0.5`  
+版本：`v0.6`  
 适用范围：`/Users/liuyuan/project/zom` workspace 内部 crate 依赖关系（只讨论 workspace crate 之间的直接依赖）
 
 ## 1. 目标
@@ -19,14 +19,18 @@ apps/zom-desktop
         │
         ▼
      zom-gpui ───────────────► zom-protocol
+        ├────────────────────► zom-text-tokens
         │
         ▼
     zom-runtime ─────────────► zom-workspace ───────► zom-protocol
       │    │
       │    ├─────────────────► zom-input ───────────► zom-protocol
-      │    └─────────────────► zom-text ────────────► zom-protocol
+      │    ├─────────────────► zom-text ────────────► zom-protocol
+      │    └─────────────────► zom-text-tokens
       └──────────────────────► zom-editor ──────────► zom-text
+                                      ├──────────────► zom-text-tokens
                                       └──────────────► zom-protocol
+zom-text ─────────────────────────────► zom-text-tokens
 ```
 
 补充说明：
@@ -40,14 +44,15 @@ apps/zom-desktop
 
 | Crate | Allowed（仅 workspace 内） | Forbidden（仅 workspace 内） |
 |---|---|---|
-| `zom-protocol` | 无 | `zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-input` | `zom-protocol` | `zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-text` | `zom-protocol` | `zom-input`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-editor` | `zom-protocol`、`zom-text` | `zom-input`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-workspace` | `zom-protocol` | `zom-input`、`zom-text`、`zom-editor`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
-| `zom-runtime` | `zom-protocol`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace` | `zom-gpui`、`zom-desktop` |
-| `zom-gpui` | `zom-protocol`、`zom-runtime` | `zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-desktop` |
-| `zom-desktop` | `zom-gpui` | `zom-protocol`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime` |
+| `zom-text-tokens` | 无 | `zom-protocol`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-protocol` | 无 | `zom-text-tokens`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-input` | `zom-protocol` | `zom-text-tokens`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-text` | `zom-protocol`、`zom-text-tokens` | `zom-input`、`zom-editor`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-editor` | `zom-protocol`、`zom-text`、`zom-text-tokens` | `zom-input`、`zom-workspace`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-workspace` | `zom-protocol` | `zom-text-tokens`、`zom-input`、`zom-text`、`zom-editor`、`zom-runtime`、`zom-gpui`、`zom-desktop` |
+| `zom-runtime` | `zom-protocol`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-text-tokens` | `zom-gpui`、`zom-desktop` |
+| `zom-gpui` | `zom-protocol`、`zom-runtime`、`zom-text-tokens` | `zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-desktop` |
+| `zom-desktop` | `zom-gpui` | `zom-text-tokens`、`zom-protocol`、`zom-input`、`zom-text`、`zom-editor`、`zom-workspace`、`zom-runtime` |
 
 ## 4. 层内附加约束
 
@@ -76,6 +81,7 @@ apps/zom-desktop
 
 ```bash
 ./scripts/check-boundaries.sh
+./scripts/check-control-char-literals.sh
 cargo check
 ```
 
