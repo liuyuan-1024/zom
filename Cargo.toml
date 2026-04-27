@@ -33,7 +33,8 @@ zom-runtime = { path = "crates/zom-runtime" }
 # ===== UI 适配层 =====
 zom-gpui = { path = "crates/zom-gpui" }
 # ===== 第三方依赖 =====
-
+ropey = "1.6.1"
+gpui = "0.2.2"
 
 # ===== 统一 lint =====
 [workspace.lints.rust]

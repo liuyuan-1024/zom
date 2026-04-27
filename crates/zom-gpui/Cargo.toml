@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 zom-protocol = { workspace = true }
 zom-runtime = { workspace = true }
-gpui = "0.2.2"
+gpui = { workspace = true }
