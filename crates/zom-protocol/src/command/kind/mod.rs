@@ -3,10 +3,14 @@
 
 use std::{collections::HashMap, sync::LazyLock};
 
+mod kind;
+mod meta;
+mod spec;
 mod specs;
-mod types;
 
-pub use types::{CommandKind, CommandKindId, CommandKindSpec, CommandMeta};
+pub use kind::CommandKind;
+pub use meta::{CommandKindId, CommandMeta};
+pub use spec::CommandKindSpec;
 
 use super::{
     CommandInvocation, EditorAction, EditorInvocation, FileTreeAction, TabAction, WorkspaceAction,

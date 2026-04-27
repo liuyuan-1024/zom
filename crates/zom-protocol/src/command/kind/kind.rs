@@ -1,6 +1,4 @@
-//! 命令规范目录使用的核心类型定义。
-
-use std::fmt;
+//! 命令语义族定义。
 
 use crate::{FocusTarget, OverlayTarget};
 
@@ -89,53 +87,4 @@ pub enum CommandKind {
     WorkspaceTabActivatePrev,
     /// 激活下一个标签页。
     WorkspaceTabActivateNext,
-}
-
-/// 命令语义族的稳定字符串 ID，供跨层引用与文档检索。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CommandKindId(pub &'static str);
-
-impl fmt::Display for CommandKindId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.0)
-    }
-}
-
-/// 命令元信息（纯描述，不含行为）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CommandMeta {
-    /// 稳定 ID，供跨层引用与文档检索。
-    pub id: CommandKindId,
-    /// 简短标题。
-    pub title: &'static str,
-    /// 语义说明。
-    pub description: &'static str,
-}
-
-/// 命令语义族统一声明结构。
-#[derive(Debug, Clone, Copy)]
-pub struct CommandKindSpec {
-    /// 稳定语义族。
-    pub kind: CommandKind,
-    /// 只读元信息（UI 文案 / 文档引用）。
-    pub meta: CommandMeta,
-}
-
-impl CommandKindSpec {
-    /// 创建一条命令语义族声明。
-    pub const fn new(
-        kind: CommandKind,
-        id: &'static str,
-        title: &'static str,
-        description: &'static str,
-    ) -> Self {
-        Self {
-            kind,
-            meta: CommandMeta {
-                id: CommandKindId(id),
-                title,
-                description,
-            },
-        }
-    }
 }
