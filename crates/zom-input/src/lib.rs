@@ -62,8 +62,6 @@ fn resolve_editor_text_fallback(input: &Keystroke, context: &InputContext) -> In
             };
             InputResolution::insert_text(ch.to_string())
         }
-        KeyCode::Tab if !input.modifiers.has_shift => InputResolution::insert_text("\t"),
-        KeyCode::Enter => InputResolution::insert_text("\n"),
         _ => InputResolution::Noop,
     }
 }
@@ -71,7 +69,8 @@ fn resolve_editor_text_fallback(input: &Keystroke, context: &InputContext) -> In
 #[cfg(test)]
 mod tests {
     use zom_protocol::{
-        CommandInvocation, FocusTarget, KeyCode, Keystroke, Modifiers, WorkspaceAction,
+        CommandInvocation, EditorAction, FocusTarget, KeyCode, Keystroke, Modifiers,
+        WorkspaceAction,
     };
 
     use super::{InputContext, InputResolution, default_shortcut_registry, resolve_default};
@@ -102,6 +101,30 @@ mod tests {
         assert_eq!(
             resolve_default(&key, &InputContext::new(FocusTarget::FileTreePanel)),
             InputResolution::Noop
+        );
+    }
+
+    #[test]
+    fn resolve_default_maps_tab_and_shift_tab_to_editor_indent_commands() {
+        let tab = Keystroke::new(KeyCode::Tab, Modifiers::default());
+        assert_eq!(
+            resolve_default(&tab, &InputContext::new(FocusTarget::Editor)),
+            InputResolution::command(CommandInvocation::from(EditorAction::InsertIndent))
+        );
+
+        let shift_tab = Keystroke::new(KeyCode::Tab, Modifiers::new(false, false, true, false));
+        assert_eq!(
+            resolve_default(&shift_tab, &InputContext::new(FocusTarget::Editor)),
+            InputResolution::command(CommandInvocation::from(EditorAction::Outdent))
+        );
+    }
+
+    #[test]
+    fn resolve_default_maps_enter_to_newline_command() {
+        let enter = Keystroke::new(KeyCode::Enter, Modifiers::default());
+        assert_eq!(
+            resolve_default(&enter, &InputContext::new(FocusTarget::Editor)),
+            InputResolution::command(CommandInvocation::from(EditorAction::InsertNewline))
         );
     }
 }

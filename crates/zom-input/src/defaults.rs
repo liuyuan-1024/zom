@@ -54,6 +54,8 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
     match command_id.0 {
         "editor.insert_text" => None,
         "editor.insert_newline" => Some(CommandInvocation::from(EditorAction::InsertNewline)),
+        "editor.insert_indent" => Some(CommandInvocation::from(EditorAction::InsertIndent)),
+        "editor.outdent" => Some(CommandInvocation::from(EditorAction::Outdent)),
         "editor.move_left" => Some(CommandInvocation::from(EditorAction::MoveLeft)),
         "editor.move_right" => Some(CommandInvocation::from(EditorAction::MoveRight)),
         "editor.move_up" => Some(CommandInvocation::from(EditorAction::MoveUp)),
@@ -150,6 +152,18 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         CommandKindId("editor.insert_newline"),
         ShortcutScope::Focus(FocusTarget::Editor),
         plain(KeyCode::Enter),
+        120,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.insert_indent"),
+        ShortcutScope::Focus(FocusTarget::Editor),
+        plain(KeyCode::Tab),
+        120,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.outdent"),
+        ShortcutScope::Focus(FocusTarget::Editor),
+        shift(KeyCode::Tab),
         120,
     ),
     DefaultShortcutSpec::new(
