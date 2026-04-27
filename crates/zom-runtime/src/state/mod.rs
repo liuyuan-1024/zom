@@ -6,6 +6,6 @@ mod tool_bar;
 pub use desktop_app::{ActiveEditorSnapshot, DesktopAppState, DesktopUiAction};
 pub use title_bar::{TitleBarAction, TitleBarState};
 pub use tool_bar::{ToolBarEntry, ToolBarState};
+pub use zom_protocol::{PanelDock, dock_targets, panel_dock};
 pub use zom_workspace::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 pub use zom_workspace::{PaneState, TabState};
-pub use zom_workspace::{PanelDock, dock_targets, panel_dock};

@@ -1,6 +1,6 @@
 # Crate Boundary Checklist
 
-版本：`v0.3`  
+版本：`v0.4`  
 适用范围：`/Users/liuyuan/project/zom` workspace 内部 crate 依赖关系（只讨论 workspace crate 之间的直接依赖）
 
 ## 1. 目标
@@ -15,24 +15,26 @@
 ## 2. 当前单向依赖拓扑
 
 ```text
-zom-protocol
-  ↑
-zom-text
-  ↑
-zom-editor      zom-workspace
-      ↑            ↑
-      └─────── zom-runtime
-                 ↑
-              zom-gpui
-                 ↑
-            apps/zom-desktop
+apps/zom-desktop
+        │
+        ▼
+     zom-gpui ───────────────► zom-protocol
+        │
+        ▼
+    zom-runtime ─────────────► zom-workspace ───────► zom-protocol
+      │    │
+      │    └─────────────────► zom-text ────────────► zom-protocol
+      │
+      └──────────────────────► zom-editor ──────────► zom-text
+                                      └──────────────► zom-protocol
 ```
 
 补充说明：
 
-1. `zom-workspace` 当前是可选承载层，但一旦引用，仍必须遵守单向依赖。
-2. `zom-runtime` 允许依赖 `zom-workspace`，但不是强制。
-3. 外部第三方依赖不在本表内；本表只约束 workspace 内部 crate 间关系。
+1. 上图表达的是 workspace 内部 crate 的直接依赖关系（`A -> B` 表示 `A` 直接依赖 `B`）。
+2. `zom-workspace` 当前是可选承载层，但一旦引用，仍必须遵守单向依赖。
+3. `zom-runtime` 允许依赖 `zom-workspace`，但不是强制。
+4. 外部第三方依赖不在本表内；本表只约束 workspace 内部 crate 间关系。
 
 ## 3. Allowed / Forbidden 依赖总表
 
