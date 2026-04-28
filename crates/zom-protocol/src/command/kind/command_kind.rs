@@ -55,6 +55,12 @@ pub enum CommandKind {
     EditorDeleteWordBackward,
     /// 编辑器向前删除一个单词。
     EditorDeleteWordForward,
+    /// 编辑器复制选区。
+    EditorCopy,
+    /// 编辑器剪切选区。
+    EditorCut,
+    /// 编辑器粘贴内容。
+    EditorPaste,
     /// 编辑器撤销。
     EditorUndo,
     /// 编辑器重做。

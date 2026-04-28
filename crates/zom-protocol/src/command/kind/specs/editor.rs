@@ -155,6 +155,24 @@ pub const SPECS: &[CommandKindSpec] = &[
         "删除光标后一个单词。",
     ),
     CommandKindSpec::new(
+        CommandKind::EditorCopy,
+        "editor.copy",
+        "复制",
+        "复制当前选中的内容。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorCut,
+        "editor.cut",
+        "剪切",
+        "剪切当前选中的内容。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorPaste,
+        "editor.paste",
+        "粘贴",
+        "将剪贴板内容粘贴到当前光标位置。",
+    ),
+    CommandKindSpec::new(
         CommandKind::EditorUndo,
         "editor.undo",
         "撤销",

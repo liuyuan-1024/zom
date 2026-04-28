@@ -55,6 +55,9 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorDeleteWordForward => {
             Some(CommandInvocation::from(EditorAction::DeleteWordForward))
         }
+        CommandKind::EditorCopy => Some(CommandInvocation::from(EditorAction::Copy)),
+        CommandKind::EditorCut => Some(CommandInvocation::from(EditorAction::Cut)),
+        CommandKind::EditorPaste => Some(CommandInvocation::from(EditorAction::Paste)),
         CommandKind::EditorUndo => Some(CommandInvocation::from(EditorAction::Undo)),
         CommandKind::EditorRedo => Some(CommandInvocation::from(EditorAction::Redo)),
         CommandKind::WorkspaceQuitApp => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),

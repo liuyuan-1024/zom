@@ -51,6 +51,12 @@ pub enum EditorAction {
     DeleteWordBackward,
     /// 向前删除一个单词。
     DeleteWordForward,
+    /// 复制当前选区。
+    Copy,
+    /// 剪切当前选区。
+    Cut,
+    /// 粘贴剪贴板内容。
+    Paste,
     /// 撤销最近一次编辑。
     Undo,
     /// 重做最近一次撤销。

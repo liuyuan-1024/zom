@@ -81,6 +81,9 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "editor.delete_word_forward" => {
             Some(CommandInvocation::from(EditorAction::DeleteWordForward))
         }
+        "editor.copy" => Some(CommandInvocation::from(EditorAction::Copy)),
+        "editor.cut" => Some(CommandInvocation::from(EditorAction::Cut)),
+        "editor.paste" => Some(CommandInvocation::from(EditorAction::Paste)),
         "editor.undo" => Some(CommandInvocation::from(EditorAction::Undo)),
         "editor.redo" => Some(CommandInvocation::from(EditorAction::Redo)),
         "workspace.quit_app" => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),
@@ -299,6 +302,24 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         CommandKindId("editor.delete_forward"),
         ShortcutScope::Focus(FocusTarget::Editor),
         plain(KeyCode::Delete),
+        120,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.copy"),
+        ShortcutScope::Focus(FocusTarget::Editor),
+        primary_char('c'),
+        120,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.cut"),
+        ShortcutScope::Focus(FocusTarget::Editor),
+        primary_char('x'),
+        120,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.paste"),
+        ShortcutScope::Focus(FocusTarget::Editor),
+        primary_char('v'),
         120,
     ),
     DefaultShortcutSpec::new(

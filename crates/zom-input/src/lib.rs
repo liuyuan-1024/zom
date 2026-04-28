@@ -143,6 +143,37 @@ mod tests {
     }
 
     #[test]
+    fn resolve_default_maps_clipboard_shortcuts_to_editor_commands() {
+        let modifiers = if cfg!(target_os = "macos") {
+            Modifiers::new(false, false, false, true)
+        } else {
+            Modifiers::new(true, false, false, false)
+        };
+
+        assert_eq!(
+            resolve_default(
+                &Keystroke::new(KeyCode::Char('c'), modifiers),
+                &InputContext::new(FocusTarget::Editor)
+            ),
+            InputResolution::command(CommandInvocation::from(EditorAction::Copy))
+        );
+        assert_eq!(
+            resolve_default(
+                &Keystroke::new(KeyCode::Char('x'), modifiers),
+                &InputContext::new(FocusTarget::Editor)
+            ),
+            InputResolution::command(CommandInvocation::from(EditorAction::Cut))
+        );
+        assert_eq!(
+            resolve_default(
+                &Keystroke::new(KeyCode::Char('v'), modifiers),
+                &InputContext::new(FocusTarget::Editor)
+            ),
+            InputResolution::command(CommandInvocation::from(EditorAction::Paste))
+        );
+    }
+
+    #[test]
     fn same_keystroke_maps_to_different_commands_by_focus_target() {
         let enter = Keystroke::new(KeyCode::Enter, Modifiers::default());
         assert_eq!(
