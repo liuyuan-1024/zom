@@ -127,11 +127,12 @@ fn apply_action(
         EditorAction::DeleteForward => delete_forward(state, selection),
         EditorAction::DeleteWordBackward => delete_word_backward(state, selection),
         EditorAction::DeleteWordForward => delete_word_forward(state, selection),
-        // TODO: 历史与选择域后续由 editor state/history 模块承接。
-        EditorAction::SelectAll => {
-            apply_selection_move(state, selection, full_document_selection(state))
-        }
-        EditorAction::Undo | EditorAction::Redo => InvocationResult {
+        EditorAction::Copy
+        | EditorAction::Cut
+        | EditorAction::Paste
+        | EditorAction::Undo
+        | EditorAction::Redo
+        | EditorAction::SelectAll => InvocationResult {
             state: state.clone(),
             cursor: active,
         },
@@ -494,10 +495,6 @@ fn move_vertical(state: &EditorState, cursor: Position, delta: i32) -> Position 
         next_line,
         cursor.column.min(line_len(state.buffer(), next_line)),
     )
-}
-
-fn full_document_selection(state: &EditorState) -> Selection {
-    Selection::new(Position::zero(), state.offset_to_position(state.len()))
 }
 
 fn apply_selection_move(
@@ -904,7 +901,7 @@ mod tests {
     }
 
     #[test]
-    fn select_all_selects_entire_document() {
+    fn select_all_is_noop_in_editor_invocation_layer() {
         let state = state_with_selection(
             "ab\ncd",
             Selection::caret(zom_protocol::Position::new(1, 1)),
@@ -916,13 +913,7 @@ mod tests {
             &EditorInvocation::from(EditorAction::SelectAll),
         );
 
-        assert_eq!(
-            result.state.selection(),
-            Selection::new(
-                zom_protocol::Position::new(0, 0),
-                zom_protocol::Position::new(1, 2)
-            )
-        );
-        assert_eq!(result.cursor, zom_protocol::Position::new(1, 2));
+        assert_eq!(result.state.selection(), state.selection());
+        assert_eq!(result.cursor, zom_protocol::Position::new(1, 1));
     }
 }
