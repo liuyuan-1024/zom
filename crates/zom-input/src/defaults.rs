@@ -2,7 +2,7 @@
 
 use zom_protocol::{
     CommandInvocation, CommandKindId, EditorAction, FileTreeAction, FocusTarget, KeyCode,
-    Keystroke, Modifiers, OverlayTarget, TabAction, WorkspaceAction,
+    Keystroke, Modifiers, NotificationAction, OverlayTarget, TabAction, WorkspaceAction,
 };
 
 use crate::{InputResolution, ShortcutBinding, ShortcutRegistry, ShortcutScope};
@@ -142,6 +142,24 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.tab.close_active" => Some(CommandInvocation::from(TabAction::CloseActiveTab)),
         "workspace.tab.activate_prev" => Some(CommandInvocation::from(TabAction::ActivatePrevTab)),
         "workspace.tab.activate_next" => Some(CommandInvocation::from(TabAction::ActivateNextTab)),
+        "workspace.notification.mark_all_read" => {
+            Some(CommandInvocation::from(NotificationAction::MarkAllRead))
+        }
+        "workspace.notification.clear_all" => {
+            Some(CommandInvocation::from(NotificationAction::ClearAll))
+        }
+        "workspace.notification.clear_read" => {
+            Some(CommandInvocation::from(NotificationAction::ClearRead))
+        }
+        "workspace.notification.focus_unread_error" => Some(CommandInvocation::from(
+            NotificationAction::FocusUnreadError,
+        )),
+        "workspace.notification.select_prev" => {
+            Some(CommandInvocation::from(NotificationAction::SelectPrev))
+        }
+        "workspace.notification.select_next" => {
+            Some(CommandInvocation::from(NotificationAction::SelectNext))
+        }
         _ => None,
     }
 }
@@ -383,6 +401,43 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         ShortcutScope::Global,
         primary_char(','),
         80,
+    ),
+    // notification
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.notification.mark_all_read"),
+        ShortcutScope::Global,
+        primary_shift_char('r'),
+        70,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.notification.clear_all"),
+        ShortcutScope::Global,
+        primary_shift_char('k'),
+        70,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.notification.clear_read"),
+        ShortcutScope::Global,
+        primary_shift_char('u'),
+        70,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.notification.focus_unread_error"),
+        ShortcutScope::Global,
+        primary_shift_char('x'),
+        70,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.notification.select_prev"),
+        ShortcutScope::Focus(FocusTarget::NotificationPanel),
+        plain(KeyCode::Up),
+        110,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.notification.select_next"),
+        ShortcutScope::Focus(FocusTarget::NotificationPanel),
+        plain(KeyCode::Down),
+        110,
     ),
     // file tree scoped
     DefaultShortcutSpec::new(

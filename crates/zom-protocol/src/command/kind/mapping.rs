@@ -1,8 +1,8 @@
 //! 命令语义族到运行时调用的映射。
 
 use crate::{
-    CommandInvocation, EditorAction, FileTreeAction, TabAction, WorkspaceAction,
-    command::kind::CommandKind,
+    CommandInvocation, EditorAction, FileTreeAction, NotificationAction, TabAction,
+    WorkspaceAction, command::kind::CommandKind,
 };
 
 /// 将可静态构造的 `CommandKind` 映射为 `CommandInvocation`。
@@ -96,6 +96,24 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         }
         CommandKind::WorkspaceTabActivateNext => {
             Some(CommandInvocation::from(TabAction::ActivateNextTab))
+        }
+        CommandKind::WorkspaceNotificationMarkAllRead => {
+            Some(CommandInvocation::from(NotificationAction::MarkAllRead))
+        }
+        CommandKind::WorkspaceNotificationClearAll => {
+            Some(CommandInvocation::from(NotificationAction::ClearAll))
+        }
+        CommandKind::WorkspaceNotificationClearRead => {
+            Some(CommandInvocation::from(NotificationAction::ClearRead))
+        }
+        CommandKind::WorkspaceNotificationFocusUnreadError => Some(CommandInvocation::from(
+            NotificationAction::FocusUnreadError,
+        )),
+        CommandKind::WorkspaceNotificationSelectPrev => {
+            Some(CommandInvocation::from(NotificationAction::SelectPrev))
+        }
+        CommandKind::WorkspaceNotificationSelectNext => {
+            Some(CommandInvocation::from(NotificationAction::SelectNext))
         }
     }
 }

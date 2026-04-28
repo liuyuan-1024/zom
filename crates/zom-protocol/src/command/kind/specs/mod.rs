@@ -15,5 +15,6 @@ pub(super) fn collect_specs() -> Vec<CommandKindSpec> {
     specs.extend_from_slice(workspace::actions::SPECS);
     specs.extend_from_slice(workspace::file_tree::SPECS);
     specs.extend_from_slice(workspace::tab::SPECS);
+    specs.extend_from_slice(workspace::notification::SPECS);
     specs
 }

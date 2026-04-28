@@ -28,6 +28,23 @@ pub enum FileTreeAction {
     ActivateSelection,
 }
 
+/// 通知中心动作语义。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NotificationAction {
+    /// 标记全部通知为已读。
+    MarkAllRead,
+    /// 清空全部通知。
+    ClearAll,
+    /// 清空已读通知。
+    ClearRead,
+    /// 聚焦并定位到未读错误。
+    FocusUnreadError,
+    /// 选择上一条通知（面板内向上）。
+    SelectPrev,
+    /// 选择下一条通知（面板内向下）。
+    SelectNext,
+}
+
 /// 工作台动作语义。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WorkspaceAction {
@@ -45,10 +62,12 @@ pub enum WorkspaceAction {
     /// 关闭当前聚焦组件如悬浮层、面板、标签页等）。
     CloseFocused,
 
-    /// 作用于文件树的动作。
-    FileTree(FileTreeAction),
     /// 作用于标签页的动作。
     Tab(TabAction),
+    /// 作用于文件树的动作。
+    FileTree(FileTreeAction),
+    /// 作用于通知中心的动作。
+    Notification(NotificationAction),
 }
 
 impl From<FileTreeAction> for WorkspaceAction {
@@ -60,5 +79,11 @@ impl From<FileTreeAction> for WorkspaceAction {
 impl From<TabAction> for WorkspaceAction {
     fn from(action: TabAction) -> Self {
         Self::Tab(action)
+    }
+}
+
+impl From<NotificationAction> for WorkspaceAction {
+    fn from(action: NotificationAction) -> Self {
+        Self::Notification(action)
     }
 }

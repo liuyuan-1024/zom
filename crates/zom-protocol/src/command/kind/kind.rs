@@ -91,4 +91,17 @@ pub enum CommandKind {
     WorkspaceTabActivatePrev,
     /// 激活下一个标签页。
     WorkspaceTabActivateNext,
+
+    /// 通知中心标记全部已读。
+    WorkspaceNotificationMarkAllRead,
+    /// 通知中心清空全部通知。
+    WorkspaceNotificationClearAll,
+    /// 通知中心清空已读通知。
+    WorkspaceNotificationClearRead,
+    /// 聚焦并定位到未读错误通知。
+    WorkspaceNotificationFocusUnreadError,
+    /// 通知中心选择上一条通知。
+    WorkspaceNotificationSelectPrev,
+    /// 通知中心选择下一条通知。
+    WorkspaceNotificationSelectNext,
 }
