@@ -1,6 +1,7 @@
 //! 编辑窗格与标签页状态模型。
 
 use zom_protocol::{BufferId, PaneId};
+use zom_text_tokens::LineEnding;
 
 /// 窗格模型（带有标签页和具体内容展示区）
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,7 +33,7 @@ pub struct TabState {
     /// 标签页语言（由拓展名推断并缓存）。
     pub language: String,
     /// 原始文件换行符格式（用于保存时 preserve）。
-    pub line_ending: String,
+    pub line_ending: LineEnding,
 }
 
 impl TabState {
@@ -42,7 +43,7 @@ impl TabState {
     }
 
     /// 返回文本换行格式。
-    pub fn line_ending(&self) -> &str {
-        &self.line_ending
+    pub fn line_ending(&self) -> LineEnding {
+        self.line_ending
     }
 }

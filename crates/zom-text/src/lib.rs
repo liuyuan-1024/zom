@@ -332,7 +332,7 @@ pub fn split_lines(text: &str) -> Vec<String> {
 }
 
 /// 识别文本的换行风格。
-pub fn detect_line_ending(text: &str) -> String {
+pub fn detect_line_ending(text: &str) -> LineEnding {
     let bytes = text.as_bytes();
     let mut has_crlf = false;
     let mut has_lf = false;
@@ -360,15 +360,15 @@ pub fn detect_line_ending(text: &str) -> String {
 
     let kinds = usize::from(has_crlf) + usize::from(has_lf) + usize::from(has_cr);
     if kinds > 1 {
-        "Mixed".into()
+        LineEnding::Mixed
     } else if has_crlf {
-        LineEnding::Crlf.label().into()
+        LineEnding::Crlf
     } else if has_lf {
-        LineEnding::Lf.label().into()
+        LineEnding::Lf
     } else if has_cr {
-        LineEnding::Cr.label().into()
+        LineEnding::Cr
     } else {
-        LineEnding::Lf.label().into()
+        LineEnding::Lf
     }
 }
 
@@ -447,14 +447,29 @@ mod tests {
 
     #[test]
     fn detect_line_ending_distinguishes_common_styles() {
-        assert_eq!(detect_line_ending("a\r\nb\r\n"), "CRLF");
-        assert_eq!(detect_line_ending("a\nb\n"), "LF");
-        assert_eq!(detect_line_ending("a\rb\r"), "CR");
+        assert_eq!(
+            detect_line_ending("a\r\nb\r\n"),
+            zom_text_tokens::LineEnding::Crlf
+        );
+        assert_eq!(
+            detect_line_ending("a\nb\n"),
+            zom_text_tokens::LineEnding::Lf
+        );
+        assert_eq!(
+            detect_line_ending("a\rb\r"),
+            zom_text_tokens::LineEnding::Cr
+        );
     }
 
     #[test]
     fn detect_line_ending_reports_mixed_styles() {
-        assert_eq!(detect_line_ending("a\r\nb\n"), "Mixed");
-        assert_eq!(detect_line_ending("a\rb\n"), "Mixed");
+        assert_eq!(
+            detect_line_ending("a\r\nb\n"),
+            zom_text_tokens::LineEnding::Mixed
+        );
+        assert_eq!(
+            detect_line_ending("a\rb\n"),
+            zom_text_tokens::LineEnding::Mixed
+        );
     }
 }

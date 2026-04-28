@@ -7223,6 +7223,7 @@ name = "zom-workspace"
 version = "0.1.0"
 dependencies = [
  "zom-protocol",
+ "zom-text-tokens",
 ]
 
 [[package]]

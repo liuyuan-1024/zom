@@ -32,6 +32,8 @@ pub enum LineEnding {
     Crlf,
     /// `\r`
     Cr,
+    /// 混合换行风格。
+    Mixed,
 }
 
 impl LineEnding {
@@ -41,6 +43,7 @@ impl LineEnding {
             Self::Lf => LF,
             Self::Crlf => CRLF,
             Self::Cr => CR,
+            Self::Mixed => LF,
         }
     }
 
@@ -50,6 +53,7 @@ impl LineEnding {
             Self::Lf => "LF",
             Self::Crlf => "CRLF",
             Self::Cr => "CR",
+            Self::Mixed => "Mixed",
         }
     }
 }
@@ -84,6 +88,8 @@ mod tests {
         assert_eq!(LineEnding::Lf.as_str(), "\n");
         assert_eq!(LineEnding::Crlf.label(), "CRLF");
         assert_eq!(LineEnding::Crlf.as_str(), "\r\n");
+        assert_eq!(LineEnding::Mixed.label(), "Mixed");
+        assert_eq!(LineEnding::Mixed.as_str(), "\n");
     }
 
     #[test]
