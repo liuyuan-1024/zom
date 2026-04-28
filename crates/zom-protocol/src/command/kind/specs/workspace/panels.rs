@@ -3,6 +3,7 @@
 use crate::FocusTarget;
 use crate::command::kind::{CommandKind, CommandKindSpec};
 
+/// 可见性托管面板聚焦命令规范列表。
 pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::Palette),

@@ -1,4 +1,4 @@
-//！ Tab 生命周期与同步逻辑
+//! Tab 生命周期与同步逻辑
 
 use zom_protocol::{Position, command::TabAction};
 

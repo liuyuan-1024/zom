@@ -83,10 +83,12 @@ impl EditorState {
         self.version
     }
 
+    /// 读取底层文本缓冲区（仅供编辑域内部复用）。
     pub(crate) fn buffer(&self) -> &TextBuffer {
         &self.buffer
     }
 
+    /// 由既有部件组装状态（用于事务推进后的状态重建）。
     pub(crate) fn from_parts(
         buffer: TextBuffer,
         selection: Selection,

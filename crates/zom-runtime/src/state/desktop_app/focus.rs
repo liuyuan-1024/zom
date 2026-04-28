@@ -1,4 +1,4 @@
-//！ 焦点/面板显隐逻辑
+//! 焦点/面板显隐逻辑
 
 use zom_protocol::{FocusTarget, OverlayTarget, command::TabAction};
 

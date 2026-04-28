@@ -2,6 +2,7 @@
 
 use crate::command::kind::{CommandKind, CommandKindSpec};
 
+/// 文件树相关命令规范列表。
 pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFileTreeSelectPrev,

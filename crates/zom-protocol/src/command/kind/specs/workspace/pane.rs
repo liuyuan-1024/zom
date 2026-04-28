@@ -3,6 +3,7 @@
 use crate::FocusTarget;
 use crate::command::kind::{CommandKind, CommandKindSpec};
 
+/// 编辑器窗格聚焦命令规范列表。
 pub const SPECS: &[CommandKindSpec] = &[CommandKindSpec::new(
     CommandKind::WorkspaceFocusPanel(FocusTarget::Editor),
     "workspace.focus_panel.editor",

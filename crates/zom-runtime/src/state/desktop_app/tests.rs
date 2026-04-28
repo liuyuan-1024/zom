@@ -1,3 +1,5 @@
+//! `DesktopAppState` 行为与命令分发测试。
+
 use std::{
     fs,
     path::PathBuf,

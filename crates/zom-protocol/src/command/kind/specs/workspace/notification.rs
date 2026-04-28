@@ -2,6 +2,7 @@
 
 use crate::command::kind::{CommandKind, CommandKindSpec};
 
+/// 通知中心相关命令规范列表。
 pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceNotificationMarkSelectedRead,

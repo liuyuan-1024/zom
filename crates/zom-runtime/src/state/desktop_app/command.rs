@@ -1,4 +1,4 @@
-//！ 命令解析与分发
+//! 命令解析与分发
 
 use zom_editor::apply_editor_invocation;
 use zom_input::resolve_default;
