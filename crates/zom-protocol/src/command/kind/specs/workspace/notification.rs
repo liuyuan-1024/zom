@@ -10,12 +10,6 @@ pub const SPECS: &[CommandKindSpec] = &[
         "将通知面板当前选中的通知标记为已读。",
     ),
     CommandKindSpec::new(
-        CommandKind::WorkspaceNotificationMarkAllRead,
-        "workspace.notification.mark_all_read",
-        "通知标记全部已读",
-        "将通知面板中的所有通知标记为已读。",
-    ),
-    CommandKindSpec::new(
         CommandKind::WorkspaceNotificationClearAll,
         "workspace.notification.clear_all",
         "通知清空全部",

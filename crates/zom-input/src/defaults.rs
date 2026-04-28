@@ -145,9 +145,6 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.notification.mark_selected_read" => Some(CommandInvocation::from(
             NotificationAction::MarkSelectedRead,
         )),
-        "workspace.notification.mark_all_read" => {
-            Some(CommandInvocation::from(NotificationAction::MarkAllRead))
-        }
         "workspace.notification.clear_all" => {
             Some(CommandInvocation::from(NotificationAction::ClearAll))
         }
@@ -406,12 +403,6 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         80,
     ),
     // notification
-    DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.mark_all_read"),
-        ShortcutScope::Focus(FocusTarget::NotificationPanel),
-        primary_char('r'),
-        70,
-    ),
     DefaultShortcutSpec::new(
         CommandKindId("workspace.notification.clear_all"),
         ShortcutScope::Focus(FocusTarget::NotificationPanel),
