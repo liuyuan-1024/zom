@@ -48,7 +48,7 @@ impl ZomRootView {
         };
         let center_width = (workspace_width - left_width - right_width).max(0.0);
         let bottom_hidden_by_overlap = center_width <= dock_gap();
-        let bottom_panel_visible = bottom_target.is_some() && !bottom_hidden_by_overlap;
+        let is_bottom_panel_visible = bottom_target.is_some() && !bottom_hidden_by_overlap;
         let splitter_size = splitter_hit_size();
 
         let mut workspace_row = div()
@@ -64,7 +64,7 @@ impl ZomRootView {
 
         workspace_row = workspace_row.child(self.render_center_column(
             bottom_target,
-            bottom_panel_visible,
+            is_bottom_panel_visible,
             splitter_size,
             cx,
         ));
@@ -135,7 +135,7 @@ impl ZomRootView {
     fn render_center_column(
         &mut self,
         bottom_target: Option<FocusTarget>,
-        bottom_panel_visible: bool,
+        is_bottom_panel_visible: bool,
         splitter_size: f32,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
@@ -148,7 +148,7 @@ impl ZomRootView {
             .flex_col()
             .overflow_hidden();
 
-        if bottom_panel_visible {
+        if is_bottom_panel_visible {
             let bottom_height = self.bottom_panel_height.max(0.0);
             let mut bottom_dock = div()
                 .id("workspace-bottom-dock")
@@ -306,7 +306,7 @@ impl ZomRootView {
         .text_xs()
         .text_color(rgb(color::COLOR_FG_MUTED))
         .on_click(cx.listener(move |this, _event, _window, cx| {
-            this.state.handle_command(CommandInvocation::from(action));
+            this.state.dispatch_command(CommandInvocation::from(action));
             this.sync_notification_panel(cx);
             cx.notify();
         }))

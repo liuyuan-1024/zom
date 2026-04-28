@@ -61,6 +61,11 @@ impl EditorState {
         self.buffer.len()
     }
 
+    /// 判断当前文档是否为空。
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+
     /// 返回当前选区。
     pub fn selection(&self) -> Selection {
         self.selection

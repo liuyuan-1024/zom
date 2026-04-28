@@ -1,6 +1,6 @@
 //! zom-text 的文本缓冲区抽象与基础操作。
 
-use std::ops::Range;
+use std::{fmt, ops::Range};
 
 use ropey::Rope;
 use zom_protocol::Position;
@@ -42,11 +42,6 @@ impl TextBuffer {
     /// 返回底层 rope 只读视图。
     pub fn rope(&self) -> &Rope {
         &self.rope
-    }
-
-    /// 导出完整文本副本（按需生成）。
-    pub fn to_string(&self) -> String {
-        self.rope.to_string()
     }
 
     /// 返回缓冲区字节长度。
@@ -220,6 +215,12 @@ impl TextBuffer {
         self.validate_offset(range.start)?;
         self.validate_offset(range.end)?;
         Ok(())
+    }
+}
+
+impl fmt::Display for TextBuffer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.rope.to_string())
     }
 }
 

@@ -20,7 +20,7 @@ pub(crate) struct NotificationPanel {
     notifications: Vec<DesktopNotification>,
     selected_notification_id: Option<u64>,
     is_logically_focused: bool,
-    pending_scroll_to_selection: bool,
+    should_scroll_to_selection: bool,
 }
 
 impl NotificationPanel {
@@ -32,7 +32,7 @@ impl NotificationPanel {
             notifications: Vec::new(),
             selected_notification_id: None,
             is_logically_focused: false,
-            pending_scroll_to_selection: false,
+            should_scroll_to_selection: false,
         }
     }
 
@@ -56,7 +56,7 @@ impl NotificationPanel {
         if self.is_logically_focused
             && (focus_gained || previous_selected != self.selected_notification_id)
         {
-            self.pending_scroll_to_selection = true;
+            self.should_scroll_to_selection = true;
         }
         cx.notify();
     }
@@ -75,18 +75,18 @@ impl Render for NotificationPanel {
             .iter()
             .rev()
             .position(|notification| self.selected_notification_id == Some(notification.id));
-        if self.pending_scroll_to_selection {
+        if self.should_scroll_to_selection {
             if let Some(selected_row_index) = selected_row_index {
                 self.scroll_handle.scroll_to_item(selected_row_index);
             }
-            self.pending_scroll_to_selection = false;
+            self.should_scroll_to_selection = false;
         }
 
         let body = if self.notifications.is_empty() {
             render_empty_placeholder().into_any_element()
         } else {
             let selected_notification_id = self.selected_notification_id;
-            let panel_has_focus = self.is_logically_focused;
+            let is_panel_focused = self.is_logically_focused;
             div()
                 .id("notification-panel-scroll")
                 .size_full()
@@ -100,7 +100,7 @@ impl Render for NotificationPanel {
                 .py(px(size::GAP_1))
                 .children(self.notifications.iter().rev().map(|notification| {
                     let is_selected = selected_notification_id == Some(notification.id);
-                    render_notification_item(notification, panel_has_focus && is_selected)
+                    render_notification_item(notification, is_panel_focused && is_selected)
                 }))
                 .into_any_element()
         };
@@ -122,14 +122,14 @@ fn render_empty_placeholder() -> impl IntoElement {
 
 fn render_notification_item(
     notification: &DesktopNotification,
-    focus_emphasis: bool,
+    has_focus_emphasis: bool,
 ) -> AnyElement {
     let badge = level_badge(notification.level);
     let source = source_badge(notification.source);
     let item_id = gpui::SharedString::from(format!("notification-item-{}", notification.id));
     let (level_fg_color, unread_bg_color) = level_palette(notification.level);
     let is_unread = !notification.is_read;
-    let border_color = if focus_emphasis {
+    let border_color = if has_focus_emphasis {
         color::COLOR_FG_PRIMARY
     } else if is_unread {
         level_fg_color

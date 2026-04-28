@@ -28,7 +28,7 @@ impl DesktopAppState {
     }
 
     /// 处理文件树节点激活，并同步工作区状态。
-    pub fn handle_file_tree_node_activate(&mut self, relative_path: &str, kind: FileTreeNodeKind) {
+    pub fn activate_file_tree_node(&mut self, relative_path: &str, kind: FileTreeNodeKind) {
         match kind {
             FileTreeNodeKind::Directory => self.file_tree.toggle_directory(relative_path),
             FileTreeNodeKind::File => {

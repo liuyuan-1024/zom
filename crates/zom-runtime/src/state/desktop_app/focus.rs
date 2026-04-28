@@ -41,7 +41,7 @@ impl DesktopAppState {
         }
 
         if self.focused_target == FocusTarget::Editor {
-            self.handle_tab_command(TabAction::CloseActiveTab);
+            self.dispatch_tab_action(TabAction::CloseActiveTab);
         }
     }
 
@@ -57,12 +57,12 @@ impl DesktopAppState {
         }
     }
 
-    pub(super) fn set_panel_visible(&mut self, target: FocusTarget, visible: bool) {
+    pub(super) fn set_panel_visible(&mut self, target: FocusTarget, is_visible: bool) {
         if !target.is_visibility_managed_panel() {
             return;
         }
 
-        if visible {
+        if is_visible {
             self.visible_panels.insert(target);
         } else {
             self.visible_panels.remove(&target);

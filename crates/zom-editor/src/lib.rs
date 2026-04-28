@@ -14,7 +14,7 @@ pub use features::editing::{
 };
 pub use features::runtime_bridge::{
     EditorToRuntimeEvent, RuntimeErrorCode, RuntimeRequestId, RuntimeResponse,
-    RuntimeToEditorRequest, handle_runtime_request,
+    RuntimeToEditorRequest, dispatch_runtime_request,
 };
 pub use viewer_layout::wrap_visual_line;
 pub use zom_protocol::Selection;

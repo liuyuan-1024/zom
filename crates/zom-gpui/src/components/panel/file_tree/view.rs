@@ -15,7 +15,7 @@ pub struct FileTreePanel {
     state: FileTreeState,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
-    pending_scroll_to_selection: bool,
+    should_scroll_to_selection: bool,
     is_logically_focused: bool,
 }
 
@@ -26,7 +26,7 @@ impl FileTreePanel {
             state,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
-            pending_scroll_to_selection: true,
+            should_scroll_to_selection: true,
             is_logically_focused,
         }
     }
@@ -41,7 +41,7 @@ impl FileTreePanel {
         let previous_selected_path = selected_path(&self.state.roots).map(ToOwned::to_owned);
         let next_selected_path = selected_path(&state.roots).map(ToOwned::to_owned);
         if previous_selected_path != next_selected_path {
-            self.pending_scroll_to_selection = true;
+            self.should_scroll_to_selection = true;
         }
         self.state = state;
         self.is_logically_focused = is_logically_focused;
@@ -57,15 +57,15 @@ impl Focusable for FileTreePanel {
 
 impl Render for FileTreePanel {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let panel_has_focus = self.is_logically_focused;
+        let is_panel_focused = self.is_logically_focused;
         let visible_rows = collect_visible_rows(&self.state.roots);
         let selected_row_index = visible_rows.iter().position(|row| row.node.is_selected);
 
-        if self.pending_scroll_to_selection {
+        if self.should_scroll_to_selection {
             if let Some(selected_row_index) = selected_row_index {
                 self.scroll_handle.scroll_to_item(selected_row_index);
             }
-            self.pending_scroll_to_selection = false;
+            self.should_scroll_to_selection = false;
         }
 
         let tree_content = div()
@@ -80,7 +80,7 @@ impl Render for FileTreePanel {
             .children(
                 visible_rows
                     .iter()
-                    .map(|row| render_visible_row(row, panel_has_focus)),
+                    .map(|row| render_visible_row(row, is_panel_focused)),
             );
 
         shell::render_shell("file-tree-container", &self.focus_handle, tree_content)
@@ -112,12 +112,12 @@ fn collect_visible_rows_inner<'a>(
     }
 }
 
-fn render_visible_row(row: &VisibleRow<'_>, panel_has_focus: bool) -> AnyElement {
+fn render_visible_row(row: &VisibleRow<'_>, is_panel_focused: bool) -> AnyElement {
     let node = row.node;
     let node_id = gpui::SharedString::from(format!("tree-node-{}", node.path));
     div()
         .id(node_id)
-        .child(row::render(node, row.depth, panel_has_focus))
+        .child(row::render(node, row.depth, is_panel_focused))
         .into_any_element()
 }
 

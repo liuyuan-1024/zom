@@ -82,6 +82,7 @@ zom-text ───────────────────────�
 ```bash
 ./scripts/check-boundaries.sh
 ./scripts/check-control-char-literals.sh
+cargo clippy --workspace --all-targets -- -D warnings
 cargo check
 ```
 

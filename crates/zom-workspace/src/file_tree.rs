@@ -636,7 +636,7 @@ mod tests {
         fs::remove_dir_all(path).expect("remove temp workspace");
     }
 
-    fn workspace_file_name(path: &PathBuf) -> String {
+    fn workspace_file_name(path: &std::path::Path) -> String {
         path.file_name()
             .map(|name| name.to_string_lossy().to_string())
             .unwrap_or_else(|| path.display().to_string())

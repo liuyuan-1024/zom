@@ -43,7 +43,7 @@ impl Render for ZomRootView {
             .flex_col()
             .cursor(drag_cursor)
             .capture_key_down(cx.listener(|this, event, _window, cx| {
-                if this.handle_shortcut_keydown(event, cx) {
+                if this.dispatch_shortcut_keydown(event, cx) {
                     cx.stop_propagation();
                     cx.notify();
                 }
@@ -61,7 +61,7 @@ impl Render for ZomRootView {
                 this.on_drag_mouse_move(event, workspace_width, workspace_height, cx);
             }))
             .on_key_down(cx.listener(|this, event, _window, cx| {
-                if this.handle_shortcut_keydown(event, cx) {
+                if this.dispatch_shortcut_keydown(event, cx) {
                     cx.stop_propagation();
                     cx.notify();
                 }

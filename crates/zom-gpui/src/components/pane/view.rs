@@ -47,7 +47,7 @@ pub struct PaneView {
     active_editor: Option<ActiveEditorSnapshot>,
     cursor: Position,
     last_cursor_moved_at: Option<Instant>,
-    pending_scroll_to_cursor: bool,
+    should_scroll_to_cursor: bool,
     viewer_layout_cache: Option<ViewerLayoutCache>,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
@@ -77,6 +77,18 @@ struct WrappedRow {
     wrapped_line: String,
 }
 
+/// 文件内容渲染入参快照。
+struct ViewerRenderSpec<'a> {
+    scroll_handle: &'a ScrollHandle,
+    layout_cache: &'a ViewerLayoutCache,
+    gutter_width_px: f32,
+    selection: Selection,
+    is_editor_focused: bool,
+    cursor: Position,
+    last_cursor_moved_at: Option<Instant>,
+    scroll_to_row: Option<usize>,
+}
+
 impl PaneView {
     /// 用初始 Pane 状态构建视图实体。
     pub fn new(
@@ -93,7 +105,7 @@ impl PaneView {
             active_editor,
             cursor,
             last_cursor_moved_at: None,
-            pending_scroll_to_cursor: true,
+            should_scroll_to_cursor: true,
             viewer_layout_cache: None,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
@@ -113,7 +125,7 @@ impl PaneView {
             .unwrap_or_else(Position::zero);
         if self.cursor != next_cursor {
             self.last_cursor_moved_at = Some(Instant::now());
-            self.pending_scroll_to_cursor = true;
+            self.should_scroll_to_cursor = true;
         }
         self.state = state;
         self.active_editor = active_editor;
@@ -148,7 +160,7 @@ impl PaneView {
     fn render_active_content(
         &mut self,
         window: &Window,
-        cx: &mut Context<Self>,
+        _cx: &mut Context<Self>,
     ) -> impl IntoElement {
         if let (Some(_), Some(active_editor)) =
             (self.state.active_tab(), self.active_editor.as_ref())
@@ -162,7 +174,7 @@ impl PaneView {
                 soft_wrap_max_chars(scroll_width_px, viewport_width_px, gutter_width_px).max(1);
             let mut scroll_to_row = None;
 
-            if self.pending_scroll_to_cursor {
+            if self.should_scroll_to_cursor {
                 let row_index = {
                     let cache = ensure_viewer_layout_cache(
                         &mut self.viewer_layout_cache,
@@ -172,7 +184,7 @@ impl PaneView {
                     cursor_visual_row_index(cache, self.cursor)
                 };
                 scroll_to_row = Some(row_index);
-                self.pending_scroll_to_cursor = false;
+                self.should_scroll_to_cursor = false;
             }
 
             let layout_cache = ensure_viewer_layout_cache(
@@ -182,25 +194,25 @@ impl PaneView {
             );
             let selection = active_editor.selection;
             let scroll_handle = self.scroll_handle.clone();
-            let editor_has_focus = self.focus_handle.is_focused(window);
+            let is_editor_focused = self.focus_handle.is_focused(window);
             let cursor = self.cursor;
             let last_cursor_moved_at = self.last_cursor_moved_at;
+            let render_spec = ViewerRenderSpec {
+                scroll_handle: &scroll_handle,
+                layout_cache,
+                gutter_width_px,
+                selection,
+                is_editor_focused,
+                cursor,
+                last_cursor_moved_at,
+                scroll_to_row,
+            };
             return div()
                 .flex()
                 .flex_col()
                 .flex_1()
                 .overflow_hidden()
-                .child(render_viewer_content(
-                    &scroll_handle,
-                    layout_cache,
-                    gutter_width_px,
-                    selection,
-                    editor_has_focus,
-                    cursor,
-                    last_cursor_moved_at,
-                    scroll_to_row,
-                    cx,
-                ))
+                .child(render_viewer_content(render_spec))
                 .into_any_element();
         }
 
@@ -216,18 +228,19 @@ impl PaneView {
 }
 
 /// 渲染实际的文件内容查看器
-fn render_viewer_content(
-    scroll_handle: &ScrollHandle,
-    layout_cache: &ViewerLayoutCache,
-    gutter_width_px: f32,
-    selection: Selection,
-    editor_has_focus: bool,
-    cursor: Position,
-    last_cursor_moved_at: Option<Instant>,
-    scroll_to_row: Option<usize>,
-    _cx: &mut Context<PaneView>,
-) -> impl IntoElement {
-    let suppress_caret_blink = last_cursor_moved_at.is_some_and(|moved_at| {
+fn render_viewer_content(spec: ViewerRenderSpec<'_>) -> impl IntoElement {
+    let ViewerRenderSpec {
+        scroll_handle,
+        layout_cache,
+        gutter_width_px,
+        selection,
+        is_editor_focused,
+        cursor,
+        last_cursor_moved_at,
+        scroll_to_row,
+    } = spec;
+
+    let should_suppress_caret_blink = last_cursor_moved_at.is_some_and(|moved_at| {
         moved_at.elapsed() < Duration::from_millis(CARET_BLINK_PAUSE_AFTER_MOVE_MS)
     });
     let cursor_line = usize::try_from(cursor.line).unwrap_or(usize::MAX);
@@ -243,12 +256,13 @@ fn render_viewer_content(
         VIRTUAL_OVERSCAN_ROWS,
         scroll_to_row,
     );
-    if let Some(target_row) = scroll_to_row {
-        if target_row >= visible_range.start && target_row < visible_range.end {
-            let local_row_index = target_row - visible_range.start;
-            // children 顺序固定为：上占位、可视行片段、下占位。
-            scroll_handle.scroll_to_item(1 + local_row_index);
-        }
+    if let Some(target_row) = scroll_to_row
+        && target_row >= visible_range.start
+        && target_row < visible_range.end
+    {
+        let local_row_index = target_row - visible_range.start;
+        // children 顺序固定为：上占位、可视行片段、下占位。
+        scroll_handle.scroll_to_item(1 + local_row_index);
     }
 
     let top_spacer_height_px = visible_range.start as f32 * VISUAL_ROW_HEIGHT_PX;
@@ -266,8 +280,8 @@ fn render_viewer_content(
             row.segment_end_column,
         );
         let is_cursor_line = row.line_index == cursor_line;
-        let show_cursor_line_emphasis = is_cursor_line && editor_has_focus;
-        let caret_column = if editor_has_focus {
+        let show_cursor_line_emphasis = is_cursor_line && is_editor_focused;
+        let caret_column = if is_editor_focused {
             caret_column_in_wrapped_segment(
                 is_cursor_line,
                 cursor_column,
@@ -293,7 +307,7 @@ fn render_viewer_content(
                     &row.wrapped_line,
                     selected_range,
                     caret_column,
-                    suppress_caret_blink,
+                    should_suppress_caret_blink,
                     show_cursor_line_emphasis,
                 ))
                 .into_any_element(),
@@ -475,7 +489,7 @@ fn render_text_cell(
     wrapped_line: &str,
     selected_range: Option<Range<usize>>,
     caret_column: Option<usize>,
-    suppress_caret_blink: bool,
+    should_suppress_caret_blink: bool,
     is_cursor_line: bool,
 ) -> AnyElement {
     div()
@@ -493,7 +507,7 @@ fn render_text_cell(
             wrapped_line,
             selected_range,
             caret_column,
-            suppress_caret_blink,
+            should_suppress_caret_blink,
         ))
         .into_any_element()
 }
@@ -566,7 +580,7 @@ fn render_wrapped_line_content(
     wrapped_line: &str,
     selected_range: Option<Range<usize>>,
     caret_column: Option<usize>,
-    suppress_caret_blink: bool,
+    should_suppress_caret_blink: bool,
 ) -> AnyElement {
     if selected_range.is_none() && caret_column.is_none() {
         return div()
@@ -585,7 +599,7 @@ fn render_wrapped_line_content(
 
     while cursor < len {
         if caret_column == Some(cursor) {
-            children.push(render_caret(suppress_caret_blink).into_any_element());
+            children.push(render_caret(should_suppress_caret_blink).into_any_element());
         }
 
         let is_selected = selected_range.start <= cursor && cursor < selected_range.end;
@@ -607,12 +621,12 @@ fn render_wrapped_line_content(
     }
 
     if caret_column == Some(len) {
-        children.push(render_caret(suppress_caret_blink).into_any_element());
+        children.push(render_caret(should_suppress_caret_blink).into_any_element());
     }
 
     if children.is_empty() {
         if caret_column == Some(0) {
-            children.push(render_caret(suppress_caret_blink).into_any_element());
+            children.push(render_caret(should_suppress_caret_blink).into_any_element());
         } else {
             children.push(render_text_chunk(String::new(), false));
         }
@@ -625,8 +639,8 @@ fn render_wrapped_line_content(
         .into_any_element()
 }
 
-fn render_text_chunk(text: String, selected: bool) -> AnyElement {
-    if selected {
+fn render_text_chunk(text: String, is_selected: bool) -> AnyElement {
+    if is_selected {
         div()
             .bg(rgb(color::COLOR_BG_ACTIVE))
             .child(text)
@@ -636,7 +650,7 @@ fn render_text_chunk(text: String, selected: bool) -> AnyElement {
     }
 }
 
-fn render_caret(suppress_caret_blink: bool) -> impl IntoElement {
+fn render_caret(should_suppress_caret_blink: bool) -> impl IntoElement {
     div()
         .w(px(CARET_WIDTH_PX))
         .h(px(CARET_HEIGHT_PX))
@@ -646,9 +660,7 @@ fn render_caret(suppress_caret_blink: bool) -> impl IntoElement {
             "pane-caret-blink",
             Animation::new(Duration::from_millis(CARET_BLINK_DURATION_MS)).repeat(),
             move |this, delta| {
-                let opacity = if suppress_caret_blink {
-                    1.0
-                } else if delta < 0.5 {
+                let opacity = if should_suppress_caret_blink || delta < 0.5 {
                     1.0
                 } else {
                     0.0

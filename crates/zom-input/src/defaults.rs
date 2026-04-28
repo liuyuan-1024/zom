@@ -515,19 +515,19 @@ const fn primary_shift_char(c: char) -> Keystroke {
 }
 
 const fn with_logical_modifiers(
-    shift: bool,
-    primary: bool,
-    secondary: bool,
-    word_nav: bool,
+    is_shift_pressed: bool,
+    has_primary_modifier: bool,
+    has_secondary_modifier: bool,
+    has_word_nav_modifier: bool,
 ) -> Modifiers {
-    let mut modifiers = Modifiers::new(false, false, shift, false);
-    if primary {
+    let mut modifiers = Modifiers::new(false, false, is_shift_pressed, false);
+    if has_primary_modifier {
         modifiers = merge_modifiers(modifiers, primary_modifier());
     }
-    if secondary {
+    if has_secondary_modifier {
         modifiers = merge_modifiers(modifiers, secondary_modifier());
     }
-    if word_nav {
+    if has_word_nav_modifier {
         modifiers = merge_modifiers(modifiers, word_nav_modifier());
     }
     modifiers

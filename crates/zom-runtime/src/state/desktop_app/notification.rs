@@ -14,9 +14,9 @@ const DEDUPE_WINDOW_MS: u128 = 3_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct NotificationChannels {
-    toast: bool,
-    panel: bool,
-    status_bar: bool,
+    should_emit_toast: bool,
+    should_persist_to_panel: bool,
+    should_update_status_bar: bool,
 }
 
 impl DesktopAppState {
@@ -25,10 +25,10 @@ impl DesktopAppState {
     pub fn publish_notification_event(&mut self, event: DesktopNotificationEvent) -> Option<u64> {
         let channels = channels_for_event(&event);
         let now_ms = now_ms();
-        let mut should_emit_toast = channels.toast;
+        let mut should_emit_toast = channels.should_emit_toast;
         let mut panel_notification_id = None;
 
-        if channels.panel {
+        if channels.should_persist_to_panel {
             if let Some(existing_index) = self.find_dedupe_candidate(
                 event.level,
                 event.source,
@@ -43,7 +43,7 @@ impl DesktopAppState {
                 self.notifications.push(notification.clone());
                 panel_notification_id = Some(notification_id);
                 self.unread_notification_count = self.unread_notification_count.saturating_add(1);
-                if channels.status_bar {
+                if channels.should_update_status_bar {
                     self.active_status_notification = Some(notification);
                 }
                 // 聚合后不重复弹 toast，避免短时间连环打断。
@@ -78,11 +78,11 @@ impl DesktopAppState {
                 }
                 self.unread_notification_count = self.unread_notification_count.saturating_add(1);
                 panel_notification_id = Some(id);
-                if channels.status_bar {
+                if channels.should_update_status_bar {
                     self.active_status_notification = Some(notification);
                 }
             }
-        } else if channels.status_bar {
+        } else if channels.should_update_status_bar {
             self.active_status_notification = Some(DesktopNotification {
                 id: 0,
                 level: event.level,
@@ -271,25 +271,25 @@ impl DesktopAppState {
 fn channels_for_event(event: &DesktopNotificationEvent) -> NotificationChannels {
     match event.kind {
         DesktopNotificationKind::Progress => NotificationChannels {
-            toast: false,
-            panel: false,
-            status_bar: true,
+            should_emit_toast: false,
+            should_persist_to_panel: false,
+            should_update_status_bar: true,
         },
         DesktopNotificationKind::General => match event.level {
             DesktopNotificationLevel::Error => NotificationChannels {
-                toast: true,
-                panel: true,
-                status_bar: true,
+                should_emit_toast: true,
+                should_persist_to_panel: true,
+                should_update_status_bar: true,
             },
             DesktopNotificationLevel::Warning => NotificationChannels {
-                toast: true,
-                panel: true,
-                status_bar: false,
+                should_emit_toast: true,
+                should_persist_to_panel: true,
+                should_update_status_bar: false,
             },
             DesktopNotificationLevel::Info => NotificationChannels {
-                toast: event.user_initiated,
-                panel: true,
-                status_bar: false,
+                should_emit_toast: event.is_user_initiated,
+                should_persist_to_panel: true,
+                should_update_status_bar: false,
             },
         },
     }

@@ -85,7 +85,7 @@ pub enum RuntimeErrorCode {
 }
 
 /// 处理 runtime 请求并返回响应。
-pub fn handle_runtime_request(
+pub fn dispatch_runtime_request(
     state: &mut EditorState,
     request: RuntimeToEditorRequest,
 ) -> RuntimeResponse {
@@ -187,13 +187,14 @@ mod tests {
 
     use super::{
         EditorToRuntimeEvent, RuntimeErrorCode, RuntimeRequestId, RuntimeResponse,
-        RuntimeToEditorRequest, handle_runtime_request,
+        RuntimeToEditorRequest, dispatch_runtime_request,
     };
 
     #[test]
     fn request_snapshot_returns_full_state() {
         let mut state = EditorState::from_text("abc");
-        let response = handle_runtime_request(&mut state, RuntimeToEditorRequest::RequestSnapshot);
+        let response =
+            dispatch_runtime_request(&mut state, RuntimeToEditorRequest::RequestSnapshot);
 
         assert_eq!(
             response,
@@ -204,7 +205,7 @@ mod tests {
     #[test]
     fn apply_edits_acks_and_emits_delta() {
         let mut state = EditorState::from_text("ab");
-        let response = handle_runtime_request(
+        let response = dispatch_runtime_request(
             &mut state,
             RuntimeToEditorRequest::ApplyEdits {
                 request_id: RuntimeRequestId::new("req-1"),
@@ -233,7 +234,7 @@ mod tests {
     #[test]
     fn version_mismatch_returns_error() {
         let mut state = EditorState::from_text("ab");
-        let response = handle_runtime_request(
+        let response = dispatch_runtime_request(
             &mut state,
             RuntimeToEditorRequest::ApplyEdits {
                 request_id: RuntimeRequestId::new("req-2"),

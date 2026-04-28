@@ -36,7 +36,7 @@ fn activating_file_tree_file_opens_tab_and_activates_it() {
     state.switch_project(workspace.clone());
     let before_len = state.pane.tabs.len();
 
-    state.handle_file_tree_node_activate("main.rs", FileTreeNodeKind::File);
+    state.activate_file_tree_node("main.rs", FileTreeNodeKind::File);
 
     assert_eq!(state.pane.tabs.len(), before_len + 1);
     let active_tab = state.pane.active_tab().expect("active tab should exist");
@@ -67,7 +67,7 @@ fn keyboard_select_and_activate_opens_file_in_pane() {
     state.pane.tabs.clear();
     state.pane.active_tab_index = None;
 
-    state.handle_command(CommandInvocation::from(FileTreeAction::ActivateSelection));
+    state.dispatch_command(CommandInvocation::from(FileTreeAction::ActivateSelection));
 
     assert_eq!(state.pane.tabs.len(), 1);
     let active_tab = state.pane.active_tab().expect("active tab should exist");
@@ -82,7 +82,7 @@ fn focus_panel_shows_file_tree_and_requests_focus() {
     state.visible_panels.remove(&FocusTarget::FileTreePanel);
     state.file_tree.roots[0].is_selected = false;
 
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::FileTreePanel,
     )));
 
@@ -104,7 +104,7 @@ fn close_focused_hides_focused_file_tree_and_falls_back_to_editor() {
     state.focused_target = FocusTarget::FileTreePanel;
     state.visible_panels.insert(FocusTarget::FileTreePanel);
 
-    state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
 
     assert!(!state.is_panel_visible(FocusTarget::FileTreePanel));
     assert_eq!(state.focused_target, FocusTarget::Editor);
@@ -124,7 +124,7 @@ fn close_focused_closes_active_tab_when_editor_is_focused() {
     );
     state.pane.active_tab_index = Some(1);
 
-    state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
 
     assert_eq!(state.pane.tabs.len(), 1);
     assert_eq!(state.pane.tabs[0].relative_path, "a.rs");
@@ -146,18 +146,18 @@ fn tab_activation_commands_cycle_tabs_and_sync_toolbar_state() {
     state.tool_bar.cursor = Position::new(99, 99);
     state.tool_bar.language = "Plain Text".into();
 
-    state.handle_command(CommandInvocation::from(TabAction::ActivateNextTab));
+    state.dispatch_command(CommandInvocation::from(TabAction::ActivateNextTab));
 
     assert_eq!(state.pane.active_tab_index, Some(1));
     assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
     assert_eq!(state.tool_bar.language, "Python");
 
-    state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
+    state.dispatch_command(CommandInvocation::from(TabAction::ActivatePrevTab));
     assert_eq!(state.pane.active_tab_index, Some(0));
     assert_eq!(state.tool_bar.cursor, Position::zero());
     assert_eq!(state.tool_bar.language, "Rust");
 
-    state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
+    state.dispatch_command(CommandInvocation::from(TabAction::ActivatePrevTab));
     assert_eq!(state.pane.active_tab_index, Some(2));
     assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
     assert_eq!(state.tool_bar.language, "Markdown");
@@ -172,16 +172,16 @@ fn tab_activation_commands_sync_file_tree_selection_to_active_tab() {
 
     let mut state = DesktopAppState::from_current_workspace();
     state.switch_project(workspace.clone());
-    state.handle_file_tree_node_activate("a.rs", FileTreeNodeKind::File);
-    state.handle_file_tree_node_activate("b.py", FileTreeNodeKind::File);
-    state.handle_file_tree_node_activate("c.md", FileTreeNodeKind::File);
+    state.activate_file_tree_node("a.rs", FileTreeNodeKind::File);
+    state.activate_file_tree_node("b.py", FileTreeNodeKind::File);
+    state.activate_file_tree_node("c.md", FileTreeNodeKind::File);
 
     assert_eq!(
         state.file_tree.selected_node().map(|(path, _)| path),
         Some("c.md".to_string())
     );
 
-    state.handle_command(CommandInvocation::from(TabAction::ActivatePrevTab));
+    state.dispatch_command(CommandInvocation::from(TabAction::ActivatePrevTab));
     assert_eq!(
         state
             .pane
@@ -194,7 +194,7 @@ fn tab_activation_commands_sync_file_tree_selection_to_active_tab() {
         Some("b.py".to_string())
     );
 
-    state.handle_command(CommandInvocation::from(TabAction::ActivateNextTab));
+    state.dispatch_command(CommandInvocation::from(TabAction::ActivateNextTab));
     assert_eq!(
         state
             .pane
@@ -224,7 +224,7 @@ fn keyboard_shortcut_can_activate_next_tab() {
     state.pane.active_tab_index = Some(0);
 
     let next_tab = shortcut_for(CommandInvocation::from(TabAction::ActivateNextTab));
-    let handled = state.handle_keystroke(&next_tab);
+    let handled = state.dispatch_keystroke(&next_tab);
 
     assert!(handled);
     assert_eq!(state.pane.active_tab_index, Some(1));
@@ -239,7 +239,7 @@ fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command()
         FocusTarget::FileTreePanel,
     )));
 
-    let handled = state.handle_keystroke(&keystroke);
+    let handled = state.dispatch_keystroke(&keystroke);
 
     assert!(handled);
     assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
@@ -263,7 +263,7 @@ fn editor_command_updates_active_tab_buffer_and_cursor() {
     state.pane.active_tab_index = Some(0);
     state.tool_bar.cursor = Position::new(0, 1);
 
-    state.handle_command(CommandInvocation::from(EditorInvocation::insert_text("X")));
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("X")));
 
     assert_eq!(
         state
@@ -274,7 +274,7 @@ fn editor_command_updates_active_tab_buffer_and_cursor() {
     );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
 
-    state.handle_command(CommandInvocation::from(EditorAction::DeleteBackward));
+    state.dispatch_command(CommandInvocation::from(EditorAction::DeleteBackward));
     assert_eq!(
         state
             .active_editor_snapshot()
@@ -298,7 +298,7 @@ fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
     state.pane.active_tab_index = Some(0);
     state.tool_bar.cursor = Position::new(1, 1);
 
-    state.handle_command(CommandInvocation::from(EditorAction::SelectAll));
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectAll));
 
     assert_eq!(
         state
@@ -324,7 +324,8 @@ fn plain_character_keystroke_in_editor_focus_inserts_text() {
     state.focused_target = FocusTarget::Editor;
     state.tool_bar.cursor = Position::new(0, 1);
 
-    let handled = state.handle_keystroke(&Keystroke::new(KeyCode::Char('x'), Modifiers::default()));
+    let handled =
+        state.dispatch_keystroke(&Keystroke::new(KeyCode::Char('x'), Modifiers::default()));
 
     assert!(handled);
     assert_eq!(
@@ -352,7 +353,7 @@ fn shift_left_then_backspace_deletes_selected_text_in_editor() {
     state.tool_bar.cursor = Position::new(0, 1);
 
     let select_left = Keystroke::new(KeyCode::Left, Modifiers::new(false, false, true, false));
-    assert!(state.handle_keystroke(&select_left));
+    assert!(state.dispatch_keystroke(&select_left));
     assert_eq!(
         state
             .active_editor_snapshot()
@@ -363,7 +364,7 @@ fn shift_left_then_backspace_deletes_selected_text_in_editor() {
     assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
 
     let backspace = Keystroke::new(KeyCode::Backspace, Modifiers::default());
-    assert!(state.handle_keystroke(&backspace));
+    assert!(state.dispatch_keystroke(&backspace));
     assert_eq!(
         state
             .active_editor_snapshot()
@@ -388,7 +389,7 @@ fn editor_command_without_active_tab_is_noop() {
     state.pane.active_tab_index = None;
     state.tool_bar.cursor = Position::new(3, 7);
 
-    state.handle_command(CommandInvocation::from(EditorInvocation::insert_text("x")));
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("x")));
 
     assert_eq!(state.pane.tabs.len(), 0);
     assert_eq!(state.pane.active_tab_index, None);
@@ -402,7 +403,7 @@ fn keyboard_shortcut_can_focus_and_close_git_panel() {
         FocusTarget::GitPanel,
     )));
 
-    let handled_focus = state.handle_keystroke(&focus_git);
+    let handled_focus = state.dispatch_keystroke(&focus_git);
 
     assert!(handled_focus);
     assert!(state.is_panel_visible(FocusTarget::GitPanel));
@@ -414,7 +415,7 @@ fn keyboard_shortcut_can_focus_and_close_git_panel() {
     );
 
     let close = shortcut_for(CommandInvocation::from(WorkspaceAction::CloseFocused));
-    let handled_close = state.handle_keystroke(&close);
+    let handled_close = state.dispatch_keystroke(&close);
 
     assert!(handled_close);
     assert!(!state.is_panel_visible(FocusTarget::GitPanel));
@@ -427,7 +428,7 @@ fn focus_panel_replaces_existing_left_slot_panel() {
     let mut state = DesktopAppState::from_current_workspace();
     assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
 
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::OutlinePanel,
     )));
 
@@ -439,12 +440,12 @@ fn focus_panel_replaces_existing_left_slot_panel() {
 #[test]
 fn focus_panel_replaces_existing_bottom_dock_panel() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::TerminalPanel,
     )));
     assert!(state.is_panel_visible(FocusTarget::TerminalPanel));
 
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::DebugPanel,
     )));
 
@@ -456,10 +457,10 @@ fn focus_panel_replaces_existing_bottom_dock_panel() {
 #[test]
 fn right_and_bottom_docks_can_stay_visible_together() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::NotificationPanel,
     )));
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::TerminalPanel,
     )));
 
@@ -470,14 +471,14 @@ fn right_and_bottom_docks_can_stay_visible_together() {
 #[test]
 fn close_focused_bottom_panel_keeps_right_panel_visible() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::NotificationPanel,
     )));
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::TerminalPanel,
     )));
 
-    state.handle_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
 
     assert!(!state.is_panel_visible(FocusTarget::TerminalPanel));
     assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
@@ -487,7 +488,7 @@ fn close_focused_bottom_panel_keeps_right_panel_visible() {
 #[test]
 fn hide_visible_panel_in_dock_hides_target_and_falls_back_to_editor() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::GitPanel,
     )));
     assert_eq!(state.focused_target, FocusTarget::GitPanel);
@@ -507,7 +508,7 @@ fn keyboard_shortcut_can_focus_and_close_notification_panel() {
         FocusTarget::NotificationPanel,
     )));
 
-    let handled_focus = state.handle_keystroke(&focus_notification);
+    let handled_focus = state.dispatch_keystroke(&focus_notification);
 
     assert!(handled_focus);
     assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
@@ -518,7 +519,7 @@ fn keyboard_shortcut_can_focus_and_close_notification_panel() {
     );
 
     let close = shortcut_for(CommandInvocation::from(WorkspaceAction::CloseFocused));
-    let handled_close = state.handle_keystroke(&close);
+    let handled_close = state.dispatch_keystroke(&close);
 
     assert!(handled_close);
     assert!(!state.is_panel_visible(FocusTarget::NotificationPanel));
@@ -531,7 +532,7 @@ fn keyboard_shortcut_can_request_open_project_picker_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::OpenProjectPicker));
 
-    let handled = state.handle_keystroke(&keystroke);
+    let handled = state.dispatch_keystroke(&keystroke);
 
     assert!(handled);
     assert_eq!(
@@ -545,7 +546,7 @@ fn keyboard_shortcut_can_request_minimize_window_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::MinimizeWindow));
 
-    let handled = state.handle_keystroke(&keystroke);
+    let handled = state.dispatch_keystroke(&keystroke);
 
     assert!(handled);
     assert_eq!(
@@ -559,7 +560,7 @@ fn keyboard_shortcut_can_request_quit_app_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::QuitApp));
 
-    let handled = state.handle_keystroke(&keystroke);
+    let handled = state.dispatch_keystroke(&keystroke);
 
     assert!(handled);
     assert_eq!(
@@ -575,7 +576,7 @@ fn keyboard_shortcut_can_focus_settings_overlay() {
         OverlayTarget::Settings,
     )));
 
-    let handled = state.handle_keystroke(&keystroke);
+    let handled = state.dispatch_keystroke(&keystroke);
 
     assert!(handled);
     assert_eq!(state.active_overlay, Some(OverlayTarget::Settings));
@@ -637,7 +638,7 @@ fn info_event_with_user_initiated_triggers_toast() {
             DesktopNotificationSource::Workspace,
             "opened project",
         )
-        .user_initiated(),
+        .is_user_initiated(),
     );
 
     assert_eq!(state.notifications.len(), 1);
@@ -726,7 +727,7 @@ fn notification_command_mark_all_read_clears_unread_counter() {
         .with_dedupe_key("error.second"),
     );
 
-    state.handle_command(CommandInvocation::from(NotificationAction::MarkAllRead));
+    state.dispatch_command(CommandInvocation::from(NotificationAction::MarkAllRead));
 
     assert_eq!(state.unread_notification_count, 0);
     assert!(
@@ -763,7 +764,7 @@ fn notification_command_mark_selected_read_marks_only_one_item() {
     state.selected_notification_id = Some(first_id);
     state.unread_notification_count = 2;
 
-    state.handle_command(CommandInvocation::from(
+    state.dispatch_command(CommandInvocation::from(
         NotificationAction::MarkSelectedRead,
     ));
 
@@ -804,7 +805,7 @@ fn notification_command_clear_read_keeps_only_unread_items() {
     state.notifications[1].is_read = true;
     state.unread_notification_count = 1;
 
-    state.handle_command(CommandInvocation::from(NotificationAction::ClearRead));
+    state.dispatch_command(CommandInvocation::from(NotificationAction::ClearRead));
 
     assert_eq!(state.notifications.len(), 1);
     assert_eq!(state.notifications[0].message, "keep me unread");
@@ -824,7 +825,7 @@ fn focusing_notification_panel_does_not_auto_mark_all_read() {
     );
     assert_eq!(state.unread_notification_count, 1);
 
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::NotificationPanel,
     )));
 
@@ -851,7 +852,7 @@ fn notification_command_clear_all_empties_history_and_status() {
     assert!(!state.notifications.is_empty());
     assert!(state.active_status_notification.is_some());
 
-    state.handle_command(CommandInvocation::from(NotificationAction::ClearAll));
+    state.dispatch_command(CommandInvocation::from(NotificationAction::ClearAll));
 
     assert!(state.notifications.is_empty());
     assert!(state.active_status_notification.is_none());
@@ -881,7 +882,7 @@ fn focus_unread_error_notification_sets_focus_and_selection_target() {
         )
         .expect("error notification should be persisted");
 
-    state.handle_command(CommandInvocation::from(
+    state.dispatch_command(CommandInvocation::from(
         NotificationAction::FocusUnreadError,
     ));
 
@@ -931,22 +932,22 @@ fn notification_selection_commands_move_between_rows() {
         .expect("oldest id");
 
     // 面板显示顺序为 newest -> middle -> oldest，默认从首行开始。
-    state.handle_command(CommandInvocation::from(NotificationAction::SelectNext));
+    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectNext));
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(middle_id)
     );
-    state.handle_command(CommandInvocation::from(NotificationAction::SelectNext));
+    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectNext));
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(newest_id)
     );
-    state.handle_command(CommandInvocation::from(NotificationAction::SelectPrev));
+    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectPrev));
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(middle_id)
     );
-    state.handle_command(CommandInvocation::from(NotificationAction::SelectPrev));
+    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectPrev));
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(oldest_id)
@@ -956,12 +957,12 @@ fn notification_selection_commands_move_between_rows() {
 #[test]
 fn close_focused_closes_active_settings_overlay_first() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusOverlay(
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusOverlay(
         OverlayTarget::Settings,
     )));
 
     let close = shortcut_for(CommandInvocation::from(WorkspaceAction::CloseFocused));
-    let handled = state.handle_keystroke(&close);
+    let handled = state.dispatch_keystroke(&close);
 
     assert!(handled);
     assert_eq!(state.active_overlay, None);
@@ -1010,7 +1011,7 @@ fn open_file_reads_from_selected_project_root() {
 
     let mut state = DesktopAppState::from_current_workspace();
     state.switch_project(workspace.clone());
-    state.handle_file_tree_node_activate("src/main.rs", FileTreeNodeKind::File);
+    state.activate_file_tree_node("src/main.rs", FileTreeNodeKind::File);
 
     let active_tab = state.pane.active_tab().expect("active tab should exist");
     assert_eq!(active_tab.relative_path, "src/main.rs");
@@ -1033,7 +1034,7 @@ fn open_file_failure_keeps_existing_editor_state() {
 
     let mut state = DesktopAppState::from_current_workspace();
     state.switch_project(workspace.clone());
-    state.handle_file_tree_node_activate("old.rs", FileTreeNodeKind::File);
+    state.activate_file_tree_node("old.rs", FileTreeNodeKind::File);
 
     let before_tabs = state.pane.tabs.clone();
     let before_active = state.pane.active_tab_index;

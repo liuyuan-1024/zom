@@ -73,7 +73,7 @@ pub struct DesktopNotificationEvent {
     /// 提示文案。
     pub message: String,
     /// 是否属于“用户主动触发动作”的反馈。
-    pub user_initiated: bool,
+    pub is_user_initiated: bool,
     /// 去重键（同键短窗口内聚合）。
     pub dedupe_key: Option<String>,
 }
@@ -90,14 +90,14 @@ impl DesktopNotificationEvent {
             source,
             kind: DesktopNotificationKind::General,
             message: message.into(),
-            user_initiated: false,
+            is_user_initiated: false,
             dedupe_key: None,
         }
     }
 
     /// 标记该事件为用户主动触发反馈。
-    pub fn user_initiated(mut self) -> Self {
-        self.user_initiated = true;
+    pub fn is_user_initiated(mut self) -> Self {
+        self.is_user_initiated = true;
         self
     }
 

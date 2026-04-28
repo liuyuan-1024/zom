@@ -25,7 +25,7 @@ pub(crate) fn render(
                 chip::interactive_chip(
                     "title-bar-project_name",
                     chip::TooltipSpec::new(
-                        format!("选择项目"),
+                        "选择项目".to_string(),
                         shortcut_hint(&CommandInvocation::from(WorkspaceAction::OpenProjectPicker)),
                     ),
                 )

@@ -52,7 +52,6 @@ pub fn run() {
                         title: Some("Zom".into()),
                         appears_transparent: true,
                         traffic_light_position: Some(title_bar::traffic_lights::position()),
-                        ..Default::default()
                     }),
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     ..Default::default()
@@ -249,7 +248,7 @@ impl ZomRootView {
         let dedupe_key = format!("workspace:{level:?}:{message}");
         let event =
             DesktopNotificationEvent::new(level, DesktopNotificationSource::Workspace, message)
-                .user_initiated()
+                .is_user_initiated()
                 .with_dedupe_key(dedupe_key);
         let notification_id = self.state.publish_notification_event(event);
         self.sync_notification_panel(cx);
@@ -365,7 +364,7 @@ impl ZomRootView {
 
                 this.update(cx, |this, cx| {
                     this.state.switch_project(project_root);
-                    this.state.handle_command(CommandInvocation::from(
+                    this.state.dispatch_command(CommandInvocation::from(
                         WorkspaceAction::FocusPanel(FocusTarget::Editor),
                     ));
                     this.sync_child_views(cx);
@@ -385,15 +384,15 @@ impl ZomRootView {
     pub(super) fn normalize_dock_widths(
         &mut self,
         workspace_width: f32,
-        left_visible: bool,
-        right_visible: bool,
+        is_left_visible: bool,
+        is_right_visible: bool,
     ) {
         self.left_dock_width = self.left_dock_width.max(0.0);
         self.right_dock_width = self.right_dock_width.max(0.0);
 
         let mut max_left = Self::max_dock_width(workspace_width);
         let mut max_right = Self::max_dock_width(workspace_width);
-        if left_visible && right_visible {
+        if is_left_visible && is_right_visible {
             max_left = (workspace_width - self.right_dock_width - dock_gap()).max(0.0);
             max_right = (workspace_width - self.left_dock_width - dock_gap()).max(0.0);
         }
@@ -413,9 +412,9 @@ impl ZomRootView {
         &mut self,
         cursor_x: f32,
         workspace_width: f32,
-        right_visible: bool,
+        is_right_visible: bool,
     ) {
-        let max_left = if right_visible {
+        let max_left = if is_right_visible {
             (workspace_width - self.right_dock_width - dock_gap()).max(0.0)
         } else {
             Self::max_dock_width(workspace_width)
@@ -428,9 +427,9 @@ impl ZomRootView {
         &mut self,
         cursor_x: f32,
         workspace_width: f32,
-        left_visible: bool,
+        is_left_visible: bool,
     ) {
-        let max_right = if left_visible {
+        let max_right = if is_left_visible {
             (workspace_width - self.left_dock_width - dock_gap()).max(0.0)
         } else {
             Self::max_dock_width(workspace_width)
@@ -539,13 +538,21 @@ impl ZomRootView {
         match self.active_dock_drag {
             Some(ActiveDockDrag::Left) => {
                 let cursor_x: f32 = event.position.x.into();
-                let right_visible = self.state.visible_panel_in_dock(PanelDock::Right).is_some();
-                self.update_left_dock_width_from_cursor(cursor_x, workspace_width, right_visible);
+                let is_right_visible = self.state.visible_panel_in_dock(PanelDock::Right).is_some();
+                self.update_left_dock_width_from_cursor(
+                    cursor_x,
+                    workspace_width,
+                    is_right_visible,
+                );
             }
             Some(ActiveDockDrag::Right) => {
                 let cursor_x: f32 = event.position.x.into();
-                let left_visible = self.state.visible_panel_in_dock(PanelDock::Left).is_some();
-                self.update_right_dock_width_from_cursor(cursor_x, workspace_width, left_visible);
+                let is_left_visible = self.state.visible_panel_in_dock(PanelDock::Left).is_some();
+                self.update_right_dock_width_from_cursor(
+                    cursor_x,
+                    workspace_width,
+                    is_left_visible,
+                );
             }
             Some(ActiveDockDrag::Bottom {
                 origin_y,
@@ -563,7 +570,7 @@ impl ZomRootView {
     }
 
     /// 处理快捷键按下事件并委派给应用层命令系统。
-    pub(super) fn handle_shortcut_keydown(
+    pub(super) fn dispatch_shortcut_keydown(
         &mut self,
         event: &KeyDownEvent,
         cx: &mut Context<Self>,
@@ -584,7 +591,7 @@ impl ZomRootView {
                 cx,
             );
         }
-        if !self.state.handle_keystroke(&keystroke) {
+        if !self.state.dispatch_keystroke(&keystroke) {
             if debug_keys {
                 self.push_debug_notification(
                     DesktopNotificationLevel::Warning,

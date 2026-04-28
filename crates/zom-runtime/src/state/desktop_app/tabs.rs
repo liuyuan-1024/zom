@@ -6,7 +6,7 @@ use super::DesktopAppState;
 
 impl DesktopAppState {
     /// 处理标签页命令。
-    pub(super) fn handle_tab_command(&mut self, command: TabAction) {
+    pub(super) fn dispatch_tab_action(&mut self, command: TabAction) {
         match command {
             TabAction::CloseActiveTab => self.close_active_tab(),
             TabAction::ActivatePrevTab => self.activate_prev_tab(),
@@ -82,12 +82,12 @@ impl DesktopAppState {
     }
 
     pub(super) fn sync_tool_bar_with_active_tab(&mut self) {
-        if let Some(active_tab) = self.pane.active_tab() {
-            if let Some(editor_state) = self.editor_state(active_tab.buffer_id) {
-                self.tool_bar.cursor = editor_state.selection().active();
-                self.tool_bar.language = active_tab.language().to_string();
-                return;
-            }
+        if let Some(active_tab) = self.pane.active_tab()
+            && let Some(editor_state) = self.editor_state(active_tab.buffer_id)
+        {
+            self.tool_bar.cursor = editor_state.selection().active();
+            self.tool_bar.language = active_tab.language().to_string();
+            return;
         }
         self.tool_bar.cursor = Position::zero();
         self.tool_bar.language.clear();

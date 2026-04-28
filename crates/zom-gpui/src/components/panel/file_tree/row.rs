@@ -7,8 +7,8 @@ use super::FILE_TREE_INDENT_STEP;
 use crate::theme::{color, size};
 
 /// 渲染单个文件树节点行。
-pub(super) fn render(node: &FileTreeNode, depth: usize, panel_has_focus: bool) -> AnyElement {
-    let has_focus_emphasis = focus_emphasis_visible(node, panel_has_focus);
+pub(super) fn render(node: &FileTreeNode, depth: usize, is_panel_focused: bool) -> AnyElement {
+    let has_focus_emphasis = focus_emphasis_visible(node, is_panel_focused);
     let mut row = div()
         .w_full()
         .flex()
@@ -33,8 +33,8 @@ pub(super) fn render(node: &FileTreeNode, depth: usize, panel_has_focus: bool) -
 }
 
 /// 焦点强调可见
-fn focus_emphasis_visible(node: &FileTreeNode, panel_has_focus: bool) -> bool {
-    node.is_selected && panel_has_focus
+fn focus_emphasis_visible(node: &FileTreeNode, is_panel_focused: bool) -> bool {
+    node.is_selected && is_panel_focused
 }
 
 /// 行背景色

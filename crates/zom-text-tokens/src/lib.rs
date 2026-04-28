@@ -55,9 +55,10 @@ impl LineEnding {
 }
 
 /// 缩进单元定义。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum IndentUnit {
     /// 使用制表符缩进。
+    #[default]
     Tab,
     /// 使用指定数量的空格缩进。
     Spaces(u8),
@@ -70,12 +71,6 @@ impl IndentUnit {
             Self::Tab => TAB.to_string(),
             Self::Spaces(width) => " ".repeat(usize::from(width)),
         }
-    }
-}
-
-impl Default for IndentUnit {
-    fn default() -> Self {
-        Self::Tab
     }
 }
 

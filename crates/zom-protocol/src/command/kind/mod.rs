@@ -3,13 +3,13 @@
 
 use std::{collections::HashMap, sync::LazyLock};
 
-mod kind;
+mod command_kind;
 mod mapping;
 mod meta;
 mod spec;
 mod specs;
 
-pub use kind::CommandKind;
+pub use command_kind::CommandKind;
 pub use meta::{CommandKindId, CommandMeta};
 pub use spec::CommandKindSpec;
 

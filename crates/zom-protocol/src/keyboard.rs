@@ -17,12 +17,12 @@ pub struct Modifiers {
 
 impl Modifiers {
     /// 构造一组显式的修饰键状态。
-    pub const fn new(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Self {
+    pub const fn new(has_ctrl: bool, has_alt: bool, has_shift: bool, has_meta: bool) -> Self {
         Self {
-            has_ctrl: ctrl,
-            has_alt: alt,
-            has_shift: shift,
-            has_meta: meta,
+            has_ctrl,
+            has_alt,
+            has_shift,
+            has_meta,
         }
     }
 
@@ -114,14 +114,14 @@ impl InputContext {
     }
 
     /// 标记当前处于文本输入语境。
-    pub fn with_text_input(mut self, in_text_input: bool) -> Self {
-        self.is_in_text_input = in_text_input;
+    pub fn with_text_input(mut self, is_in_text_input: bool) -> Self {
+        self.is_in_text_input = is_in_text_input;
         self
     }
 
     /// 标记命令面板的打开状态。
-    pub fn with_command_palette_open(mut self, command_palette_open: bool) -> Self {
-        self.is_command_palette_open = command_palette_open;
+    pub fn with_command_palette_open(mut self, is_command_palette_open: bool) -> Self {
+        self.is_command_palette_open = is_command_palette_open;
         self
     }
 }
@@ -139,10 +139,10 @@ pub struct EditorInputContext {
 
 impl EditorInputContext {
     /// 构造一份编辑器局部输入上下文。
-    pub fn new(editable: bool, read_only: bool, has_selection: bool) -> Self {
+    pub fn new(is_editable: bool, is_read_only: bool, has_selection: bool) -> Self {
         Self {
-            is_editable: editable,
-            is_read_only: read_only,
+            is_editable,
+            is_read_only,
             has_selection,
         }
     }
