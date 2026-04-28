@@ -8,7 +8,7 @@ use gpui::{
     App, AppContext, Application, Bounds, Context, Entity, KeyDownEvent, MouseMoveEvent,
     PathPromptOptions, Timer, TitlebarOptions, Window, WindowBounds, WindowOptions, px, size,
 };
-use zom_protocol::{CommandInvocation, FocusTarget, WorkspaceAction};
+use zom_protocol::{CommandInvocation, EditorInvocation, FocusTarget, WorkspaceAction};
 use zom_runtime::state::{
     DesktopAppState, DesktopNotificationEvent, DesktopNotificationLevel, DesktopNotificationSource,
     DesktopUiAction, PanelDock,
@@ -202,6 +202,19 @@ impl ZomRootView {
             DesktopUiAction::QuitApp => cx.quit(),
             DesktopUiAction::MinimizeWindow => window.minimize_window(),
             DesktopUiAction::OpenProjectPicker => self.open_project_from_title_bar(window, cx),
+            DesktopUiAction::WriteClipboard(text) => {
+                cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+            }
+            DesktopUiAction::PasteFromClipboard => {
+                if let Some(text) = clipboard_text(cx)
+                    && !text.is_empty()
+                {
+                    self.state.dispatch_command(CommandInvocation::from(
+                        EditorInvocation::insert_text(text),
+                    ));
+                    self.sync_child_views(cx);
+                }
+            }
         }
     }
 
@@ -578,7 +591,7 @@ impl ZomRootView {
         let Some(keystroke) = crate::input::to_core_keystroke(event) else {
             return false;
         };
-        // debug时才会出发
+        // 仅在调试键位模式开启时触发。
         // 统一通过通知机制提示用户，并写入通知侧边栏。
         let debug_keys = std::env::var_os("ZOM_DEBUG_KEYS").is_some();
         if debug_keys {
@@ -624,4 +637,8 @@ pub(super) fn dock_gap() -> f32 {
 /// 返回分割线的可命中热区尺寸。
 pub(super) fn splitter_hit_size() -> f32 {
     size::GAP_1
+}
+
+fn clipboard_text(cx: &mut Context<ZomRootView>) -> Option<String> {
+    cx.read_from_clipboard()?.text()
 }

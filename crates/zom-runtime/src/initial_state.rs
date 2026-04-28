@@ -44,6 +44,7 @@ impl DesktopAppState {
                 active_tab_index: None,
             },
             editor_states: HashMap::new(),
+            editor_histories: HashMap::new(),
             focused_target: FocusTarget::Editor,
             visible_panels: default_visible_panels(),
             active_overlay: None,

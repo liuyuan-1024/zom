@@ -11,16 +11,19 @@ use crate::state::{
 };
 
 mod command;
+mod editor_command;
 mod focus;
+mod history;
 mod notification;
 mod project;
+mod selection;
 mod tabs;
 
 #[cfg(test)]
 mod tests;
 
 /// 需要在 UI 层执行的副作用动作。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DesktopUiAction {
     /// 退出应用。
     QuitApp,
@@ -28,6 +31,10 @@ pub enum DesktopUiAction {
     MinimizeWindow,
     /// 打开项目目录选择器。
     OpenProjectPicker,
+    /// 将文本写入系统剪贴板。
+    WriteClipboard(String),
+    /// 从系统剪贴板读取文本并执行粘贴。
+    PasteFromClipboard,
 }
 
 /// 应用内通知等级。
@@ -157,6 +164,8 @@ pub struct DesktopAppState {
     pub pane: PaneState,
     /// 活跃标签页对应的编辑器状态仓库（key = buffer id）。
     pub(crate) editor_states: HashMap<BufferId, EditorState>,
+    /// 活跃标签页对应的编辑历史仓库（key = buffer id）。
+    pub(crate) editor_histories: HashMap<BufferId, history::EditorHistory>,
     /// 当前聚焦目标。
     pub focused_target: FocusTarget,
     /// 当前可见的工作台面板集合。
@@ -267,9 +276,11 @@ impl DesktopAppState {
 
     pub(super) fn remove_editor_state(&mut self, buffer_id: BufferId) {
         self.editor_states.remove(&buffer_id);
+        self.editor_histories.remove(&buffer_id);
     }
 
     pub(super) fn clear_editor_states(&mut self) {
         self.editor_states.clear();
+        self.editor_histories.clear();
     }
 }

@@ -1,6 +1,5 @@
 //! 命令解析与分发
 
-use zom_editor::apply_editor_invocation;
 use zom_input::resolve_default;
 use zom_protocol::{
     CommandInvocation, EditorInvocation, InputContext, InputResolution, Keystroke,
@@ -44,6 +43,7 @@ impl DesktopAppState {
             WorkspaceAction::MinimizeWindow => {
                 self.pending_ui_action = Some(DesktopUiAction::MinimizeWindow);
             }
+            WorkspaceAction::SaveActiveBuffer => self.save_active_editor_buffer(),
             WorkspaceAction::OpenProjectPicker => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
             }
@@ -54,26 +54,6 @@ impl DesktopAppState {
             WorkspaceAction::Tab(command) => self.dispatch_tab_action(command),
             WorkspaceAction::Notification(command) => self.dispatch_notification_action(command),
         }
-    }
-
-    /// 处理编辑器命令，并把结果写回当前活动标签页与工具栏状态。
-    fn dispatch_editor_invocation(&mut self, command: EditorInvocation) {
-        let Some(active_buffer_id) = self.active_buffer_id() else {
-            if self.pane.active_tab_index.is_some() {
-                self.pane.active_tab_index = None;
-                self.sync_tool_bar_with_active_tab();
-            }
-            return;
-        };
-        let Some(current_state) = self.take_editor_state(active_buffer_id) else {
-            self.pane.active_tab_index = None;
-            self.sync_tool_bar_with_active_tab();
-            return;
-        };
-
-        let result = apply_editor_invocation(&current_state, self.tool_bar.cursor, &command);
-        self.replace_editor_state(active_buffer_id, result.state);
-        self.sync_tool_bar_with_active_tab();
     }
 
     /// 处理文件树命令，并同步工作区状态。

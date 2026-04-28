@@ -1,8 +1,10 @@
-//! 项目切换与文件打开逻辑
+//! 项目切换、文件打开与保存逻辑
 
+use std::fs;
 use std::path::PathBuf;
 
 use zom_protocol::BufferId;
+use zom_text_tokens::{LF_CHAR, LineEnding};
 
 use crate::{
     buffer_preview,
@@ -10,7 +12,9 @@ use crate::{
     workspace_paths,
 };
 
-use super::DesktopAppState;
+use super::{
+    DesktopAppState, DesktopNotificationEvent, DesktopNotificationLevel, DesktopNotificationSource,
+};
 
 impl DesktopAppState {
     /// 切换当前工作区项目，并重建文件树。
@@ -65,6 +69,7 @@ impl DesktopAppState {
                 existing_tab.language = language;
                 existing_tab.line_ending = line_ending;
                 self.replace_editor_state(buffer_id, editor_state);
+                self.editor_histories.remove(&buffer_id);
             }
             self.pane.active_tab_index = Some(tab_index);
             self.sync_file_tree_with_active_tab();
@@ -95,4 +100,45 @@ impl DesktopAppState {
         self.sync_tool_bar_with_active_tab();
         true
     }
+
+    /// 保存当前活动标签页到磁盘。
+    pub(super) fn save_active_editor_buffer(&mut self) {
+        let Some(active_tab) = self.pane.active_tab().cloned() else {
+            return;
+        };
+        let Some(editor_state) = self.editor_state(active_tab.buffer_id).cloned() else {
+            return;
+        };
+
+        let absolute_path = workspace_paths::workspace_file_absolute_path(
+            &self.project_root,
+            &active_tab.relative_path,
+        );
+        let content = text_with_line_ending(&editor_state.text(), active_tab.line_ending());
+        let event = match fs::write(&absolute_path, content) {
+            Ok(_) => DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Info,
+                DesktopNotificationSource::Workspace,
+                format!("已保存 {}", active_tab.relative_path),
+            )
+            .is_user_initiated()
+            .with_dedupe_key(format!("workspace:save:{}", active_tab.relative_path)),
+            Err(error) => DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Error,
+                DesktopNotificationSource::Workspace,
+                format!("保存失败 {} ({error})", active_tab.relative_path),
+            )
+            .is_user_initiated()
+            .with_dedupe_key(format!("workspace:save:error:{}", active_tab.relative_path)),
+        };
+        self.publish_notification_event(event);
+    }
+}
+
+/// 按标签页记录的换行风格把内存文本编码为落盘文本。
+fn text_with_line_ending(text: &str, line_ending: LineEnding) -> String {
+    if matches!(line_ending, LineEnding::Lf) {
+        return text.to_string();
+    }
+    text.replace(LF_CHAR, line_ending.as_str())
 }

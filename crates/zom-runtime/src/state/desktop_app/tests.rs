@@ -11,6 +11,7 @@ use zom_protocol::{
     OverlayTarget, Position,
     command::{FileTreeAction, NotificationAction, TabAction, WorkspaceAction},
 };
+use zom_text_tokens::LineEnding;
 
 use super::{
     DesktopAppState, DesktopNotificationEvent, DesktopNotificationKind, DesktopNotificationLevel,
@@ -256,7 +257,7 @@ fn editor_command_updates_active_tab_buffer_and_cursor() {
     set_tabs(
         &mut state,
         vec![(
-            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
             zom_editor::EditorState::from_text("ab"),
         )],
     );
@@ -291,7 +292,7 @@ fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
     set_tabs(
         &mut state,
         vec![(
-            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
             zom_editor::EditorState::from_text("ab\ncd"),
         )],
     );
@@ -307,6 +308,13 @@ fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
             .selection,
         zom_protocol::Selection::new(Position::new(0, 0), Position::new(1, 2))
     );
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .doc_version,
+        1
+    );
     assert_eq!(state.tool_bar.cursor, Position::new(1, 2));
 }
 
@@ -316,7 +324,7 @@ fn plain_character_keystroke_in_editor_focus_inserts_text() {
     set_tabs(
         &mut state,
         vec![(
-            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
             zom_editor::EditorState::from_text("ab"),
         )],
     );
@@ -344,7 +352,7 @@ fn shift_left_then_backspace_deletes_selected_text_in_editor() {
     set_tabs(
         &mut state,
         vec![(
-            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), "LF"),
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
             zom_editor::EditorState::from_text("ab"),
         )],
     );
@@ -380,6 +388,217 @@ fn shift_left_then_backspace_deletes_selected_text_in_editor() {
         zom_protocol::Selection::caret(Position::new(0, 0))
     );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
+}
+
+#[test]
+fn undo_and_redo_restore_last_text_edit_transaction() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("ab"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 1);
+
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("X")));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "aXb"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Undo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "ab"
+    );
+    assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Redo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "aXb"
+    );
+    assert_eq!(state.tool_bar.cursor, Position::new(0, 2));
+}
+
+#[test]
+fn continuous_typing_merges_into_single_undo_step() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text(""),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 0);
+
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("a")));
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("b")));
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("c")));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "abc"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Undo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        ""
+    );
+    assert_eq!(state.tool_bar.cursor, Position::new(0, 0));
+}
+
+#[test]
+fn moving_cursor_breaks_typing_merge_group() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text(""),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 0);
+
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("a")));
+    state.dispatch_command(CommandInvocation::from(EditorAction::MoveLeft));
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("b")));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "ba"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Undo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "a"
+    );
+}
+
+#[test]
+fn copy_command_emits_clipboard_write_ui_action() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("abcd"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 3);
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectLeft));
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectLeft));
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Copy));
+
+    assert_eq!(
+        state.take_pending_ui_action(),
+        Some(DesktopUiAction::WriteClipboard("bc".into()))
+    );
+}
+
+#[test]
+fn cut_command_writes_clipboard_and_deletes_selected_text() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("abcd"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 3);
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectLeft));
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectLeft));
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Cut));
+
+    assert_eq!(
+        state.take_pending_ui_action(),
+        Some(DesktopUiAction::WriteClipboard("bc".into()))
+    );
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "ad"
+    );
+}
+
+#[test]
+fn paste_command_emits_clipboard_read_ui_action() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("ab"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 1);
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Paste));
+
+    assert_eq!(
+        state.take_pending_ui_action(),
+        Some(DesktopUiAction::PasteFromClipboard)
+    );
+}
+
+#[test]
+fn save_active_buffer_writes_current_text_with_original_line_ending() {
+    let workspace = create_temp_workspace("save-active-buffer");
+    let file_path = workspace.join("main.rs");
+    fs::write(&file_path, "a\r\nb\r\n").expect("write CRLF file");
+
+    let mut state = DesktopAppState::from_current_workspace();
+    state.switch_project(workspace.clone());
+    state.activate_file_tree_node("main.rs", FileTreeNodeKind::File);
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("x")));
+
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer));
+
+    let content = fs::read_to_string(&file_path).expect("read saved file");
+    assert_eq!(content, "xa\r\nb\r\n");
+
+    remove_temp_workspace(workspace);
 }
 
 #[test]
@@ -1020,7 +1239,7 @@ fn open_file_reads_from_selected_project_root() {
         .expect("active editor should exist");
     assert_eq!(active_editor.text.split('\n').next(), Some("fn main() {}"));
     assert_eq!(active_tab.language(), "Rust");
-    assert_eq!(active_tab.line_ending(), &expected_platform_line_ending());
+    assert_eq!(active_tab.line_ending(), expected_platform_line_ending());
     assert_eq!(state.tool_bar.cursor, Position::zero());
     assert_eq!(state.tool_bar.language, "Rust");
 
@@ -1071,7 +1290,11 @@ fn zom_runtime_test_tab(
     buffer_id: u64,
 ) -> (crate::state::TabState, zom_editor::EditorState) {
     (
-        runtime_test_tab_state(relative_path, zom_protocol::BufferId::new(buffer_id), "LF"),
+        runtime_test_tab_state(
+            relative_path,
+            zom_protocol::BufferId::new(buffer_id),
+            LineEnding::Lf,
+        ),
         zom_editor::EditorState::from_text("old"),
     )
 }
@@ -1079,14 +1302,14 @@ fn zom_runtime_test_tab(
 fn runtime_test_tab_state(
     relative_path: &str,
     buffer_id: zom_protocol::BufferId,
-    line_ending: &str,
+    line_ending: LineEnding,
 ) -> crate::state::TabState {
     crate::state::TabState {
         buffer_id,
         title: "old".into(),
         relative_path: relative_path.into(),
         language: crate::workspace_paths::language_from_path(relative_path),
-        line_ending: line_ending.into(),
+        line_ending,
     }
 }
 
@@ -1109,7 +1332,7 @@ fn zom_runtime_test_tab_with_text_and_cursor(
     let buffer_id = zom_protocol::BufferId::new((1000 + cursor_column).into());
     let line_ending = zom_text::detect_line_ending(&editor_state.text());
     (
-        runtime_test_tab_state(relative_path, buffer_id, &line_ending),
+        runtime_test_tab_state(relative_path, buffer_id, line_ending),
         editor_state,
     )
 }
@@ -1128,10 +1351,10 @@ fn set_tabs(
     }
 }
 
-fn expected_platform_line_ending() -> String {
+fn expected_platform_line_ending() -> LineEnding {
     if cfg!(windows) {
-        "CRLF".into()
+        LineEnding::Crlf
     } else {
-        "LF".into()
+        LineEnding::Lf
     }
 }
