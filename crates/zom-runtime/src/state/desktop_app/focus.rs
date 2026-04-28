@@ -20,13 +20,17 @@ impl DesktopAppState {
     /// 聚焦到指定悬浮层：显示并聚焦。
     pub(super) fn focus_overlay(&mut self, target: OverlayTarget) {
         self.active_overlay = Some(target);
+        if target == OverlayTarget::FindReplace {
+            self.focus_editor();
+            return;
+        }
         self.focused_target = target.into();
         self.pending_focus_target = Some(self.focused_target);
     }
 
     /// 关闭当前聚焦组件：优先关闭焦点悬浮层，其次关闭焦点面板，最后关闭当前标签页。
     pub(super) fn close_focused(&mut self) {
-        if self.focused_target.is_overlay() && self.active_overlay.is_some() {
+        if self.active_overlay.is_some() {
             self.active_overlay = None;
             self.focus_editor();
             return;

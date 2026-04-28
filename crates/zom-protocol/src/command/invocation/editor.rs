@@ -3,6 +3,8 @@
 /// 编辑器领域的无参动作语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EditorAction {
+    /// 打开当前活动编辑器的查找替换条。
+    OpenFindReplace,
     /// 插入换行。
     InsertNewline,
     /// 插入缩进。

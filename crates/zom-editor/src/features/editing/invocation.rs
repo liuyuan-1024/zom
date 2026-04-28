@@ -133,7 +133,8 @@ fn apply_action(
         EditorAction::DeleteForward => delete_forward(state, selection),
         EditorAction::DeleteWordBackward => delete_word_backward(state, selection),
         EditorAction::DeleteWordForward => delete_word_forward(state, selection),
-        EditorAction::Copy
+        EditorAction::OpenFindReplace
+        | EditorAction::Copy
         | EditorAction::Cut
         | EditorAction::Paste
         | EditorAction::Undo

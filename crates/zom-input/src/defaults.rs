@@ -86,6 +86,7 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "editor.paste" => Some(CommandInvocation::from(EditorAction::Paste)),
         "editor.undo" => Some(CommandInvocation::from(EditorAction::Undo)),
         "editor.redo" => Some(CommandInvocation::from(EditorAction::Redo)),
+        "editor.open_find_replace" => Some(CommandInvocation::from(EditorAction::OpenFindReplace)),
         "workspace.quit_app" => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),
         "workspace.minimize_window" => {
             Some(CommandInvocation::from(WorkspaceAction::MinimizeWindow))
@@ -95,9 +96,6 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         }
         "workspace.open_project_picker" => {
             Some(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
-        }
-        "workspace.open_find_replace" => {
-            Some(CommandInvocation::from(WorkspaceAction::OpenFindReplace))
         }
         "workspace.close_focused" => Some(CommandInvocation::from(WorkspaceAction::CloseFocused)),
         "workspace.focus_panel.editor" => Some(CommandInvocation::from(
@@ -357,7 +355,7 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         80,
     ),
     DefaultShortcutSpec::new(
-        CommandKindId("workspace.open_find_replace"),
+        CommandKindId("editor.open_find_replace"),
         ShortcutScope::Global,
         primary_char('f'),
         120,

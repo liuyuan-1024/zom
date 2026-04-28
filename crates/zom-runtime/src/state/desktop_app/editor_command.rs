@@ -50,6 +50,11 @@ impl DesktopAppState {
                 self.pending_ui_action = Some(DesktopUiAction::PasteFromClipboard);
                 current_state.clone()
             }
+            EditorInvocation::Action(EditorAction::OpenFindReplace) => {
+                self.focus_editor();
+                self.pending_ui_action = Some(DesktopUiAction::OpenFindReplace);
+                current_state.clone()
+            }
             EditorInvocation::Action(EditorAction::SelectAll) => {
                 self.select_all_in_editor(&current_state)
             }

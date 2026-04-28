@@ -981,15 +981,32 @@ fn keyboard_shortcut_can_request_open_project_picker_ui_action() {
 #[test]
 fn keyboard_shortcut_can_request_open_find_replace_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
-    let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::OpenFindReplace));
+    set_tabs(&mut state, vec![zom_runtime_test_tab("main.rs", 1)]);
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::FileTreePanel;
+    let keystroke = shortcut_for(CommandInvocation::from(EditorAction::OpenFindReplace));
 
     let handled = state.dispatch_keystroke(&keystroke);
 
     assert!(handled);
+    assert_eq!(state.focused_target, FocusTarget::Editor);
+    assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
     assert_eq!(
         state.take_pending_ui_action(),
         Some(DesktopUiAction::OpenFindReplace)
     );
+}
+
+#[test]
+fn keyboard_shortcut_open_find_replace_requires_active_tab() {
+    let mut state = DesktopAppState::from_current_workspace();
+    let keystroke = shortcut_for(CommandInvocation::from(EditorAction::OpenFindReplace));
+
+    let handled = state.dispatch_keystroke(&keystroke);
+
+    assert!(handled);
+    assert_eq!(state.take_pending_ui_action(), None);
+    assert_eq!(state.active_overlay, None);
 }
 
 #[test]

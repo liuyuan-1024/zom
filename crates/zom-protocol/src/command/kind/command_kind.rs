@@ -65,6 +65,8 @@ pub enum CommandKind {
     EditorUndo,
     /// 编辑器重做。
     EditorRedo,
+    /// 打开当前活动编辑器的查找替换条。
+    EditorOpenFindReplace,
     /// 编辑器查找下一个匹配项。
     EditorFindNext,
     /// 编辑器查找上一个匹配项。
@@ -81,8 +83,6 @@ pub enum CommandKind {
 
     /// 打开项目选择器。
     WorkspaceOpenProjectPicker,
-    /// 打开查找替换入口。
-    WorkspaceOpenFindReplace,
     /// 保存当前活动标签页。
     WorkspaceSaveActiveBuffer,
 

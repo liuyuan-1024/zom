@@ -47,9 +47,6 @@ impl DesktopAppState {
             WorkspaceAction::OpenProjectPicker => {
                 self.pending_ui_action = Some(DesktopUiAction::OpenProjectPicker);
             }
-            WorkspaceAction::OpenFindReplace => {
-                self.pending_ui_action = Some(DesktopUiAction::OpenFindReplace);
-            }
             WorkspaceAction::FocusPanel(target) => self.focus_panel(target),
             WorkspaceAction::FocusOverlay(target) => self.focus_overlay(target),
             WorkspaceAction::CloseFocused => self.close_focused(),

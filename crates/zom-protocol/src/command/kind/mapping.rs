@@ -60,6 +60,9 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorPaste => Some(CommandInvocation::from(EditorAction::Paste)),
         CommandKind::EditorUndo => Some(CommandInvocation::from(EditorAction::Undo)),
         CommandKind::EditorRedo => Some(CommandInvocation::from(EditorAction::Redo)),
+        CommandKind::EditorOpenFindReplace => {
+            Some(CommandInvocation::from(EditorAction::OpenFindReplace))
+        }
         CommandKind::EditorFindNext => None,
         CommandKind::EditorFindPrev => None,
         CommandKind::EditorReplaceNext => None,
@@ -70,9 +73,6 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         }
         CommandKind::WorkspaceOpenProjectPicker => {
             Some(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
-        }
-        CommandKind::WorkspaceOpenFindReplace => {
-            Some(CommandInvocation::from(WorkspaceAction::OpenFindReplace))
         }
         CommandKind::WorkspaceSaveActiveBuffer => {
             Some(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer))

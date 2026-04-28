@@ -185,6 +185,12 @@ pub const SPECS: &[CommandKindSpec] = &[
         "重做最近一次撤销的编辑。",
     ),
     CommandKindSpec::new(
+        CommandKind::EditorOpenFindReplace,
+        "editor.open_find_replace",
+        "打开查找替换",
+        "打开当前活动编辑器的查找替换条并保持编辑焦点。",
+    ),
+    CommandKindSpec::new(
         CommandKind::EditorFindNext,
         "editor.find_next",
         "查找下一个",

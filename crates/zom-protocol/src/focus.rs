@@ -30,6 +30,8 @@ pub enum FocusTarget {
     Palette,
     /// 设置悬浮层
     SettingsOverlay,
+    /// 查找替换悬浮层
+    FindReplaceOverlay,
 
     /// 文件树面板
     FileTreePanel,
@@ -51,10 +53,11 @@ pub enum FocusTarget {
 
 impl FocusTarget {
     /// 所有焦点目标。
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::Editor,
         Self::Palette,
         Self::SettingsOverlay,
+        Self::FindReplaceOverlay,
         Self::FileTreePanel,
         Self::GitPanel,
         Self::OutlinePanel,
@@ -109,7 +112,7 @@ impl FocusTarget {
 
     /// 判断当前目标是否属于悬浮层焦点。
     pub const fn is_overlay(self) -> bool {
-        matches!(self, Self::SettingsOverlay)
+        matches!(self, Self::SettingsOverlay | Self::FindReplaceOverlay)
     }
 
     /// 判断当前面板在应用启动时是否默认可见。
@@ -166,12 +169,15 @@ pub fn dock_targets(dock: PanelDock) -> &'static [FocusTarget] {
 pub enum OverlayTarget {
     /// 设置悬浮层。
     Settings,
+    /// 查找替换悬浮层。
+    FindReplace,
 }
 
 impl From<OverlayTarget> for FocusTarget {
     fn from(target: OverlayTarget) -> Self {
         match target {
             OverlayTarget::Settings => FocusTarget::SettingsOverlay,
+            OverlayTarget::FindReplace => FocusTarget::FindReplaceOverlay,
         }
     }
 }
