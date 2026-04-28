@@ -63,10 +63,19 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorOpenFindReplace => {
             Some(CommandInvocation::from(EditorAction::OpenFindReplace))
         }
-        CommandKind::EditorFindNext => None,
-        CommandKind::EditorFindPrev => None,
-        CommandKind::EditorReplaceNext => None,
-        CommandKind::EditorReplaceAll => None,
+        CommandKind::EditorToggleFindCaseSensitive => {
+            Some(CommandInvocation::from(EditorAction::ToggleFindCaseSensitive))
+        }
+        CommandKind::EditorToggleFindWholeWord => {
+            Some(CommandInvocation::from(EditorAction::ToggleFindWholeWord))
+        }
+        CommandKind::EditorToggleFindRegex => {
+            Some(CommandInvocation::from(EditorAction::ToggleFindRegex))
+        }
+        CommandKind::EditorFindNext => Some(CommandInvocation::from(EditorAction::FindNext)),
+        CommandKind::EditorFindPrev => Some(CommandInvocation::from(EditorAction::FindPrev)),
+        CommandKind::EditorReplaceNext => Some(CommandInvocation::from(EditorAction::ReplaceNext)),
+        CommandKind::EditorReplaceAll => Some(CommandInvocation::from(EditorAction::ReplaceAll)),
         CommandKind::WorkspaceQuitApp => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),
         CommandKind::WorkspaceMinimizeWindow => {
             Some(CommandInvocation::from(WorkspaceAction::MinimizeWindow))

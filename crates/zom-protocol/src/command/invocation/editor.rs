@@ -5,6 +5,20 @@
 pub enum EditorAction {
     /// 打开当前活动编辑器的查找替换条。
     OpenFindReplace,
+    /// 查找条：查找上一个。
+    FindPrev,
+    /// 查找条：查找下一个。
+    FindNext,
+    /// 查找条：替换下一个。
+    ReplaceNext,
+    /// 查找条：替换全部。
+    ReplaceAll,
+    /// 查找条：切换大小写匹配。
+    ToggleFindCaseSensitive,
+    /// 查找条：切换整词匹配。
+    ToggleFindWholeWord,
+    /// 查找条：切换正则模式。
+    ToggleFindRegex,
     /// 插入换行。
     InsertNewline,
     /// 插入缩进。

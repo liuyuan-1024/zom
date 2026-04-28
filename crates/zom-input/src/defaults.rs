@@ -87,6 +87,19 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "editor.undo" => Some(CommandInvocation::from(EditorAction::Undo)),
         "editor.redo" => Some(CommandInvocation::from(EditorAction::Redo)),
         "editor.open_find_replace" => Some(CommandInvocation::from(EditorAction::OpenFindReplace)),
+        "editor.find_replace.toggle_case_sensitive" => Some(CommandInvocation::from(
+            EditorAction::ToggleFindCaseSensitive,
+        )),
+        "editor.find_replace.toggle_whole_word" => Some(CommandInvocation::from(
+            EditorAction::ToggleFindWholeWord,
+        )),
+        "editor.find_replace.toggle_regex" => {
+            Some(CommandInvocation::from(EditorAction::ToggleFindRegex))
+        }
+        "editor.find_prev" => Some(CommandInvocation::from(EditorAction::FindPrev)),
+        "editor.find_next" => Some(CommandInvocation::from(EditorAction::FindNext)),
+        "editor.replace_next" => Some(CommandInvocation::from(EditorAction::ReplaceNext)),
+        "editor.replace_all" => Some(CommandInvocation::from(EditorAction::ReplaceAll)),
         "workspace.quit_app" => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),
         "workspace.minimize_window" => {
             Some(CommandInvocation::from(WorkspaceAction::MinimizeWindow))
@@ -361,6 +374,48 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         120,
     ),
     DefaultShortcutSpec::new(
+        CommandKindId("editor.find_replace.toggle_case_sensitive"),
+        ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
+        alt_char('c'),
+        100,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.find_replace.toggle_whole_word"),
+        ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
+        alt_char('w'),
+        100,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.find_replace.toggle_regex"),
+        ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
+        alt_char('r'),
+        100,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.find_prev"),
+        ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
+        shift(KeyCode::Enter),
+        100,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.find_next"),
+        ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
+        plain(KeyCode::Enter),
+        100,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.replace_next"),
+        ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
+        alt(KeyCode::Enter),
+        100,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("editor.replace_all"),
+        ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
+        primary_alt(KeyCode::Enter),
+        100,
+    ),
+    DefaultShortcutSpec::new(
         CommandKindId("workspace.save_active_buffer"),
         ShortcutScope::Global,
         primary_char('s'),
@@ -535,6 +590,21 @@ const fn plain(key: KeyCode) -> Keystroke {
 
 const fn shift(key: KeyCode) -> Keystroke {
     Keystroke::new(key, Modifiers::new(false, false, true, false))
+}
+
+const fn alt(key: KeyCode) -> Keystroke {
+    Keystroke::new(key, Modifiers::new(false, true, false, false))
+}
+
+const fn alt_char(c: char) -> Keystroke {
+    Keystroke::new(KeyCode::Char(c), Modifiers::new(false, true, false, false))
+}
+
+const fn primary_alt(key: KeyCode) -> Keystroke {
+    Keystroke::new(
+        key,
+        merge_modifiers(primary_modifier(), Modifiers::new(false, true, false, false)),
+    )
 }
 
 const fn primary_char(c: char) -> Keystroke {

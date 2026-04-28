@@ -67,6 +67,12 @@ pub enum CommandKind {
     EditorRedo,
     /// 打开当前活动编辑器的查找替换条。
     EditorOpenFindReplace,
+    /// 查找条切换大小写匹配。
+    EditorToggleFindCaseSensitive,
+    /// 查找条切换整词匹配。
+    EditorToggleFindWholeWord,
+    /// 查找条切换正则模式。
+    EditorToggleFindRegex,
     /// 编辑器查找下一个匹配项。
     EditorFindNext,
     /// 编辑器查找上一个匹配项。

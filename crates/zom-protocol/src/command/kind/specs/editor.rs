@@ -191,6 +191,24 @@ pub const SPECS: &[CommandKindSpec] = &[
         "打开当前活动编辑器的查找替换条并保持编辑焦点。",
     ),
     CommandKindSpec::new(
+        CommandKind::EditorToggleFindCaseSensitive,
+        "editor.find_replace.toggle_case_sensitive",
+        "切换大小写匹配",
+        "切换查找替换的大小写匹配选项。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorToggleFindWholeWord,
+        "editor.find_replace.toggle_whole_word",
+        "切换整词匹配",
+        "切换查找替换的整词匹配选项。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorToggleFindRegex,
+        "editor.find_replace.toggle_regex",
+        "切换正则模式",
+        "切换查找替换的正则匹配模式。",
+    ),
+    CommandKindSpec::new(
         CommandKind::EditorFindNext,
         "editor.find_next",
         "查找下一个",

@@ -134,6 +134,13 @@ fn apply_action(
         EditorAction::DeleteWordBackward => delete_word_backward(state, selection),
         EditorAction::DeleteWordForward => delete_word_forward(state, selection),
         EditorAction::OpenFindReplace
+        | EditorAction::FindPrev
+        | EditorAction::FindNext
+        | EditorAction::ReplaceNext
+        | EditorAction::ReplaceAll
+        | EditorAction::ToggleFindCaseSensitive
+        | EditorAction::ToggleFindWholeWord
+        | EditorAction::ToggleFindRegex
         | EditorAction::Copy
         | EditorAction::Cut
         | EditorAction::Paste
