@@ -698,6 +698,82 @@ fn save_active_buffer_writes_current_text_with_original_line_ending() {
 }
 
 #[test]
+fn editing_text_writes_draft_for_active_buffer() {
+    let workspace = create_temp_workspace("draft-write-on-edit");
+    fs::write(workspace.join("main.rs"), "ab").expect("write main.rs");
+
+    let mut state = DesktopAppState::from_current_workspace();
+    state.switch_project(workspace.clone());
+    state.activate_file_tree_node("main.rs", FileTreeNodeKind::File);
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("x")));
+
+    let draft_path = crate::draft_store::draft_file_path(&state.project_root, "main.rs");
+    let draft = fs::read_to_string(draft_path).expect("draft should be persisted");
+    assert_eq!(draft, "xab");
+
+    remove_temp_workspace(workspace);
+}
+
+#[test]
+fn opening_file_restores_unsaved_draft_content() {
+    let workspace = create_temp_workspace("draft-restore-on-open");
+    fs::write(workspace.join("main.rs"), "disk").expect("write main.rs");
+
+    let mut first_state = DesktopAppState::from_current_workspace();
+    first_state.switch_project(workspace.clone());
+    first_state.activate_file_tree_node("main.rs", FileTreeNodeKind::File);
+    first_state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("x")));
+    assert_eq!(
+        first_state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "xdisk"
+    );
+
+    let mut second_state = DesktopAppState::from_current_workspace();
+    second_state.switch_project(workspace.clone());
+    second_state.activate_file_tree_node("main.rs", FileTreeNodeKind::File);
+
+    assert_eq!(
+        second_state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "xdisk"
+    );
+    assert!(
+        second_state
+            .notifications
+            .iter()
+            .any(|item| item.message.contains("已恢复未保存草稿 main.rs"))
+    );
+
+    remove_temp_workspace(workspace);
+}
+
+#[test]
+fn saving_file_clears_recovered_draft() {
+    let workspace = create_temp_workspace("draft-clear-on-save");
+    fs::write(workspace.join("main.rs"), "ab").expect("write main.rs");
+
+    let mut state = DesktopAppState::from_current_workspace();
+    state.switch_project(workspace.clone());
+    state.activate_file_tree_node("main.rs", FileTreeNodeKind::File);
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("x")));
+    let draft_path = crate::draft_store::draft_file_path(&state.project_root, "main.rs");
+    assert!(draft_path.exists());
+
+    state.dispatch_command(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer));
+
+    assert!(!draft_path.exists());
+    let saved = fs::read_to_string(workspace.join("main.rs")).expect("saved file should exist");
+    assert_eq!(saved, "xab");
+
+    remove_temp_workspace(workspace);
+}
+
+#[test]
 fn editor_command_without_active_tab_is_noop() {
     let mut state = DesktopAppState::from_current_workspace();
     state.pane.tabs.clear();
@@ -1378,6 +1454,8 @@ fn create_temp_workspace(name: &str) -> PathBuf {
 }
 
 fn remove_temp_workspace(path: PathBuf) {
+    let draft_root = crate::draft_store::workspace_draft_root(&path);
+    let _ = fs::remove_dir_all(draft_root);
     fs::remove_dir_all(path).expect("remove temp workspace");
 }
 

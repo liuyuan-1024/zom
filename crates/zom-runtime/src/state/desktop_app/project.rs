@@ -3,11 +3,13 @@
 use std::fs;
 use std::path::PathBuf;
 
+use zom_editor::EditorState;
 use zom_protocol::BufferId;
 use zom_text_tokens::{LF_CHAR, LineEnding};
 
 use crate::{
     buffer_preview,
+    draft_store,
     state::{FileTreeNodeKind, FileTreeState, TabState},
     workspace_paths,
 };
@@ -49,13 +51,14 @@ impl DesktopAppState {
         let absolute_path =
             workspace_paths::workspace_file_absolute_path(&self.project_root, relative_path);
         let Ok(buffer_preview::BufferPreview {
-            editor_state,
+            mut editor_state,
             line_ending,
             ..
         }) = buffer_preview::load_buffer_preview(&absolute_path)
         else {
             return false;
         };
+        self.restore_editor_draft_if_exists(relative_path, &mut editor_state);
         let language = workspace_paths::language_from_path(relative_path);
 
         if let Some(tab_index) = self
@@ -116,13 +119,31 @@ impl DesktopAppState {
         );
         let content = text_with_line_ending(&editor_state.text(), active_tab.line_ending());
         let event = match fs::write(&absolute_path, content) {
-            Ok(_) => DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Info,
-                DesktopNotificationSource::Workspace,
-                format!("已保存 {}", active_tab.relative_path),
-            )
-            .is_user_initiated()
-            .with_dedupe_key(format!("workspace:save:{}", active_tab.relative_path)),
+            Ok(_) => {
+                if let Err(error) = draft_store::remove_draft(&self.project_root, &active_tab.relative_path) {
+                    self.publish_notification_event(
+                        DesktopNotificationEvent::new(
+                            DesktopNotificationLevel::Warning,
+                            DesktopNotificationSource::System,
+                            format!(
+                                "草稿清理失败 {} ({error})",
+                                active_tab.relative_path
+                            ),
+                        )
+                        .with_dedupe_key(format!(
+                            "workspace:draft:clear:error:{}",
+                            active_tab.relative_path
+                        )),
+                    );
+                }
+                DesktopNotificationEvent::new(
+                    DesktopNotificationLevel::Info,
+                    DesktopNotificationSource::Workspace,
+                    format!("已保存 {}", active_tab.relative_path),
+                )
+                .is_user_initiated()
+                .with_dedupe_key(format!("workspace:save:{}", active_tab.relative_path))
+            }
             Err(error) => DesktopNotificationEvent::new(
                 DesktopNotificationLevel::Error,
                 DesktopNotificationSource::Workspace,
@@ -132,6 +153,56 @@ impl DesktopAppState {
             .with_dedupe_key(format!("workspace:save:error:{}", active_tab.relative_path)),
         };
         self.publish_notification_event(event);
+    }
+
+    pub(super) fn persist_editor_draft(&mut self, buffer_id: BufferId, state: &EditorState) {
+        let Some(relative_path) = self
+            .pane
+            .tabs
+            .iter()
+            .find(|tab| tab.buffer_id == buffer_id)
+            .map(|tab| tab.relative_path.clone())
+        else {
+            return;
+        };
+
+        if let Err(error) = draft_store::store_draft(&self.project_root, &relative_path, &state.text()) {
+            self.publish_notification_event(
+                DesktopNotificationEvent::new(
+                    DesktopNotificationLevel::Warning,
+                    DesktopNotificationSource::System,
+                    format!("草稿自动保存失败 {} ({error})", relative_path),
+                )
+                .with_dedupe_key(format!("workspace:draft:write:error:{}", relative_path)),
+            );
+        }
+    }
+
+    fn restore_editor_draft_if_exists(&mut self, relative_path: &str, editor_state: &mut EditorState) {
+        match draft_store::load_draft(&self.project_root, relative_path) {
+            Ok(Some(draft_text)) if draft_text != editor_state.text() => {
+                *editor_state = EditorState::from_text(draft_text);
+                self.publish_notification_event(
+                    DesktopNotificationEvent::new(
+                        DesktopNotificationLevel::Info,
+                        DesktopNotificationSource::Workspace,
+                        format!("已恢复未保存草稿 {}", relative_path),
+                    )
+                    .with_dedupe_key(format!("workspace:draft:restore:{}", relative_path)),
+                );
+            }
+            Ok(_) => {}
+            Err(error) => {
+                self.publish_notification_event(
+                    DesktopNotificationEvent::new(
+                        DesktopNotificationLevel::Warning,
+                        DesktopNotificationSource::System,
+                        format!("草稿读取失败 {} ({error})", relative_path),
+                    )
+                    .with_dedupe_key(format!("workspace:draft:read:error:{}", relative_path)),
+                );
+            }
+        }
     }
 }
 
