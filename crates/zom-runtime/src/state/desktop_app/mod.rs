@@ -12,6 +12,7 @@ use crate::state::{
 
 mod command;
 mod focus;
+mod notification;
 mod project;
 mod tabs;
 
@@ -27,6 +28,107 @@ pub enum DesktopUiAction {
     MinimizeWindow,
     /// 打开项目目录选择器。
     OpenProjectPicker,
+}
+
+/// 应用内通知等级。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DesktopNotificationLevel {
+    /// 常规提示信息。
+    Info,
+    /// 警告提示信息。
+    Warning,
+    /// 错误提示信息。
+    Error,
+}
+
+/// 通知事件来源。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DesktopNotificationSource {
+    /// 工作台行为（打开项目、面板切换等）。
+    Workspace,
+    /// 系统内部事件。
+    System,
+    /// 调试辅助事件。
+    Debug,
+}
+
+/// 通知类型（用于策略路由）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DesktopNotificationKind {
+    /// 常规提示。
+    General,
+    /// 过程型进度。
+    Progress,
+}
+
+/// 一次待分发的通知事件输入。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DesktopNotificationEvent {
+    /// 通知等级。
+    pub level: DesktopNotificationLevel,
+    /// 事件来源。
+    pub source: DesktopNotificationSource,
+    /// 事件类型。
+    pub kind: DesktopNotificationKind,
+    /// 提示文案。
+    pub message: String,
+    /// 是否属于“用户主动触发动作”的反馈。
+    pub user_initiated: bool,
+    /// 去重键（同键短窗口内聚合）。
+    pub dedupe_key: Option<String>,
+}
+
+impl DesktopNotificationEvent {
+    /// 创建一条常规通知事件。
+    pub fn new(
+        level: DesktopNotificationLevel,
+        source: DesktopNotificationSource,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            level,
+            source,
+            kind: DesktopNotificationKind::General,
+            message: message.into(),
+            user_initiated: false,
+            dedupe_key: None,
+        }
+    }
+
+    /// 标记该事件为用户主动触发反馈。
+    pub fn user_initiated(mut self) -> Self {
+        self.user_initiated = true;
+        self
+    }
+
+    /// 为事件设置去重键。
+    pub fn with_dedupe_key(mut self, dedupe_key: impl Into<String>) -> Self {
+        self.dedupe_key = Some(dedupe_key.into());
+        self
+    }
+}
+
+/// 通知侧边栏和悬浮提示共享的通知实体。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DesktopNotification {
+    /// 通知 id（按写入顺序递增）。
+    pub id: u64,
+    /// 通知等级。
+    pub level: DesktopNotificationLevel,
+    /// 事件来源。
+    pub source: DesktopNotificationSource,
+    /// 提示文案。
+    pub message: String,
+    /// 首次写入时间戳（毫秒）。
+    pub created_at_ms: u128,
+    /// 最近一次聚合时间戳（毫秒）。
+    pub updated_at_ms: u128,
+    /// 是否已读。
+    pub is_read: bool,
+    /// 去重键（同键在短窗口内聚合）。
+    pub dedupe_key: Option<String>,
+    /// 聚合计数（最小为 1）。
+    pub occurrence_count: u32,
 }
 
 /// 当前激活编辑器的渲染快照（面向 UI，只读）。
@@ -65,10 +167,24 @@ pub struct DesktopAppState {
     pub project_name: String,
     /// 当前打开项目的根目录绝对路径。
     pub project_root: PathBuf,
+    /// 通知侧边栏持久化列表（按时间顺序追加）。
+    pub notifications: Vec<DesktopNotification>,
+    /// 当前展示中的悬浮提示（toast）。
+    pub active_toast_notification: Option<DesktopNotification>,
+    /// 当前状态栏展示中的通知（持续状态提示）。
+    pub active_status_notification: Option<DesktopNotification>,
+    /// 通知面板未读数量。
+    pub unread_notification_count: usize,
+    /// 通知面板当前选中的通知 id。
+    pub(crate) selected_notification_id: Option<u64>,
+    /// 下一帧通知面板需要选中的通知 id。
+    pub(crate) pending_notification_selection_id: Option<u64>,
     /// 下一帧需要应用的焦点请求（仅应用层内部可写）。
     pub(crate) pending_focus_target: Option<FocusTarget>,
     /// 下一帧需要由 UI 层执行的一次性动作。
     pub(crate) pending_ui_action: Option<DesktopUiAction>,
+    /// 下一条通知 id（单调递增）。
+    pub(crate) next_notification_id: u64,
 }
 
 impl DesktopAppState {
@@ -114,6 +230,11 @@ impl DesktopAppState {
     /// 消费一次待处理 UI 动作（供 UI 层在下一帧应用）。
     pub fn take_pending_ui_action(&mut self) -> Option<DesktopUiAction> {
         self.pending_ui_action.take()
+    }
+
+    /// 消费一次通知面板待选中通知 id（供 UI 层在下一帧应用）。
+    pub fn take_pending_notification_selection_id(&mut self) -> Option<u64> {
+        self.pending_notification_selection_id.take()
     }
 
     /// 返回当前激活编辑器的只读快照（用于渲染层）。

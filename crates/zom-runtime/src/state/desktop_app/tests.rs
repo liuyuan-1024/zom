@@ -7,10 +7,13 @@ use std::{
 use zom_protocol::{
     CommandInvocation, EditorAction, EditorInvocation, FocusTarget, KeyCode, Keystroke, Modifiers,
     OverlayTarget, Position,
-    command::{FileTreeAction, TabAction, WorkspaceAction},
+    command::{FileTreeAction, NotificationAction, TabAction, WorkspaceAction},
 };
 
-use super::{DesktopAppState, DesktopUiAction};
+use super::{
+    DesktopAppState, DesktopNotificationEvent, DesktopNotificationKind, DesktopNotificationLevel,
+    DesktopNotificationSource, DesktopUiAction,
+};
 use crate::state::{FileTreeNodeKind, PanelDock};
 
 fn shortcut_for(command: CommandInvocation) -> Keystroke {
@@ -580,6 +583,301 @@ fn keyboard_shortcut_can_focus_settings_overlay() {
         Some(FocusTarget::SettingsOverlay)
     );
     assert_eq!(state.take_pending_ui_action(), None);
+}
+
+#[test]
+fn push_notification_sets_active_toast_and_persists_history() {
+    let mut state = DesktopAppState::from_current_workspace();
+
+    let first_id = state.push_notification(DesktopNotificationLevel::Info, "first");
+    let second_id = state.push_notification(DesktopNotificationLevel::Warning, "second");
+
+    assert_eq!(first_id, 1);
+    assert_eq!(second_id, 2);
+    assert_eq!(state.notifications.len(), 2);
+    assert_eq!(state.notifications[0].message, "first");
+    assert_eq!(state.notifications[1].message, "second");
+    assert_eq!(
+        state.notifications[1].level,
+        DesktopNotificationLevel::Warning
+    );
+    assert_eq!(
+        state
+            .active_toast_notification
+            .as_ref()
+            .map(|notification| notification.message.as_str()),
+        Some("second")
+    );
+    assert_eq!(state.unread_notification_count, 2);
+}
+
+#[test]
+fn info_event_without_user_initiated_does_not_trigger_toast() {
+    let mut state = DesktopAppState::from_current_workspace();
+
+    state.publish_notification_event(DesktopNotificationEvent::new(
+        DesktopNotificationLevel::Info,
+        DesktopNotificationSource::Workspace,
+        "background refreshed",
+    ));
+
+    assert_eq!(state.notifications.len(), 1);
+    assert!(state.active_toast_notification.is_none());
+}
+
+#[test]
+fn info_event_with_user_initiated_triggers_toast() {
+    let mut state = DesktopAppState::from_current_workspace();
+
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Info,
+            DesktopNotificationSource::Workspace,
+            "opened project",
+        )
+        .user_initiated(),
+    );
+
+    assert_eq!(state.notifications.len(), 1);
+    assert_eq!(
+        state
+            .active_toast_notification
+            .as_ref()
+            .map(|notification| notification.message.as_str()),
+        Some("opened project")
+    );
+}
+
+#[test]
+fn dedupe_event_aggregates_count_and_avoids_second_toast() {
+    let mut state = DesktopAppState::from_current_workspace();
+
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Warning,
+            DesktopNotificationSource::Workspace,
+            "indexing slow",
+        )
+        .with_dedupe_key("workspace.indexing.slow"),
+    );
+    let first_toast_id = state
+        .active_toast_notification
+        .as_ref()
+        .map(|notification| notification.id);
+    state.clear_active_toast_notification();
+
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Warning,
+            DesktopNotificationSource::Workspace,
+            "indexing slow",
+        )
+        .with_dedupe_key("workspace.indexing.slow"),
+    );
+
+    assert_eq!(state.notifications.len(), 1);
+    assert_eq!(state.notifications[0].occurrence_count, 2);
+    assert_eq!(state.active_toast_notification, None);
+    assert_eq!(first_toast_id, Some(state.notifications[0].id));
+}
+
+#[test]
+fn progress_event_updates_status_bar_only() {
+    let mut state = DesktopAppState::from_current_workspace();
+    let mut event = DesktopNotificationEvent::new(
+        DesktopNotificationLevel::Info,
+        DesktopNotificationSource::System,
+        "indexing 12%",
+    );
+    event.kind = DesktopNotificationKind::Progress;
+
+    state.publish_notification_event(event);
+
+    assert!(state.notifications.is_empty());
+    assert!(state.active_toast_notification.is_none());
+    assert_eq!(
+        state
+            .active_status_notification
+            .as_ref()
+            .map(|notification| notification.message.as_str()),
+        Some("indexing 12%")
+    );
+}
+
+#[test]
+fn notification_command_mark_all_read_clears_unread_counter() {
+    let mut state = DesktopAppState::from_current_workspace();
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Warning,
+            DesktopNotificationSource::Workspace,
+            "first warning",
+        )
+        .with_dedupe_key("warn.first"),
+    );
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Error,
+            DesktopNotificationSource::Workspace,
+            "second error",
+        )
+        .with_dedupe_key("error.second"),
+    );
+
+    state.handle_command(CommandInvocation::from(NotificationAction::MarkAllRead));
+
+    assert_eq!(state.unread_notification_count, 0);
+    assert!(
+        state
+            .notifications
+            .iter()
+            .all(|notification| notification.is_read)
+    );
+}
+
+#[test]
+fn notification_command_clear_read_keeps_only_unread_items() {
+    let mut state = DesktopAppState::from_current_workspace();
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Warning,
+            DesktopNotificationSource::Workspace,
+            "keep me unread",
+        )
+        .with_dedupe_key("warn.unread"),
+    );
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Info,
+            DesktopNotificationSource::Workspace,
+            "will be read",
+        )
+        .with_dedupe_key("info.read"),
+    );
+    state.notifications[1].is_read = true;
+    state.unread_notification_count = 1;
+
+    state.handle_command(CommandInvocation::from(NotificationAction::ClearRead));
+
+    assert_eq!(state.notifications.len(), 1);
+    assert_eq!(state.notifications[0].message, "keep me unread");
+    assert_eq!(state.unread_notification_count, 1);
+}
+
+#[test]
+fn notification_command_clear_all_empties_history_and_status() {
+    let mut state = DesktopAppState::from_current_workspace();
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Error,
+            DesktopNotificationSource::Workspace,
+            "fatal issue",
+        )
+        .with_dedupe_key("error.fatal"),
+    );
+    assert!(!state.notifications.is_empty());
+    assert!(state.active_status_notification.is_some());
+
+    state.handle_command(CommandInvocation::from(NotificationAction::ClearAll));
+
+    assert!(state.notifications.is_empty());
+    assert!(state.active_status_notification.is_none());
+    assert!(state.active_toast_notification.is_none());
+    assert_eq!(state.unread_notification_count, 0);
+}
+
+#[test]
+fn focus_unread_error_notification_sets_focus_and_selection_target() {
+    let mut state = DesktopAppState::from_current_workspace();
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Info,
+            DesktopNotificationSource::Workspace,
+            "normal info",
+        )
+        .with_dedupe_key("info.1"),
+    );
+    let error_id = state
+        .publish_notification_event(
+            DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Error,
+                DesktopNotificationSource::Workspace,
+                "critical build error",
+            )
+            .with_dedupe_key("error.critical"),
+        )
+        .expect("error notification should be persisted");
+
+    state.handle_command(CommandInvocation::from(
+        NotificationAction::FocusUnreadError,
+    ));
+
+    assert_eq!(state.focused_target, FocusTarget::NotificationPanel);
+    assert_eq!(
+        state.take_pending_focus_target(),
+        Some(FocusTarget::NotificationPanel)
+    );
+    assert_eq!(
+        state.take_pending_notification_selection_id(),
+        Some(error_id)
+    );
+}
+
+#[test]
+fn notification_selection_commands_move_between_rows() {
+    let mut state = DesktopAppState::from_current_workspace();
+    let newest_id = state
+        .publish_notification_event(
+            DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Info,
+                DesktopNotificationSource::Workspace,
+                "newest",
+            )
+            .with_dedupe_key("n.newest"),
+        )
+        .expect("newest id");
+    let middle_id = state
+        .publish_notification_event(
+            DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Info,
+                DesktopNotificationSource::Workspace,
+                "middle",
+            )
+            .with_dedupe_key("n.middle"),
+        )
+        .expect("middle id");
+    let oldest_id = state
+        .publish_notification_event(
+            DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Info,
+                DesktopNotificationSource::Workspace,
+                "oldest",
+            )
+            .with_dedupe_key("n.oldest"),
+        )
+        .expect("oldest id");
+
+    // 面板显示顺序为 newest -> middle -> oldest，默认从首行开始。
+    state.handle_command(CommandInvocation::from(NotificationAction::SelectNext));
+    assert_eq!(
+        state.take_pending_notification_selection_id(),
+        Some(middle_id)
+    );
+    state.handle_command(CommandInvocation::from(NotificationAction::SelectNext));
+    assert_eq!(
+        state.take_pending_notification_selection_id(),
+        Some(newest_id)
+    );
+    state.handle_command(CommandInvocation::from(NotificationAction::SelectPrev));
+    assert_eq!(
+        state.take_pending_notification_selection_id(),
+        Some(middle_id)
+    );
+    state.handle_command(CommandInvocation::from(NotificationAction::SelectPrev));
+    assert_eq!(
+        state.take_pending_notification_selection_id(),
+        Some(oldest_id)
+    );
 }
 
 #[test]

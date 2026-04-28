@@ -3,7 +3,10 @@
 mod desktop_app;
 mod title_bar;
 mod tool_bar;
-pub use desktop_app::{ActiveEditorSnapshot, DesktopAppState, DesktopUiAction};
+pub use desktop_app::{
+    ActiveEditorSnapshot, DesktopAppState, DesktopNotification, DesktopNotificationEvent,
+    DesktopNotificationKind, DesktopNotificationLevel, DesktopNotificationSource, DesktopUiAction,
+};
 pub use title_bar::{TitleBarAction, TitleBarState};
 pub use tool_bar::{ToolBarEntry, ToolBarState};
 pub use zom_protocol::{PanelDock, dock_targets, panel_dock};

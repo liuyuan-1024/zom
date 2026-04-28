@@ -4,7 +4,7 @@ use zom_editor::apply_editor_invocation;
 use zom_input::resolve_default;
 use zom_protocol::{
     CommandInvocation, EditorInvocation, InputContext, InputResolution, Keystroke,
-    command::{FileTreeAction, WorkspaceAction},
+    command::{FileTreeAction, NotificationAction, WorkspaceAction},
 };
 
 use super::{DesktopAppState, DesktopUiAction};
@@ -52,6 +52,7 @@ impl DesktopAppState {
             WorkspaceAction::CloseFocused => self.close_focused(),
             WorkspaceAction::FileTree(command) => self.handle_file_tree_command(command),
             WorkspaceAction::Tab(command) => self.handle_tab_command(command),
+            WorkspaceAction::Notification(command) => self.handle_notification_command(command),
         }
     }
 
@@ -89,6 +90,18 @@ impl DesktopAppState {
                     self.file_tree.select_next_visible();
                 }
             }
+        }
+    }
+
+    /// 处理通知中心命令。
+    fn handle_notification_command(&mut self, command: NotificationAction) {
+        match command {
+            NotificationAction::MarkAllRead => self.mark_all_notifications_read(),
+            NotificationAction::ClearAll => self.clear_notifications(),
+            NotificationAction::ClearRead => self.clear_read_notifications(),
+            NotificationAction::FocusUnreadError => self.focus_unread_error_notification(),
+            NotificationAction::SelectPrev => self.select_prev_notification(),
+            NotificationAction::SelectNext => self.select_next_notification(),
         }
     }
 }

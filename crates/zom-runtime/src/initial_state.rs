@@ -47,8 +47,15 @@ impl DesktopAppState {
             focused_target: FocusTarget::Editor,
             visible_panels: default_visible_panels(),
             active_overlay: None,
+            notifications: Vec::new(),
+            active_toast_notification: None,
+            active_status_notification: None,
+            unread_notification_count: 0,
+            selected_notification_id: None,
+            pending_notification_selection_id: None,
             pending_focus_target: Some(FocusTarget::Editor),
             pending_ui_action: None,
+            next_notification_id: 1,
         }
     }
 }
