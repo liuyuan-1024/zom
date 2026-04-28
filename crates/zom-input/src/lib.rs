@@ -70,7 +70,7 @@ fn resolve_editor_text_fallback(input: &Keystroke, context: &InputContext) -> In
 mod tests {
     use zom_protocol::{
         CommandInvocation, EditorAction, FocusTarget, KeyCode, Keystroke, Modifiers,
-        WorkspaceAction,
+        NotificationAction, WorkspaceAction,
     };
 
     use super::{InputContext, InputResolution, default_shortcut_registry, resolve_default};
@@ -125,6 +125,29 @@ mod tests {
         assert_eq!(
             resolve_default(&enter, &InputContext::new(FocusTarget::Editor)),
             InputResolution::command(CommandInvocation::from(EditorAction::InsertNewline))
+        );
+    }
+
+    #[test]
+    fn same_keystroke_maps_to_different_commands_by_focus_target() {
+        let enter = Keystroke::new(KeyCode::Enter, Modifiers::default());
+        assert_eq!(
+            resolve_default(&enter, &InputContext::new(FocusTarget::FileTreePanel)),
+            InputResolution::command(CommandInvocation::from(
+                zom_protocol::FileTreeAction::ActivateSelection
+            ))
+        );
+        assert_eq!(
+            resolve_default(&enter, &InputContext::new(FocusTarget::NotificationPanel)),
+            InputResolution::command(CommandInvocation::from(
+                NotificationAction::FocusUnreadError
+            ))
+        );
+        assert_eq!(
+            resolve_default(&enter, &InputContext::new(FocusTarget::TerminalPanel)),
+            InputResolution::command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+                FocusTarget::Editor
+            )))
         );
     }
 }

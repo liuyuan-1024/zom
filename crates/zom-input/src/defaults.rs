@@ -439,6 +439,19 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         plain(KeyCode::Down),
         110,
     ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.notification.focus_unread_error"),
+        ShortcutScope::Focus(FocusTarget::NotificationPanel),
+        plain(KeyCode::Enter),
+        110,
+    ),
+    // terminal scoped (placeholder)
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.focus_panel.editor"),
+        ShortcutScope::Focus(FocusTarget::TerminalPanel),
+        plain(KeyCode::Enter),
+        110,
+    ),
     // file tree scoped
     DefaultShortcutSpec::new(
         CommandKindId("workspace.file_tree.select_prev"),
