@@ -129,6 +129,20 @@ mod tests {
     }
 
     #[test]
+    fn resolve_default_maps_primary_s_to_save_active_buffer() {
+        let modifiers = if cfg!(target_os = "macos") {
+            Modifiers::new(false, false, false, true)
+        } else {
+            Modifiers::new(true, false, false, false)
+        };
+        let save = Keystroke::new(KeyCode::Char('s'), modifiers);
+        assert_eq!(
+            resolve_default(&save, &InputContext::new(FocusTarget::Editor)),
+            InputResolution::command(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer))
+        );
+    }
+
+    #[test]
     fn same_keystroke_maps_to_different_commands_by_focus_target() {
         let enter = Keystroke::new(KeyCode::Enter, Modifiers::default());
         assert_eq!(

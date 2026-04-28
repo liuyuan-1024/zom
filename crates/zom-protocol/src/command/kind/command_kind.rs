@@ -64,8 +64,11 @@ pub enum CommandKind {
     WorkspaceQuitApp,
     /// 最小化当前窗口。
     WorkspaceMinimizeWindow,
+
     /// 打开项目选择器。
     WorkspaceOpenProjectPicker,
+    /// 保存当前活动标签页。
+    WorkspaceSaveActiveBuffer,
 
     /// 显示并聚焦指定面板。
     WorkspaceFocusPanel(FocusTarget),

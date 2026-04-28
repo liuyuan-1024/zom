@@ -54,8 +54,11 @@ pub enum WorkspaceAction {
     QuitApp,
     /// 最小化当前窗口。
     MinimizeWindow,
+
     /// 打开项目目录选择器。
     OpenProjectPicker,
+    /// 保存当前活动标签页。
+    SaveActiveBuffer,
 
     /// 聚焦到并显示指定面板。
     FocusPanel(FocusTarget),

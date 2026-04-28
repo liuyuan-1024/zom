@@ -64,6 +64,9 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::WorkspaceOpenProjectPicker => {
             Some(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
         }
+        CommandKind::WorkspaceSaveActiveBuffer => {
+            Some(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer))
+        }
         CommandKind::WorkspaceFocusPanel(target) => {
             Some(CommandInvocation::from(WorkspaceAction::FocusPanel(target)))
         }

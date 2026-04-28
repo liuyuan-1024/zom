@@ -23,6 +23,12 @@ pub const SPECS: &[CommandKindSpec] = &[
         "打开项目目录选择器。",
     ),
     CommandKindSpec::new(
+        CommandKind::WorkspaceSaveActiveBuffer,
+        "workspace.save_active_buffer",
+        "保存当前标签页",
+        "保存当前活动标签页的内容。",
+    ),
+    CommandKindSpec::new(
         CommandKind::WorkspaceCloseFocused,
         "workspace.close_focused",
         "关闭或隐藏",

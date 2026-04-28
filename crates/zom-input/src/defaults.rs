@@ -87,6 +87,9 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.minimize_window" => {
             Some(CommandInvocation::from(WorkspaceAction::MinimizeWindow))
         }
+        "workspace.save_active_buffer" => {
+            Some(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer))
+        }
         "workspace.open_project_picker" => {
             Some(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
         }
@@ -328,6 +331,12 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         ShortcutScope::Global,
         primary_shift_char('p'),
         80,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.save_active_buffer"),
+        ShortcutScope::Global,
+        primary_char('s'),
+        120,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("workspace.close_focused"),
