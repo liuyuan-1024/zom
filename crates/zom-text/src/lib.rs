@@ -472,4 +472,50 @@ mod tests {
             zom_text_tokens::LineEnding::Mixed
         );
     }
+
+    #[test]
+    fn unicode_position_and_offset_mapping_remains_stable() {
+        let text = "a🙂中\ne\u{301}f";
+
+        assert_eq!(position_to_offset(text, Position::new(0, 0)), 0);
+        assert_eq!(position_to_offset(text, Position::new(0, 1)), 1);
+        assert_eq!(position_to_offset(text, Position::new(0, 2)), 5);
+        assert_eq!(position_to_offset(text, Position::new(0, 3)), 8);
+        assert_eq!(position_to_offset(text, Position::new(1, 0)), 9);
+        assert_eq!(position_to_offset(text, Position::new(1, 1)), 10);
+        assert_eq!(position_to_offset(text, Position::new(1, 2)), 12);
+        assert_eq!(position_to_offset(text, Position::new(1, 3)), 13);
+
+        assert_eq!(offset_to_position(text, 0), Position::new(0, 0));
+        assert_eq!(offset_to_position(text, 1), Position::new(0, 1));
+        assert_eq!(offset_to_position(text, 5), Position::new(0, 2));
+        assert_eq!(offset_to_position(text, 8), Position::new(0, 3));
+        assert_eq!(offset_to_position(text, 9), Position::new(1, 0));
+        assert_eq!(offset_to_position(text, 10), Position::new(1, 1));
+        assert_eq!(offset_to_position(text, 12), Position::new(1, 2));
+        assert_eq!(offset_to_position(text, 13), Position::new(1, 3));
+    }
+
+    #[test]
+    fn text_buffer_char_boundary_helpers_handle_multibyte_characters() {
+        let buffer = TextBuffer::from_text("🙂a");
+
+        assert_eq!(buffer.next_char_end(0), Some(4));
+        assert_eq!(buffer.prev_char_start(4), Some(0));
+        assert_eq!(buffer.next_char_end(4), Some(5));
+        assert_eq!(buffer.prev_char_start(5), Some(4));
+        assert_eq!(buffer.prev_char_start(1), None);
+        assert_eq!(buffer.char_at(0), Some('🙂'));
+        assert_eq!(buffer.char_at(1), None);
+    }
+
+    #[test]
+    fn replace_range_rejects_ranges_that_split_emoji_bytes() {
+        let mut buffer = TextBuffer::from_text("a🙂b");
+
+        let err = buffer
+            .replace_range(2..5, "x")
+            .expect_err("split multibyte boundary should fail");
+        assert_eq!(err, TextBufferError::NotCharBoundary { offset: 2 });
+    }
 }
