@@ -4,7 +4,7 @@ use std::{fs, path::Path};
 
 use zom_editor::EditorState;
 use zom_text::detect_line_ending;
-use zom_text_tokens::{CR_CHAR, CRLF, LF};
+use zom_text_tokens::{CR_CHAR, CRLF, LF, LineEnding};
 
 /// 文件加载后的预览数据。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,7 +12,7 @@ pub struct BufferPreview {
     /// 编辑器状态。
     pub editor_state: EditorState,
     /// 原始文件换行符格式（用于保存时 preserve）。
-    pub line_ending: String,
+    pub line_ending: LineEnding,
 }
 
 /// 读取缓冲区预览失败原因。
