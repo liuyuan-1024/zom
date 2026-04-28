@@ -22,6 +22,8 @@ impl Render for ZomRootView {
             self.apply_ui_action(action, window, cx);
         }
 
+        self.schedule_pending_toast_auto_clear(window, cx);
+
         if let Some(target) = self.state.take_pending_focus_target() {
             self.apply_focus_target(target, window, cx);
         }
@@ -77,6 +79,9 @@ impl Render for ZomRootView {
 
         if matches!(self.state.active_overlay, Some(OverlayTarget::Settings)) {
             root = root.child(self.render_settings_overlay(cx));
+        }
+        if let Some(toast_layer) = self.render_notification_toast_layer() {
+            root = root.child(toast_layer);
         }
 
         root

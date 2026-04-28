@@ -2,7 +2,7 @@
 
 use gpui::{div, prelude::*, px, rgb};
 use zom_runtime::{
-    projection::{command_dock, command_is_active, cursor_text},
+    projection::{command_dock, command_is_active, cursor_text, notification_status_text},
     state::{DesktopAppState, PanelDock, ToolBarEntry},
 };
 
@@ -24,6 +24,15 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     }
 
     let mut right_sections = group().child(render_active_file_status(state));
+    if let Some(notification_status) = notification_status_text(state) {
+        right_sections = right_sections
+            .child(render_section_divider("tb-divider-status-notification"))
+            .child(render_value(
+                "tb-notification-status",
+                &notification_status,
+                "通知状态",
+            ));
+    }
     if !bottom_dock_tools.is_empty() {
         right_sections = right_sections
             .child(render_section_divider("tb-divider-status-bottom"))

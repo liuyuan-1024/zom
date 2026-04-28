@@ -1,13 +1,17 @@
 //! 工作区主布局（左右停靠区、中央列、底部面板）渲染。
 
 use gpui::{
-    Context, Div, InteractiveElement, ParentElement, Stateful, Styled, Window, div, px, rgb,
+    Context, Div, InteractiveElement, ParentElement, Stateful, StatefulInteractiveElement, Styled,
+    Window, div, px, rgb,
 };
-use zom_protocol::FocusTarget;
-use zom_runtime::state::PanelDock;
+use zom_protocol::{CommandInvocation, FocusTarget, NotificationAction};
+use zom_runtime::{projection::shortcut_hint, state::PanelDock};
 
 use super::super::{DEFAULT_BOTTOM_PANEL_HEIGHT, ZomRootView, dock_gap, splitter_hit_size};
-use crate::theme::{color, size};
+use crate::{
+    components::chip,
+    theme::{color, size},
+};
 
 impl ZomRootView {
     /// 渲染工作区主行：左停靠区 + 中央列 + 右停靠区与分割线。
@@ -66,7 +70,7 @@ impl ZomRootView {
         ));
 
         if let Some(target) = right_target {
-            workspace_row = workspace_row.child(self.render_right_dock(target, right_width));
+            workspace_row = workspace_row.child(self.render_right_dock(target, right_width, cx));
         }
 
         if left_target.is_some() {
@@ -189,7 +193,12 @@ impl ZomRootView {
         center_column
     }
 
-    fn render_right_dock(&self, target: FocusTarget, right_width: f32) -> Stateful<Div> {
+    fn render_right_dock(
+        &mut self,
+        target: FocusTarget,
+        right_width: f32,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
         let mut right_dock = div()
             .id("workspace-right-dock")
             .w(px(right_width))
@@ -201,9 +210,113 @@ impl ZomRootView {
             .overflow_hidden();
 
         if target == FocusTarget::NotificationPanel {
-            right_dock = right_dock.child(self.notification_panel.clone());
+            right_dock = right_dock.child(self.render_notification_panel_with_toolbar(cx));
         }
 
         right_dock
+    }
+
+    fn render_notification_panel_with_toolbar(&mut self, cx: &mut Context<Self>) -> Stateful<Div> {
+        let unread = self.state.unread_notification_count;
+        let unread_error_count = self
+            .state
+            .notifications
+            .iter()
+            .filter(|item| {
+                !item.is_read && item.level == zom_runtime::state::DesktopNotificationLevel::Error
+            })
+            .count();
+        let read_count = self
+            .state
+            .notifications
+            .iter()
+            .filter(|item| item.is_read)
+            .count();
+        let total_count = self.state.notifications.len();
+        div()
+            .id("notification-panel-shell")
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .id("notification-panel-toolbar")
+                    .w_full()
+                    .flex()
+                    .items_center()
+                    .justify_end()
+                    .gap(px(size::GAP_1))
+                    .px(px(size::GAP_1))
+                    .py(px(size::GAP_1))
+                    .border_b_1()
+                    .border_color(rgb(color::COLOR_BORDER))
+                    .bg(rgb(color::COLOR_BG_PANEL))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(size::GAP_1))
+                            .child(self.render_notification_action_chip(
+                                "notification-chip-focus-unread-error",
+                                format!("未读错误 {unread_error_count}"),
+                                NotificationAction::FocusUnreadError,
+                                cx,
+                            ))
+                            .child(self.render_notification_action_chip(
+                                "notification-chip-mark-all-read",
+                                format!("全部已读 {unread}"),
+                                NotificationAction::MarkAllRead,
+                                cx,
+                            ))
+                            .child(self.render_notification_action_chip(
+                                "notification-chip-clear-read",
+                                format!("清空已读 {read_count}"),
+                                NotificationAction::ClearRead,
+                                cx,
+                            ))
+                            .child(self.render_notification_action_chip(
+                                "notification-chip-clear-all",
+                                format!("清空全部 {total_count}"),
+                                NotificationAction::ClearAll,
+                                cx,
+                            )),
+                    ),
+            )
+            .child(
+                div()
+                    .id("notification-panel-content")
+                    .flex_1()
+                    .overflow_hidden()
+                    .child(self.notification_panel.clone()),
+            )
+    }
+
+    fn render_notification_action_chip(
+        &self,
+        id: &'static str,
+        label: String,
+        action: NotificationAction,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
+        let command = CommandInvocation::from(action);
+        let label_for_tooltip = label.clone();
+        let label_for_chip = label.clone();
+        chip::interactive_chip(
+            id,
+            chip::TooltipSpec::new(label_for_tooltip, shortcut_hint(&command)),
+        )
+        .px(px(size::GAP_1))
+        .py(px(size::GAP_1))
+        .border_1()
+        .border_color(rgb(color::COLOR_BORDER))
+        .rounded_sm()
+        .text_xs()
+        .text_color(rgb(color::COLOR_FG_MUTED))
+        .on_click(cx.listener(move |this, _event, _window, cx| {
+            this.state.handle_command(CommandInvocation::from(action));
+            this.sync_notification_panel(cx);
+            cx.notify();
+        }))
+        .child(label_for_chip)
     }
 }

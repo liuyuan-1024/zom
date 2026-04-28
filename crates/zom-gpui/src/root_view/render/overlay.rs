@@ -3,7 +3,10 @@
 use gpui::{Context, Div, InteractiveElement, ParentElement, Stateful, Styled, div, px, rgb};
 
 use super::super::ZomRootView;
-use crate::{components::settings_overlay, theme::color};
+use crate::{
+    components::{notification_toast_overlay, settings_overlay},
+    theme::color,
+};
 
 impl ZomRootView {
     /// 渲染设置浮层（含遮罩与中间卡片）。
@@ -43,5 +46,11 @@ impl ZomRootView {
                             .child(settings_overlay::panel()),
                     ),
             )
+    }
+
+    /// 渲染当前活跃通知的悬浮提示层。
+    pub(super) fn render_notification_toast_layer(&self) -> Option<Stateful<Div>> {
+        let notification = self.state.active_toast_notification.as_ref()?;
+        Some(notification_toast_overlay::layer(notification))
     }
 }

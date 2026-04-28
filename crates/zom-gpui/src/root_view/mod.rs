@@ -2,12 +2,17 @@
 
 mod render;
 
+use std::time::Duration;
+
 use gpui::{
     App, AppContext, Application, Bounds, Context, Entity, KeyDownEvent, MouseMoveEvent,
-    PathPromptOptions, TitlebarOptions, Window, WindowBounds, WindowOptions, px, size,
+    PathPromptOptions, Timer, TitlebarOptions, Window, WindowBounds, WindowOptions, px, size,
 };
 use zom_protocol::{CommandInvocation, FocusTarget, WorkspaceAction};
-use zom_runtime::state::{DesktopAppState, DesktopUiAction, PanelDock};
+use zom_runtime::state::{
+    DesktopAppState, DesktopNotificationEvent, DesktopNotificationLevel, DesktopNotificationSource,
+    DesktopUiAction, PanelDock,
+};
 
 use crate::{
     assets,
@@ -19,6 +24,7 @@ use crate::{
 };
 
 pub(super) const DEFAULT_BOTTOM_PANEL_HEIGHT: f32 = 240.0;
+const TOAST_AUTO_DISMISS_DELAY: Duration = Duration::from_secs(3);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// 当前激活的面板分割线拖拽类型。
@@ -89,6 +95,8 @@ pub(super) struct ZomRootView {
     bottom_panel_height: f32,
     /// 当前正在拖拽的停靠分割线。
     active_dock_drag: Option<ActiveDockDrag>,
+    /// 待安排自动消失计时器的通知 id。
+    pending_toast_auto_clear_id: Option<u64>,
 }
 
 impl ZomRootView {
@@ -126,6 +134,7 @@ impl ZomRootView {
             right_dock_width: size::PANEL_WIDTH,
             bottom_panel_height: DEFAULT_BOTTOM_PANEL_HEIGHT,
             active_dock_drag: None,
+            pending_toast_auto_clear_id: None,
         }
     }
 
@@ -171,6 +180,9 @@ impl ZomRootView {
             FocusTarget::NotificationPanel
                 if self.state.is_panel_visible(FocusTarget::NotificationPanel) =>
             {
+                self.state.clear_active_toast_notification();
+                self.state.mark_all_notifications_read();
+                self.sync_notification_panel(cx);
                 cx.focus_view(&self.notification_panel, window);
             }
             FocusTarget::Editor => {
@@ -207,7 +219,98 @@ impl ZomRootView {
         self.pane_view.update(cx, |this, cx| {
             this.set_state(pane_state, active_editor, cx);
         });
+        self.sync_notification_panel(cx);
         cx.notify();
+    }
+
+    /// 同步通知面板内容。
+    pub(super) fn sync_notification_panel(&mut self, cx: &mut Context<Self>) {
+        let notifications = self.state.notifications.clone();
+        let is_logically_focused = self.state.focused_target == FocusTarget::NotificationPanel;
+        let preferred_selected_id = self.state.take_pending_notification_selection_id();
+        self.notification_panel.update(cx, |this, cx| {
+            this.set_state(
+                notifications,
+                is_logically_focused,
+                preferred_selected_id,
+                cx,
+            );
+        });
+    }
+
+    /// 统一写入用户提示：同时刷新悬浮提示与通知侧边栏。
+    pub(super) fn push_user_notification(
+        &mut self,
+        level: DesktopNotificationLevel,
+        message: impl Into<String>,
+        cx: &mut Context<Self>,
+    ) {
+        let message = message.into();
+        let dedupe_key = format!("workspace:{level:?}:{message}");
+        let event =
+            DesktopNotificationEvent::new(level, DesktopNotificationSource::Workspace, message)
+                .user_initiated()
+                .with_dedupe_key(dedupe_key);
+        let notification_id = self.state.publish_notification_event(event);
+        self.sync_notification_panel(cx);
+        self.pending_toast_auto_clear_id = self
+            .state
+            .active_toast_notification
+            .as_ref()
+            .map(|notification| notification.id)
+            .or(notification_id);
+        cx.notify();
+    }
+
+    /// 写入调试通知（默认不弹 info toast，保留到通知面板）。
+    pub(super) fn push_debug_notification(
+        &mut self,
+        level: DesktopNotificationLevel,
+        message: impl Into<String>,
+        cx: &mut Context<Self>,
+    ) {
+        let message = message.into();
+        let dedupe_key = format!("debug:{level:?}:{message}");
+        let event = DesktopNotificationEvent::new(level, DesktopNotificationSource::Debug, message)
+            .with_dedupe_key(dedupe_key);
+        self.state.publish_notification_event(event);
+        self.sync_notification_panel(cx);
+        self.pending_toast_auto_clear_id = self
+            .state
+            .active_toast_notification
+            .as_ref()
+            .map(|notification| notification.id);
+        cx.notify();
+    }
+
+    /// 为指定通知安排自动清除悬浮提示（保留侧边栏历史记录）。
+    pub(super) fn schedule_pending_toast_auto_clear(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(notification_id) = self.pending_toast_auto_clear_id.take() else {
+            return;
+        };
+        let this = cx.weak_entity();
+        window
+            .spawn(cx, async move |cx| {
+                Timer::after(TOAST_AUTO_DISMISS_DELAY).await;
+                this.update(cx, |this, cx| {
+                    let should_clear = this
+                        .state
+                        .active_toast_notification
+                        .as_ref()
+                        .map(|notification| notification.id == notification_id)
+                        .unwrap_or(false);
+                    if should_clear {
+                        this.state.clear_active_toast_notification();
+                        cx.notify();
+                    }
+                })
+                .ok();
+            })
+            .detach();
     }
 
     /// 从标题栏打开项目目录
@@ -227,12 +330,36 @@ impl ZomRootView {
         window
             .spawn(cx, async move |cx| {
                 let Ok(selection_result) = picked_paths.await else {
+                    this.update(cx, |this, cx| {
+                        this.push_user_notification(
+                            DesktopNotificationLevel::Warning,
+                            "Open project folder dialog failed.",
+                            cx,
+                        );
+                    })
+                    .ok();
                     return;
                 };
                 let Ok(Some(paths)) = selection_result else {
+                    this.update(cx, |this, cx| {
+                        this.push_user_notification(
+                            DesktopNotificationLevel::Info,
+                            "Open project folder canceled.",
+                            cx,
+                        );
+                    })
+                    .ok();
                     return;
                 };
                 let Some(project_root) = paths.into_iter().next() else {
+                    this.update(cx, |this, cx| {
+                        this.push_user_notification(
+                            DesktopNotificationLevel::Warning,
+                            "No project folder selected.",
+                            cx,
+                        );
+                    })
+                    .ok();
                     return;
                 };
 
@@ -242,6 +369,12 @@ impl ZomRootView {
                         WorkspaceAction::FocusPanel(FocusTarget::Editor),
                     ));
                     this.sync_child_views(cx);
+                    let project_name = this.state.project_name.clone();
+                    this.push_user_notification(
+                        DesktopNotificationLevel::Info,
+                        format!("Opened project: {project_name}"),
+                        cx,
+                    );
                 })
                 .ok();
             })
@@ -439,25 +572,37 @@ impl ZomRootView {
             return false;
         };
         // debug时才会出发
-        // TODO：后期改成悬浮提示框
+        // 统一通过通知机制提示用户，并写入通知侧边栏。
         let debug_keys = std::env::var_os("ZOM_DEBUG_KEYS").is_some();
         if debug_keys {
-            eprintln!(
-                "[zom-shortcut] key={:?} focus_before={:?}",
-                keystroke, self.state.focused_target
+            self.push_debug_notification(
+                DesktopNotificationLevel::Info,
+                format!(
+                    "[zom-shortcut] key={:?} focus_before={:?}",
+                    keystroke, self.state.focused_target
+                ),
+                cx,
             );
         }
         if !self.state.handle_keystroke(&keystroke) {
             if debug_keys {
-                eprintln!("[zom-shortcut] ignored");
+                self.push_debug_notification(
+                    DesktopNotificationLevel::Warning,
+                    "[zom-shortcut] ignored",
+                    cx,
+                );
             }
             return false;
         }
         self.sync_child_views(cx);
         if debug_keys {
-            eprintln!(
-                "[zom-shortcut] handled focus_after={:?}",
-                self.state.focused_target
+            self.push_debug_notification(
+                DesktopNotificationLevel::Info,
+                format!(
+                    "[zom-shortcut] handled focus_after={:?}",
+                    self.state.focused_target
+                ),
+                cx,
             );
         }
         true
