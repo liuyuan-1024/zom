@@ -1,5 +1,13 @@
 [
   {
+    "label": "正常运行",
+    "command": "cargo",
+    "args": ["run"],
+    "save": "all",
+    "reveal": "always",
+    "hide": "never",
+  },
+  {
     "label": "测试快捷键",
     "command": "cargo",
     "args": ["run"],
