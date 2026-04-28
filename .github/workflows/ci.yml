@@ -62,5 +62,8 @@ jobs:
       - name: Check control-char literal usage
         run: ./scripts/check-control-char-literals.sh
 
+      - name: Check rustdoc coverage
+        run: ./scripts/check-rustdoc-coverage.sh
+
       - name: Run tests
         run: cargo test --workspace --locked
