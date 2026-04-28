@@ -46,7 +46,7 @@ pub fn run() {
             );
             let state = DesktopAppState::from_current_workspace();
 
-            cx.open_window(
+            if let Err(error) = cx.open_window(
                 WindowOptions {
                     titlebar: Some(TitlebarOptions {
                         title: Some("Zom".into()),
@@ -58,8 +58,10 @@ pub fn run() {
                     ..Default::default()
                 },
                 move |_, cx| cx.new(|cx| ZomRootView::new(state, cx)),
-            )
-            .unwrap();
+            ) {
+                eprintln!("failed to open main window: {error:?}");
+                return;
+            }
 
             cx.activate(true);
         });
