@@ -127,19 +127,35 @@ fn render_notification_item(
     let badge = level_badge(notification.level);
     let source = source_badge(notification.source);
     let item_id = gpui::SharedString::from(format!("notification-item-{}", notification.id));
-    let border_color = if !notification.is_read {
+    let (level_fg_color, unread_bg_color) = level_palette(notification.level);
+    let is_unread = !notification.is_read;
+    let border_color = if focus_emphasis {
         color::COLOR_FG_PRIMARY
-    } else if focus_emphasis {
-        color::COLOR_FG_PRIMARY
+    } else if is_unread {
+        level_fg_color
     } else {
         color::COLOR_BORDER
+    };
+    let background_color = if is_unread {
+        unread_bg_color
+    } else {
+        color::COLOR_BG_ELEMENT
+    };
+    let meta_text_color = if is_unread {
+        color::COLOR_FG_PRIMARY
+    } else {
+        color::COLOR_FG_MUTED
+    };
+    let message_text_color = if is_unread {
+        color::COLOR_FG_PRIMARY
+    } else {
+        color::COLOR_FG_MUTED
     };
     let count_suffix = if notification.occurrence_count > 1 {
         format!(" x{}", notification.occurrence_count)
     } else {
         String::new()
     };
-    let unread_badge = if notification.is_read { "" } else { " UNREAD" };
 
     div()
         .id(item_id)
@@ -148,20 +164,20 @@ fn render_notification_item(
         .flex_col()
         .gap(px(size::GAP_1))
         .p(px(size::GAP_1))
-        .bg(rgb(color::COLOR_BG_ELEMENT))
+        .bg(rgb(background_color))
         .border_1()
         .border_color(rgb(border_color))
         .rounded_sm()
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(color::COLOR_FG_MUTED))
-                .child(format!("{badge} · {source}{count_suffix}{unread_badge}")),
+                .text_color(rgb(meta_text_color))
+                .child(format!("{badge} · {source}{count_suffix}")),
         )
         .child(
             div()
                 .text_sm()
-                .text_color(rgb(color::COLOR_FG_PRIMARY))
+                .text_color(rgb(message_text_color))
                 .child(notification.message.clone()),
         )
         .into_any_element()
@@ -180,6 +196,14 @@ fn level_badge(level: DesktopNotificationLevel) -> &'static str {
         DesktopNotificationLevel::Info => "INFO",
         DesktopNotificationLevel::Warning => "WARN",
         DesktopNotificationLevel::Error => "ERROR",
+    }
+}
+
+fn level_palette(level: DesktopNotificationLevel) -> (u32, u32) {
+    match level {
+        DesktopNotificationLevel::Info => (0x58A6FF, 0x1A2433),
+        DesktopNotificationLevel::Warning => (0xD29922, 0x2A230F),
+        DesktopNotificationLevel::Error => (0xF85149, 0x32191D),
     }
 }
 

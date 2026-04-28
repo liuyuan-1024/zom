@@ -181,8 +181,6 @@ impl ZomRootView {
                 if self.state.is_panel_visible(FocusTarget::NotificationPanel) =>
             {
                 self.state.clear_active_toast_notification();
-                self.state.mark_all_notifications_read();
-                self.sync_notification_panel(cx);
                 cx.focus_view(&self.notification_panel, window);
             }
             FocusTarget::Editor => {

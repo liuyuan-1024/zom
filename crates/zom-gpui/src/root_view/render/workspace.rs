@@ -217,7 +217,6 @@ impl ZomRootView {
     }
 
     fn render_notification_panel_with_toolbar(&mut self, cx: &mut Context<Self>) -> Stateful<Div> {
-        let unread = self.state.unread_notification_count;
         let unread_error_count = self
             .state
             .notifications
@@ -260,12 +259,6 @@ impl ZomRootView {
                                 "notification-chip-focus-unread-error",
                                 format!("未读错误 {unread_error_count}"),
                                 NotificationAction::FocusUnreadError,
-                                cx,
-                            ))
-                            .child(self.render_notification_action_chip(
-                                "notification-chip-mark-all-read",
-                                format!("全部已读 {unread}"),
-                                NotificationAction::MarkAllRead,
                                 cx,
                             ))
                             .child(self.render_notification_action_chip(
