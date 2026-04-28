@@ -1,6 +1,9 @@
 //! 编辑命令到事务的核心转换与执行。
 
-use zom_protocol::{EditorAction, EditorInvocation, Position, Selection};
+use regex::RegexBuilder;
+use zom_protocol::{
+    EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest, Position, Selection,
+};
 use zom_text::TextBuffer;
 use zom_text_tokens::{LF, TAB, TAB_CHAR};
 
@@ -31,6 +34,9 @@ pub fn apply_editor_invocation(
 
     match invocation {
         EditorInvocation::InsertText { text } => insert_text(state, selection, text),
+        EditorInvocation::FindReplace { request } => {
+            apply_find_replace_request(state, selection, cursor, request)
+        }
         EditorInvocation::Action(action) => apply_action(state, selection, *action),
     }
 }
@@ -575,9 +581,210 @@ fn is_word_boundary_char(ch: char) -> bool {
         )
 }
 
+fn apply_find_replace_request(
+    state: &EditorState,
+    selection: Selection,
+    cursor: Position,
+    request: &FindReplaceRequest,
+) -> InvocationResult {
+    if request.query.is_empty() {
+        return InvocationResult {
+            state: state.clone(),
+            cursor,
+        };
+    }
+    let text = state.text();
+    let Some(regex) = build_find_regex(request) else {
+        return InvocationResult {
+            state: state.clone(),
+            cursor,
+        };
+    };
+    let matches = regex
+        .find_iter(&text)
+        .map(|m| (m.start(), m.end()))
+        .collect::<Vec<_>>();
+    if matches.is_empty() {
+        return InvocationResult {
+            state: state.clone(),
+            cursor,
+        };
+    }
+
+    match request.action {
+        FindReplaceAction::FindNext => {
+            let offset = state.position_to_offset(cursor);
+            let Some((from, to)) = next_match(&matches, offset) else {
+                return InvocationResult {
+                    state: state.clone(),
+                    cursor,
+                };
+            };
+            select_range_by_offsets(state, selection, from, to)
+        }
+        FindReplaceAction::FindPrev => {
+            let offset = state.position_to_offset(cursor);
+            let Some((from, to)) = prev_match(&matches, offset) else {
+                return InvocationResult {
+                    state: state.clone(),
+                    cursor,
+                };
+            };
+            select_range_by_offsets(state, selection, from, to)
+        }
+        FindReplaceAction::ReplaceNext => {
+            let replacements =
+                collect_replacement_items(&text, &regex, &request.replacement, request.use_regex);
+            if replacements.is_empty() {
+                return InvocationResult {
+                    state: state.clone(),
+                    cursor,
+                };
+            }
+            let offset = state.position_to_offset(cursor);
+            let Some((from, to, replacement)) = next_replacement(&replacements, offset) else {
+                return InvocationResult {
+                    state: state.clone(),
+                    cursor,
+                };
+            };
+            let caret = Selection::caret(state.offset_to_position(from));
+            apply_with_selection(
+                state,
+                caret,
+                TransactionSpec {
+                    changes: vec![TextChange::new(from, to, replacement)],
+                    selection: None,
+                    meta: TransactionMeta::from_source(TransactionSource::Keyboard),
+                    expected_version: None,
+                },
+            )
+        }
+        FindReplaceAction::ReplaceAll => {
+            let replacements =
+                collect_replacement_items(&text, &regex, &request.replacement, request.use_regex);
+            let Some((first_from, _, _)) = replacements.first().cloned() else {
+                return InvocationResult {
+                    state: state.clone(),
+                    cursor,
+                };
+            };
+            let changes = replacements
+                .iter()
+                .map(|(from, to, replacement)| TextChange::new(*from, *to, replacement.clone()))
+                .collect::<Vec<_>>();
+            let caret = Selection::caret(state.offset_to_position(first_from));
+            apply_with_selection(
+                state,
+                caret,
+                TransactionSpec {
+                    changes,
+                    selection: None,
+                    meta: TransactionMeta::from_source(TransactionSource::Keyboard),
+                    expected_version: None,
+                },
+            )
+        }
+    }
+}
+
+fn build_find_regex(request: &FindReplaceRequest) -> Option<regex::Regex> {
+    let mut pattern = if request.use_regex {
+        request.query.clone()
+    } else {
+        regex::escape(&request.query)
+    };
+    if request.whole_word {
+        pattern = format!(r"\b(?:{})\b", pattern);
+    }
+
+    let mut builder = RegexBuilder::new(&pattern);
+    builder.case_insensitive(!request.case_sensitive);
+    builder.multi_line(true);
+    builder.unicode(true);
+    builder.build().ok()
+}
+
+fn next_match(matches: &[(usize, usize)], cursor_offset: usize) -> Option<(usize, usize)> {
+    matches
+        .iter()
+        .copied()
+        .find(|(from, _)| *from >= cursor_offset)
+        .or_else(|| matches.first().copied())
+}
+
+fn prev_match(matches: &[(usize, usize)], cursor_offset: usize) -> Option<(usize, usize)> {
+    matches
+        .iter()
+        .rev()
+        .copied()
+        .find(|(_, to)| *to <= cursor_offset)
+        .or_else(|| matches.last().copied())
+}
+
+fn select_range_by_offsets(
+    state: &EditorState,
+    selection: Selection,
+    from: usize,
+    to: usize,
+) -> InvocationResult {
+    let next_selection = Selection::new(state.offset_to_position(from), state.offset_to_position(to));
+    apply_with_selection(
+        state,
+        selection,
+        TransactionSpec {
+            changes: Vec::new(),
+            selection: Some(next_selection),
+            meta: TransactionMeta::from_source(TransactionSource::Keyboard),
+            expected_version: None,
+        },
+    )
+}
+
+fn collect_replacement_items(
+    text: &str,
+    regex: &regex::Regex,
+    replacement_template: &str,
+    use_regex: bool,
+) -> Vec<(usize, usize, String)> {
+    if use_regex {
+        return regex
+            .captures_iter(text)
+            .filter_map(|captures| {
+                let matched = captures.get(0)?;
+                let mut replacement = String::new();
+                captures.expand(replacement_template, &mut replacement);
+                Some((matched.start(), matched.end(), replacement))
+            })
+            .collect();
+    }
+
+    regex
+        .find_iter(text)
+        .map(|matched| {
+            (
+                matched.start(),
+                matched.end(),
+                replacement_template.to_string(),
+            )
+        })
+        .collect()
+}
+
+fn next_replacement(
+    replacements: &[(usize, usize, String)],
+    cursor_offset: usize,
+) -> Option<(usize, usize, String)> {
+    replacements
+        .iter()
+        .find(|(from, _, _)| *from >= cursor_offset)
+        .cloned()
+        .or_else(|| replacements.first().cloned())
+}
+
 #[cfg(test)]
 mod tests {
-    use zom_protocol::{EditorAction, EditorInvocation};
+    use zom_protocol::{EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest};
 
     use super::{EditorState, Selection, apply_editor_invocation};
 
@@ -989,5 +1196,140 @@ mod tests {
             Selection::caret(zom_protocol::Position::new(0, 1))
         );
         assert_eq!(result.cursor, zom_protocol::Position::new(0, 1));
+    }
+
+    #[test]
+    fn find_next_selects_match_case_insensitive() {
+        let state =
+            state_with_selection("foo Bar baz", Selection::caret(zom_protocol::Position::new(0, 0)));
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 0),
+            &EditorInvocation::find_replace(FindReplaceRequest::new(
+                "bar",
+                "",
+                FindReplaceAction::FindNext,
+                false,
+                false,
+                false,
+            )),
+        );
+
+        assert_eq!(
+            result.state.selection(),
+            Selection::new(
+                zom_protocol::Position::new(0, 4),
+                zom_protocol::Position::new(0, 7)
+            )
+        );
+    }
+
+    #[test]
+    fn find_next_with_whole_word_skips_substring_match() {
+        let state = state_with_selection(
+            "foobar foo",
+            Selection::caret(zom_protocol::Position::new(0, 0)),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 0),
+            &EditorInvocation::find_replace(FindReplaceRequest::new(
+                "foo",
+                "",
+                FindReplaceAction::FindNext,
+                true,
+                true,
+                false,
+            )),
+        );
+
+        assert_eq!(
+            result.state.selection(),
+            Selection::new(
+                zom_protocol::Position::new(0, 7),
+                zom_protocol::Position::new(0, 10)
+            )
+        );
+    }
+
+    #[test]
+    fn find_prev_wraps_to_last_match() {
+        let state = state_with_selection(
+            "one two one",
+            Selection::caret(zom_protocol::Position::new(0, 0)),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 0),
+            &EditorInvocation::find_replace(FindReplaceRequest::new(
+                "one",
+                "",
+                FindReplaceAction::FindPrev,
+                true,
+                false,
+                false,
+            )),
+        );
+
+        assert_eq!(
+            result.state.selection(),
+            Selection::new(
+                zom_protocol::Position::new(0, 8),
+                zom_protocol::Position::new(0, 11)
+            )
+        );
+    }
+
+    #[test]
+    fn replace_next_replaces_single_match_and_moves_cursor() {
+        let state = state_with_selection(
+            "foo foo",
+            Selection::caret(zom_protocol::Position::new(0, 0)),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 0),
+            &EditorInvocation::find_replace(FindReplaceRequest::new(
+                "foo",
+                "bar",
+                FindReplaceAction::ReplaceNext,
+                true,
+                false,
+                false,
+            )),
+        );
+
+        assert_eq!(result.state.text(), "bar foo");
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(zom_protocol::Position::new(0, 3))
+        );
+    }
+
+    #[test]
+    fn replace_all_supports_regex_groups() {
+        let state = state_with_selection(
+            "a1 b2 c3",
+            Selection::caret(zom_protocol::Position::new(0, 0)),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 0),
+            &EditorInvocation::find_replace(FindReplaceRequest::new(
+                r"([a-z])(\d)",
+                "$1-$2",
+                FindReplaceAction::ReplaceAll,
+                true,
+                false,
+                true,
+            )),
+        );
+
+        assert_eq!(result.state.text(), "a-1 b-2 c-3");
     }
 }

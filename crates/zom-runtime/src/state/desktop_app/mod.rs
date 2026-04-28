@@ -31,6 +31,8 @@ pub enum DesktopUiAction {
     MinimizeWindow,
     /// 打开项目目录选择器。
     OpenProjectPicker,
+    /// 打开查找替换入口。
+    OpenFindReplace,
     /// 将文本写入系统剪贴板。
     WriteClipboard(String),
     /// 从系统剪贴板读取文本并执行粘贴。

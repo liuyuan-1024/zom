@@ -7,8 +7,8 @@ use std::{
 };
 
 use zom_protocol::{
-    CommandInvocation, EditorAction, EditorInvocation, FocusTarget, KeyCode, Keystroke, Modifiers,
-    OverlayTarget, Position,
+    CommandInvocation, EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest,
+    FocusTarget, KeyCode, Keystroke, Modifiers, OverlayTarget, Position,
     command::{FileTreeAction, NotificationAction, TabAction, WorkspaceAction},
 };
 use zom_text_tokens::LineEnding;
@@ -602,6 +602,52 @@ fn undo_stack_restores_cut_replacement_and_clears_redo_after_new_edit() {
 }
 
 #[test]
+fn find_replace_command_updates_selection_and_supports_undo_after_replace() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("foo Foo"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 0);
+
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::find_replace(
+        FindReplaceRequest::new("foo", "", FindReplaceAction::FindNext, false, false, false),
+    )));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .selection,
+        zom_protocol::Selection::new(Position::new(0, 0), Position::new(0, 3))
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::find_replace(
+        FindReplaceRequest::new("foo", "bar", FindReplaceAction::ReplaceNext, false, false, false),
+    )));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "foo bar"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Undo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "foo Foo"
+    );
+}
+
+#[test]
 fn copy_command_emits_clipboard_write_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -929,6 +975,20 @@ fn keyboard_shortcut_can_request_open_project_picker_ui_action() {
     assert_eq!(
         state.take_pending_ui_action(),
         Some(DesktopUiAction::OpenProjectPicker)
+    );
+}
+
+#[test]
+fn keyboard_shortcut_can_request_open_find_replace_ui_action() {
+    let mut state = DesktopAppState::from_current_workspace();
+    let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::OpenFindReplace));
+
+    let handled = state.dispatch_keystroke(&keystroke);
+
+    assert!(handled);
+    assert_eq!(
+        state.take_pending_ui_action(),
+        Some(DesktopUiAction::OpenFindReplace)
     );
 }
 

@@ -7,3 +7,4 @@ edition = "2024"
 zom-protocol = { workspace = true }
 zom-text = { workspace = true }
 zom-text-tokens = { workspace = true }
+regex = { workspace = true }

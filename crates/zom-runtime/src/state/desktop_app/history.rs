@@ -3,7 +3,7 @@
 use std::time::{Duration, Instant};
 
 use zom_editor::EditorState;
-use zom_protocol::{BufferId, EditorAction, EditorInvocation};
+use zom_protocol::{BufferId, EditorAction, EditorInvocation, FindReplaceAction};
 
 use super::DesktopAppState;
 
@@ -110,14 +110,15 @@ impl EditorHistory {
 }
 
 fn merge_group_kind(command: &EditorInvocation) -> Option<PendingGroupKind> {
-    match command {
-        EditorInvocation::InsertText { text } if !text.is_empty() => {
-            Some(PendingGroupKind::InsertText)
-        }
-        EditorInvocation::Action(EditorAction::DeleteBackward)
-        | EditorInvocation::Action(EditorAction::DeleteWordBackward) => {
-            Some(PendingGroupKind::DeleteBackward)
-        }
+        match command {
+            EditorInvocation::InsertText { text } if !text.is_empty() => {
+                Some(PendingGroupKind::InsertText)
+            }
+            EditorInvocation::FindReplace { .. } => None,
+            EditorInvocation::Action(EditorAction::DeleteBackward)
+            | EditorInvocation::Action(EditorAction::DeleteWordBackward) => {
+                Some(PendingGroupKind::DeleteBackward)
+            }
         EditorInvocation::Action(EditorAction::DeleteForward)
         | EditorInvocation::Action(EditorAction::DeleteWordForward) => {
             Some(PendingGroupKind::DeleteForward)
@@ -130,6 +131,10 @@ impl DesktopAppState {
     pub(super) fn should_record_history(command: &EditorInvocation) -> bool {
         match command {
             EditorInvocation::InsertText { text } => !text.is_empty(),
+            EditorInvocation::FindReplace { request } => matches!(
+                request.action,
+                FindReplaceAction::ReplaceNext | FindReplaceAction::ReplaceAll
+            ),
             EditorInvocation::Action(action) => matches!(
                 action,
                 EditorAction::InsertNewline

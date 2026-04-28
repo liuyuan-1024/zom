@@ -7167,6 +7167,7 @@ dependencies = [
 name = "zom-editor"
 version = "0.1.0"
 dependencies = [
+ "regex",
  "zom-protocol",
  "zom-text",
  "zom-text-tokens",
