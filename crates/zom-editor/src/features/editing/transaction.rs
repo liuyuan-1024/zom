@@ -213,6 +213,7 @@ fn shift_offset(offset: usize, delta: isize) -> usize {
 #[cfg(test)]
 mod tests {
     use zom_protocol::{Position, Selection};
+    use zom_text::TextBufferError;
 
     use crate::features::editing::state::{DocVersion, EditorState};
 
@@ -287,6 +288,63 @@ mod tests {
             ApplyError::OverlappingChanges {
                 previous_to: 4,
                 current_from: 3
+            }
+        );
+    }
+
+    #[test]
+    fn apply_transaction_sorts_unsorted_changes_and_maps_selection() {
+        let state = EditorState::from_text("abcdef");
+        let spec = TransactionSpec {
+            changes: vec![TextChange::new(4, 6, "YZ"), TextChange::new(0, 2, "WX")],
+            selection: None,
+            expected_version: Some(DocVersion::zero()),
+            meta: super::TransactionMeta::from_source(TransactionSource::Runtime),
+        };
+
+        let result = apply_transaction(&state, spec).expect("transaction should apply");
+        assert_eq!(result.state.text(), "WXcdYZ");
+        assert_eq!(result.state.selection(), Selection::caret(Position::new(0, 2)));
+        assert_eq!(result.state.version(), DocVersion::from(1));
+    }
+
+    #[test]
+    fn apply_transaction_selection_only_change_increments_version() {
+        let state = EditorState::from_text("abcdef");
+        let spec = TransactionSpec {
+            changes: vec![],
+            selection: Some(Selection::new(Position::new(0, 1), Position::new(0, 4))),
+            expected_version: Some(DocVersion::zero()),
+            meta: super::TransactionMeta::from_source(TransactionSource::Keyboard),
+        };
+
+        let result = apply_transaction(&state, spec).expect("selection-only transaction should apply");
+        assert_eq!(result.state.text(), "abcdef");
+        assert_eq!(
+            result.state.selection(),
+            Selection::new(Position::new(0, 1), Position::new(0, 4))
+        );
+        assert!(result.is_selection_changed);
+        assert!(!result.is_document_changed);
+        assert_eq!(result.state.version(), DocVersion::from(1));
+    }
+
+    #[test]
+    fn apply_transaction_rejects_change_with_split_multibyte_boundary() {
+        let state = EditorState::from_text("a🙂b");
+        let spec = TransactionSpec {
+            changes: vec![TextChange::new(2, 5, "X")],
+            selection: None,
+            expected_version: None,
+            meta: super::TransactionMeta::from_source(TransactionSource::Runtime),
+        };
+
+        let err = apply_transaction(&state, spec).expect_err("invalid change range expected");
+        assert_eq!(
+            err,
+            ApplyError::InvalidChangeRange {
+                index: 0,
+                error: TextBufferError::NotCharBoundary { offset: 2 }
             }
         );
     }

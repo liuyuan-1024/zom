@@ -506,6 +506,102 @@ fn moving_cursor_breaks_typing_merge_group() {
 }
 
 #[test]
+fn cross_line_delete_is_undoable_and_redoable() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("ab\ncd"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(1, 2);
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectAll));
+    state.dispatch_command(CommandInvocation::from(EditorAction::DeleteBackward));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        ""
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Undo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "ab\ncd"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Redo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        ""
+    );
+}
+
+#[test]
+fn undo_stack_restores_cut_replacement_and_clears_redo_after_new_edit() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("abcd"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.focused_target = FocusTarget::Editor;
+    state.tool_bar.cursor = Position::new(0, 3);
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectLeft));
+    state.dispatch_command(CommandInvocation::from(EditorAction::SelectLeft));
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Cut));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "ad"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Undo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "abcd"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("Z")));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "aZd"
+    );
+
+    state.dispatch_command(CommandInvocation::from(EditorAction::Redo));
+    assert_eq!(
+        state
+            .active_editor_snapshot()
+            .expect("active editor should exist")
+            .text,
+        "aZd"
+    );
+}
+
+#[test]
 fn copy_command_emits_clipboard_write_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
