@@ -916,4 +916,78 @@ mod tests {
         assert_eq!(result.state.selection(), state.selection());
         assert_eq!(result.cursor, zom_protocol::Position::new(1, 1));
     }
+
+    #[test]
+    fn move_right_steps_over_emoji_in_single_command() {
+        let state = state_with_selection("a🙂b", Selection::caret(zom_protocol::Position::new(0, 1)));
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 1),
+            &EditorInvocation::from(EditorAction::MoveRight),
+        );
+
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(zom_protocol::Position::new(0, 2))
+        );
+        assert_eq!(result.cursor, zom_protocol::Position::new(0, 2));
+    }
+
+    #[test]
+    fn delete_backward_removes_full_emoji_scalar_value() {
+        let state = state_with_selection("a🙂b", Selection::caret(zom_protocol::Position::new(0, 2)));
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 2),
+            &EditorInvocation::from(EditorAction::DeleteBackward),
+        );
+
+        assert_eq!(result.state.text(), "ab");
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(zom_protocol::Position::new(0, 1))
+        );
+        assert_eq!(result.cursor, zom_protocol::Position::new(0, 1));
+    }
+
+    #[test]
+    fn delete_forward_removes_full_multibyte_cjk_scalar_value() {
+        let state = state_with_selection("a中b", Selection::caret(zom_protocol::Position::new(0, 1)));
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 1),
+            &EditorInvocation::from(EditorAction::DeleteForward),
+        );
+
+        assert_eq!(result.state.text(), "ab");
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(zom_protocol::Position::new(0, 1))
+        );
+        assert_eq!(result.cursor, zom_protocol::Position::new(0, 1));
+    }
+
+    #[test]
+    fn delete_backward_after_combining_mark_only_removes_last_scalar() {
+        let state = state_with_selection(
+            "e\u{301}x",
+            Selection::caret(zom_protocol::Position::new(0, 2)),
+        );
+
+        let result = apply_editor_invocation(
+            &state,
+            zom_protocol::Position::new(0, 2),
+            &EditorInvocation::from(EditorAction::DeleteBackward),
+        );
+
+        assert_eq!(result.state.text(), "ex");
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(zom_protocol::Position::new(0, 1))
+        );
+        assert_eq!(result.cursor, zom_protocol::Position::new(0, 1));
+    }
 }
