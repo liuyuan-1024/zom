@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(
             resolve_default(&enter, &InputContext::new(FocusTarget::NotificationPanel)),
             InputResolution::command(CommandInvocation::from(
-                NotificationAction::FocusUnreadError
+                NotificationAction::MarkSelectedRead
             ))
         );
         assert_eq!(

@@ -133,6 +133,27 @@ impl DesktopAppState {
         self.unread_notification_count = 0;
     }
 
+    /// 标记当前选中通知为已读（无选中时回落到最新通知）。
+    pub fn mark_selected_notification_read(&mut self) {
+        let selected_id = self
+            .selected_notification_id
+            .or_else(|| self.notifications.last().map(|item| item.id));
+        let Some(selected_id) = selected_id else {
+            return;
+        };
+        if let Some(notification) = self
+            .notifications
+            .iter_mut()
+            .find(|item| item.id == selected_id)
+            && !notification.is_read
+        {
+            notification.is_read = true;
+            self.unread_notification_count = self.unread_notification_count.saturating_sub(1);
+        }
+        self.selected_notification_id = Some(selected_id);
+        self.pending_notification_selection_id = Some(selected_id);
+    }
+
     /// 清空通知历史与状态栏提示。
     pub fn clear_notifications(&mut self) {
         self.notifications.clear();

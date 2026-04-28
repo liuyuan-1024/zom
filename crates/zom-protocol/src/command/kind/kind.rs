@@ -94,6 +94,8 @@ pub enum CommandKind {
 
     /// 通知中心标记全部已读。
     WorkspaceNotificationMarkAllRead,
+    /// 通知中心标记当前选中通知为已读。
+    WorkspaceNotificationMarkSelectedRead,
     /// 通知中心清空全部通知。
     WorkspaceNotificationClearAll,
     /// 通知中心清空已读通知。

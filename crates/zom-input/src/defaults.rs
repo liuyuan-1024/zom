@@ -142,6 +142,9 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.tab.close_active" => Some(CommandInvocation::from(TabAction::CloseActiveTab)),
         "workspace.tab.activate_prev" => Some(CommandInvocation::from(TabAction::ActivatePrevTab)),
         "workspace.tab.activate_next" => Some(CommandInvocation::from(TabAction::ActivateNextTab)),
+        "workspace.notification.mark_selected_read" => Some(CommandInvocation::from(
+            NotificationAction::MarkSelectedRead,
+        )),
         "workspace.notification.mark_all_read" => {
             Some(CommandInvocation::from(NotificationAction::MarkAllRead))
         }
@@ -405,26 +408,26 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
     // notification
     DefaultShortcutSpec::new(
         CommandKindId("workspace.notification.mark_all_read"),
-        ShortcutScope::Global,
-        primary_shift_char('r'),
+        ShortcutScope::Focus(FocusTarget::NotificationPanel),
+        primary_char('r'),
         70,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("workspace.notification.clear_all"),
-        ShortcutScope::Global,
-        primary_shift_char('k'),
+        ShortcutScope::Focus(FocusTarget::NotificationPanel),
+        primary_char('k'),
         70,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("workspace.notification.clear_read"),
-        ShortcutScope::Global,
-        primary_shift_char('u'),
+        ShortcutScope::Focus(FocusTarget::NotificationPanel),
+        primary_char('u'),
         70,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("workspace.notification.focus_unread_error"),
-        ShortcutScope::Global,
-        primary_shift_char('x'),
+        ShortcutScope::Focus(FocusTarget::NotificationPanel),
+        primary_char('x'),
         70,
     ),
     DefaultShortcutSpec::new(
@@ -440,7 +443,7 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         110,
     ),
     DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.focus_unread_error"),
+        CommandKindId("workspace.notification.mark_selected_read"),
         ShortcutScope::Focus(FocusTarget::NotificationPanel),
         plain(KeyCode::Enter),
         110,

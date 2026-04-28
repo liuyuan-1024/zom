@@ -96,6 +96,7 @@ impl DesktopAppState {
     /// 处理通知中心命令。
     fn handle_notification_command(&mut self, command: NotificationAction) {
         match command {
+            NotificationAction::MarkSelectedRead => self.mark_selected_notification_read(),
             NotificationAction::MarkAllRead => self.mark_all_notifications_read(),
             NotificationAction::ClearAll => self.clear_notifications(),
             NotificationAction::ClearRead => self.clear_read_notifications(),

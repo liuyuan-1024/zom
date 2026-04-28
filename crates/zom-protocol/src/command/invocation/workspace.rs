@@ -31,6 +31,8 @@ pub enum FileTreeAction {
 /// 通知中心动作语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NotificationAction {
+    /// 标记当前选中通知为已读。
+    MarkSelectedRead,
     /// 标记全部通知为已读。
     MarkAllRead,
     /// 清空全部通知。

@@ -736,6 +736,51 @@ fn notification_command_mark_all_read_clears_unread_counter() {
 }
 
 #[test]
+fn notification_command_mark_selected_read_marks_only_one_item() {
+    let mut state = DesktopAppState::from_current_workspace();
+    let first_id = state
+        .publish_notification_event(
+            DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Warning,
+                DesktopNotificationSource::Workspace,
+                "first",
+            )
+            .with_dedupe_key("mark-selected.first"),
+        )
+        .expect("first id");
+    let second_id = state
+        .publish_notification_event(
+            DesktopNotificationEvent::new(
+                DesktopNotificationLevel::Warning,
+                DesktopNotificationSource::Workspace,
+                "second",
+            )
+            .with_dedupe_key("mark-selected.second"),
+        )
+        .expect("second id");
+    state.selected_notification_id = Some(first_id);
+    state.unread_notification_count = 2;
+
+    state.handle_command(CommandInvocation::from(
+        NotificationAction::MarkSelectedRead,
+    ));
+
+    assert_eq!(state.unread_notification_count, 1);
+    let first = state
+        .notifications
+        .iter()
+        .find(|item| item.id == first_id)
+        .expect("first notification");
+    let second = state
+        .notifications
+        .iter()
+        .find(|item| item.id == second_id)
+        .expect("second notification");
+    assert!(first.is_read);
+    assert!(!second.is_read);
+}
+
+#[test]
 fn notification_command_clear_read_keeps_only_unread_items() {
     let mut state = DesktopAppState::from_current_workspace();
     state.publish_notification_event(
@@ -762,6 +807,32 @@ fn notification_command_clear_read_keeps_only_unread_items() {
     assert_eq!(state.notifications.len(), 1);
     assert_eq!(state.notifications[0].message, "keep me unread");
     assert_eq!(state.unread_notification_count, 1);
+}
+
+#[test]
+fn focusing_notification_panel_does_not_auto_mark_all_read() {
+    let mut state = DesktopAppState::from_current_workspace();
+    state.publish_notification_event(
+        DesktopNotificationEvent::new(
+            DesktopNotificationLevel::Info,
+            DesktopNotificationSource::Workspace,
+            "keep unread on focus",
+        )
+        .with_dedupe_key("focus.keep-unread"),
+    );
+    assert_eq!(state.unread_notification_count, 1);
+
+    state.handle_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
+        FocusTarget::NotificationPanel,
+    )));
+
+    assert_eq!(state.unread_notification_count, 1);
+    assert!(
+        state
+            .notifications
+            .iter()
+            .any(|notification| !notification.is_read)
+    );
 }
 
 #[test]

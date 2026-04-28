@@ -97,6 +97,9 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::WorkspaceTabActivateNext => {
             Some(CommandInvocation::from(TabAction::ActivateNextTab))
         }
+        CommandKind::WorkspaceNotificationMarkSelectedRead => Some(CommandInvocation::from(
+            NotificationAction::MarkSelectedRead,
+        )),
         CommandKind::WorkspaceNotificationMarkAllRead => {
             Some(CommandInvocation::from(NotificationAction::MarkAllRead))
         }

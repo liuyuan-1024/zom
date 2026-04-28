@@ -4,6 +4,12 @@ use crate::command::kind::{CommandKind, CommandKindSpec};
 
 pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
+        CommandKind::WorkspaceNotificationMarkSelectedRead,
+        "workspace.notification.mark_selected_read",
+        "通知标记当前已读",
+        "将通知面板当前选中的通知标记为已读。",
+    ),
+    CommandKindSpec::new(
         CommandKind::WorkspaceNotificationMarkAllRead,
         "workspace.notification.mark_all_read",
         "通知标记全部已读",
