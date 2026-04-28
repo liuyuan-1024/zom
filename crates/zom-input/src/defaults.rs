@@ -96,6 +96,9 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.open_project_picker" => {
             Some(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
         }
+        "workspace.open_find_replace" => {
+            Some(CommandInvocation::from(WorkspaceAction::OpenFindReplace))
+        }
         "workspace.close_focused" => Some(CommandInvocation::from(WorkspaceAction::CloseFocused)),
         "workspace.focus_panel.editor" => Some(CommandInvocation::from(
             WorkspaceAction::FocusPanel(FocusTarget::Editor),
@@ -352,6 +355,12 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         ShortcutScope::Global,
         primary_shift_char('p'),
         80,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.open_find_replace"),
+        ShortcutScope::Global,
+        primary_char('f'),
+        120,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("workspace.save_active_buffer"),

@@ -21,9 +21,9 @@ pub mod selection;
 /// 统一导出命令协议。
 pub use command::{
     CommandInvocation, CommandKind, CommandKindId, CommandKindSpec, CommandMeta, EditorAction,
-    EditorInvocation, FileTreeAction, NotificationAction, TabAction, WorkspaceAction, command_kind,
-    command_kind_id, command_kind_spec, command_kind_spec_by_id, command_kind_spec_by_kind,
-    command_kind_specs, command_meta,
+    EditorInvocation, FileTreeAction, FindReplaceAction, FindReplaceRequest, NotificationAction,
+    TabAction, WorkspaceAction, command_kind, command_kind_id, command_kind_spec,
+    command_kind_spec_by_id, command_kind_spec_by_kind, command_kind_specs, command_meta,
 };
 /// 统一导出方向类型。
 pub use direction::{Axis, Direction};

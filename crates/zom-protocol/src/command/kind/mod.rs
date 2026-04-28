@@ -13,7 +13,7 @@ pub use command_kind::CommandKind;
 pub use meta::{CommandKindId, CommandMeta};
 pub use spec::CommandKindSpec;
 
-use super::{CommandInvocation, EditorInvocation};
+use super::{CommandInvocation, EditorInvocation, FindReplaceAction};
 
 impl CommandInvocation {
     /// 返回运行时调用所属的稳定语义族。
@@ -83,6 +83,14 @@ fn dynamic_command_kind(command: &CommandInvocation) -> Option<CommandKind> {
         CommandInvocation::Editor(EditorInvocation::InsertText { .. }) => {
             Some(CommandKind::EditorInsertText)
         }
+        CommandInvocation::Editor(EditorInvocation::FindReplace { request }) => Some(match request
+            .action
+        {
+            FindReplaceAction::FindNext => CommandKind::EditorFindNext,
+            FindReplaceAction::FindPrev => CommandKind::EditorFindPrev,
+            FindReplaceAction::ReplaceNext => CommandKind::EditorReplaceNext,
+            FindReplaceAction::ReplaceAll => CommandKind::EditorReplaceAll,
+        }),
         _ => None,
     }
 }
@@ -102,7 +110,10 @@ fn build_command_kind_lookup() -> HashMap<CommandInvocation, CommandKind> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CommandInvocation, EditorInvocation, FocusTarget, OverlayTarget, WorkspaceAction};
+    use crate::{
+        CommandInvocation, EditorInvocation, FindReplaceAction, FindReplaceRequest, FocusTarget,
+        OverlayTarget, WorkspaceAction,
+    };
 
     use super::{
         CommandKind, CommandKindId, command_kind, command_kind_spec_by_id,
@@ -151,5 +162,18 @@ mod tests {
     fn editor_insert_text_uses_dynamic_kind_mapping() {
         let command = CommandInvocation::from(EditorInvocation::insert_text("hello"));
         assert_eq!(command_kind(&command), CommandKind::EditorInsertText);
+    }
+
+    #[test]
+    fn editor_find_replace_uses_dynamic_kind_mapping() {
+        let command = CommandInvocation::from(EditorInvocation::find_replace(FindReplaceRequest::new(
+            "hello",
+            "world",
+            FindReplaceAction::ReplaceAll,
+            true,
+            false,
+            false,
+        )));
+        assert_eq!(command_kind(&command), CommandKind::EditorReplaceAll);
     }
 }

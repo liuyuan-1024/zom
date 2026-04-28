@@ -7,8 +7,8 @@ mod invocation;
 mod kind;
 
 pub use invocation::{
-    CommandInvocation, EditorAction, EditorInvocation, FileTreeAction, NotificationAction,
-    TabAction, WorkspaceAction,
+    CommandInvocation, EditorAction, EditorInvocation, FileTreeAction, FindReplaceAction,
+    FindReplaceRequest, NotificationAction, TabAction, WorkspaceAction,
 };
 pub use kind::{
     CommandKind, CommandKindId, CommandKindSpec, CommandMeta, command_kind, command_kind_id,

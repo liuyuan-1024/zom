@@ -23,6 +23,12 @@ pub const SPECS: &[CommandKindSpec] = &[
         "打开项目目录选择器。",
     ),
     CommandKindSpec::new(
+        CommandKind::WorkspaceOpenFindReplace,
+        "workspace.open_find_replace",
+        "打开查找替换",
+        "打开编辑器查找替换入口。",
+    ),
+    CommandKindSpec::new(
         CommandKind::WorkspaceSaveActiveBuffer,
         "workspace.save_active_buffer",
         "保存当前标签页",

@@ -6,7 +6,7 @@
 mod editor;
 mod workspace;
 
-pub use editor::{EditorAction, EditorInvocation};
+pub use editor::{EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest};
 pub use workspace::{FileTreeAction, NotificationAction, TabAction, WorkspaceAction};
 
 /// 跨系统共享的顶层命令调用。

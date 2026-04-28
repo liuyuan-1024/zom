@@ -57,6 +57,8 @@ pub enum WorkspaceAction {
 
     /// 打开项目目录选择器。
     OpenProjectPicker,
+    /// 打开查找替换入口。
+    OpenFindReplace,
     /// 保存当前活动标签页。
     SaveActiveBuffer,
 

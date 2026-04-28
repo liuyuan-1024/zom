@@ -63,6 +63,57 @@ pub enum EditorAction {
     Redo,
 }
 
+/// 查找替换动作类型。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FindReplaceAction {
+    /// 查找下一个匹配项。
+    FindNext,
+    /// 查找上一个匹配项。
+    FindPrev,
+    /// 替换下一个匹配项。
+    ReplaceNext,
+    /// 替换全部匹配项。
+    ReplaceAll,
+}
+
+/// 编辑器内单文件查找替换请求。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FindReplaceRequest {
+    /// 查找模式（literal 或 regex）。
+    pub query: String,
+    /// 替换文本（仅替换操作使用）。
+    pub replacement: String,
+    /// 执行动作。
+    pub action: FindReplaceAction,
+    /// 是否区分大小写。
+    pub case_sensitive: bool,
+    /// 是否全词匹配。
+    pub whole_word: bool,
+    /// 是否按正则表达式解释 `query`。
+    pub use_regex: bool,
+}
+
+impl FindReplaceRequest {
+    /// 构造查找替换请求。
+    pub fn new(
+        query: impl Into<String>,
+        replacement: impl Into<String>,
+        action: FindReplaceAction,
+        case_sensitive: bool,
+        whole_word: bool,
+        use_regex: bool,
+    ) -> Self {
+        Self {
+            query: query.into(),
+            replacement: replacement.into(),
+            action,
+            case_sensitive,
+            whole_word,
+            use_regex,
+        }
+    }
+}
+
 /// 编辑器命令的运行时调用。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EditorInvocation {
@@ -73,12 +124,22 @@ pub enum EditorInvocation {
         /// 需要插入到光标位置的文本内容。
         text: String,
     },
+    /// 单文件查找替换请求。
+    FindReplace {
+        /// 请求参数。
+        request: FindReplaceRequest,
+    },
 }
 
 impl EditorInvocation {
     /// 构造一次文本插入调用。
     pub fn insert_text(text: impl Into<String>) -> Self {
         Self::InsertText { text: text.into() }
+    }
+
+    /// 构造一次查找替换调用。
+    pub fn find_replace(request: FindReplaceRequest) -> Self {
+        Self::FindReplace { request }
     }
 }
 

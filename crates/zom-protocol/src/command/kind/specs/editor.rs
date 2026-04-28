@@ -184,4 +184,28 @@ pub const SPECS: &[CommandKindSpec] = &[
         "重做",
         "重做最近一次撤销的编辑。",
     ),
+    CommandKindSpec::new(
+        CommandKind::EditorFindNext,
+        "editor.find_next",
+        "查找下一个",
+        "按给定条件定位到下一个匹配项。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorFindPrev,
+        "editor.find_prev",
+        "查找上一个",
+        "按给定条件定位到上一个匹配项。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorReplaceNext,
+        "editor.replace_next",
+        "替换下一个",
+        "按给定条件替换下一个匹配项。",
+    ),
+    CommandKindSpec::new(
+        CommandKind::EditorReplaceAll,
+        "editor.replace_all",
+        "替换全部",
+        "按给定条件替换当前文档全部匹配项。",
+    ),
 ];
