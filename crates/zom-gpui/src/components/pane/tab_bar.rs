@@ -1,14 +1,20 @@
 //! Pane 标签栏渲染与交互元素构造。
 
 use crate::{
-    components::{
-        chip,
-        pane::icons::{self, PaneIcon},
-    },
+    components::chip::Chip,
+    icon::AppIcon,
     theme::{color, opacity, size},
 };
 use gpui::{CursorStyle, IntoElement, div, prelude::*, px, rgb};
+use zom_input::shortcut_hint;
+use zom_protocol::{CommandInvocation, WorkspaceAction};
 use zom_runtime::state::{PaneState, TabState};
+
+struct TabIconSpec {
+    icon: AppIcon,
+    label: &'static str,
+    shortcut: Option<String>,
+}
 
 /// 渲染 Pane 顶部的标签栏
 pub(super) fn render(pane: &PaneState) -> impl IntoElement {
@@ -21,7 +27,7 @@ pub(super) fn render(pane: &PaneState) -> impl IntoElement {
         .w_full()
         .flex()
         .flex_row()
-        .items_end()
+        .items_center()
         .bg(rgb(color::COLOR_BG_PANEL))
         .border_b_1()
         .border_color(rgb(color::COLOR_BORDER))
@@ -52,6 +58,9 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
                 .child(render_close_button_placeholder())
                 .child(
                     div()
+                        .flex()
+                        .items_center()
+                        .justify_center()
                         .overflow_hidden()
                         .whitespace_nowrap()
                         .child(tab.title.clone()),
@@ -76,8 +85,7 @@ fn render_tab(tab: &TabState, is_active: bool, index: usize) -> impl IntoElement
 
 /// 渲染左侧悬浮关闭按钮
 fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
-    let icon = PaneIcon::Close;
-    let spec = icons::spec(icon);
+    let spec = close_icon_spec();
 
     div()
         .size(px(size::CONTROL_XS))
@@ -86,22 +94,26 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
         .items_center()
         .justify_center()
         .child(
-            chip::interactive_icon_chip(
-                ("tab-close", index),
-                chip::TooltipSpec::new(spec.label, spec.shortcut),
-            )
-            .size(px(size::CONTROL_XS))
-            .opacity(opacity::OPACITY_HIDDEN)
-            .group_hover(group_id.to_string(), |style| {
-                style.opacity(opacity::OPACITY_VISIBLE)
-            })
-            .hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)))
-            .child(icons::render(
-                icon,
-                size::ICON_SM,
-                rgb(color::COLOR_FG_MUTED),
-            )),
+            div()
+                .size(px(size::CONTROL_XS))
+                .opacity(opacity::OPACITY_HIDDEN)
+                .group_hover(group_id.to_string(), |style| {
+                    style.opacity(opacity::OPACITY_VISIBLE)
+                })
+                .child(
+                    Chip::new(("tab-close", index))
+                        .icon(spec.icon)
+                        .tooltip_hint(spec.label, spec.shortcut),
+                ),
         )
+}
+
+fn close_icon_spec() -> TabIconSpec {
+    TabIconSpec {
+        icon: AppIcon::Close,
+        label: "关闭",
+        shortcut: shortcut_hint(&CommandInvocation::from(WorkspaceAction::CloseFocused)),
+    }
 }
 
 /// 渲染和关闭按钮等宽的占位槽，用来维持标题居中。
