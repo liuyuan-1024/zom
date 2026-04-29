@@ -47,7 +47,6 @@ impl Chip {
     }
 
     /// 按需覆盖默认图标大小
-    #[allow(dead_code)]
     pub fn icon_size(mut self, size: f32) -> Self {
         self.icon_size = size;
         self
@@ -60,7 +59,6 @@ impl Chip {
     }
 
     /// 按需覆盖默认文字大小
-    #[allow(dead_code)]
     pub fn label_size(mut self, size: f32) -> Self {
         self.label_size = size;
         self
