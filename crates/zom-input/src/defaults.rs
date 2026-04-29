@@ -1,6 +1,6 @@
 use zom_protocol::{
     CommandInvocation, CommandKindId, EditorAction, FileTreeAction, FocusTarget, KeyCode,
-    Keystroke, Modifiers, NotificationAction, OverlayTarget, TabAction, WorkspaceAction,
+    Keystroke, Modifiers, OverlayTarget, TabAction, WorkspaceAction,
 };
 
 use crate::{InputResolution, ShortcutBinding, ShortcutRegistry, ShortcutScope};
@@ -52,8 +52,17 @@ pub(crate) fn build_default_shortcut_registry() -> ShortcutRegistry {
 }
 
 fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> {
+    let id = command_id.0;
+    editor_command_from_kind_id(id)
+        .or_else(|| workspace_action_command_from_kind_id(id))
+        .or_else(|| workspace_focus_command_from_kind_id(id))
+        .or_else(|| workspace_file_tree_command_from_kind_id(id))
+        .or_else(|| workspace_tab_command_from_kind_id(id))
+}
+
+fn editor_command_from_kind_id(id: &str) -> Option<CommandInvocation> {
     // 需要运行时载荷的命令（如 insert_text）不在静态快捷键表直接构造。
-    match command_id.0 {
+    match id {
         "editor.insert_text" => None,
         "editor.insert_newline" => Some(CommandInvocation::from(EditorAction::InsertNewline)),
         "editor.insert_indent" => Some(CommandInvocation::from(EditorAction::InsertIndent)),
@@ -102,17 +111,29 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "editor.find_next" => Some(CommandInvocation::from(EditorAction::FindNext)),
         "editor.replace_next" => Some(CommandInvocation::from(EditorAction::ReplaceNext)),
         "editor.replace_all" => Some(CommandInvocation::from(EditorAction::ReplaceAll)),
+        _ => None,
+    }
+}
+
+fn workspace_action_command_from_kind_id(id: &str) -> Option<CommandInvocation> {
+    match id {
         "workspace.quit_app" => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),
         "workspace.minimize_window" => {
             Some(CommandInvocation::from(WorkspaceAction::MinimizeWindow))
         }
-        "workspace.save_active_buffer" => {
-            Some(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer))
-        }
         "workspace.open_project_picker" => {
             Some(CommandInvocation::from(WorkspaceAction::OpenProjectPicker))
         }
+        "workspace.save_active_buffer" => {
+            Some(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer))
+        }
         "workspace.close_focused" => Some(CommandInvocation::from(WorkspaceAction::CloseFocused)),
+        _ => None,
+    }
+}
+
+fn workspace_focus_command_from_kind_id(id: &str) -> Option<CommandInvocation> {
+    match id {
         "workspace.focus_panel.editor" => Some(CommandInvocation::from(
             WorkspaceAction::FocusPanel(FocusTarget::Editor),
         )),
@@ -140,15 +161,18 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.focus_panel.debug" => Some(CommandInvocation::from(
             WorkspaceAction::FocusPanel(FocusTarget::DebugPanel),
         )),
-        "workspace.focus_panel.notification" => Some(CommandInvocation::from(
-            WorkspaceAction::FocusPanel(FocusTarget::NotificationPanel),
-        )),
         "workspace.focus_panel.shortcut" => Some(CommandInvocation::from(
             WorkspaceAction::FocusPanel(FocusTarget::ShortcutPanel),
         )),
         "workspace.focus_overlay.settings" => Some(CommandInvocation::from(
             WorkspaceAction::FocusOverlay(OverlayTarget::Settings),
         )),
+        _ => None,
+    }
+}
+
+fn workspace_file_tree_command_from_kind_id(id: &str) -> Option<CommandInvocation> {
+    match id {
         "workspace.file_tree.select_prev" => {
             Some(CommandInvocation::from(FileTreeAction::SelectPrev))
         }
@@ -164,32 +188,21 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.file_tree.activate_selection" => {
             Some(CommandInvocation::from(FileTreeAction::ActivateSelection))
         }
+        _ => None,
+    }
+}
+
+fn workspace_tab_command_from_kind_id(id: &str) -> Option<CommandInvocation> {
+    match id {
         "workspace.tab.close_active" => Some(CommandInvocation::from(TabAction::CloseActiveTab)),
         "workspace.tab.activate_prev" => Some(CommandInvocation::from(TabAction::ActivatePrevTab)),
         "workspace.tab.activate_next" => Some(CommandInvocation::from(TabAction::ActivateNextTab)),
-        "workspace.notification.mark_selected_read" => Some(CommandInvocation::from(
-            NotificationAction::MarkSelectedRead,
-        )),
-        "workspace.notification.clear_all" => {
-            Some(CommandInvocation::from(NotificationAction::ClearAll))
-        }
-        "workspace.notification.clear_read" => {
-            Some(CommandInvocation::from(NotificationAction::ClearRead))
-        }
-        "workspace.notification.focus_unread_error" => Some(CommandInvocation::from(
-            NotificationAction::FocusUnreadError,
-        )),
-        "workspace.notification.select_prev" => {
-            Some(CommandInvocation::from(NotificationAction::SelectPrev))
-        }
-        "workspace.notification.select_next" => {
-            Some(CommandInvocation::from(NotificationAction::SelectNext))
-        }
         _ => None,
     }
 }
 
 const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
+    // --- Editor: 基础编辑与导航 ---
     DefaultShortcutSpec::new(
         CommandKindId("editor.insert_newline"),
         ShortcutScope::Focus(FocusTarget::Editor),
@@ -352,6 +365,7 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         primary_shift_char('z'),
         120,
     ),
+    // --- Workspace: 顶层动作 ---
     DefaultShortcutSpec::new(
         CommandKindId("workspace.quit_app"),
         ShortcutScope::Global,
@@ -370,6 +384,7 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         primary_shift_char('p'),
         80,
     ),
+    // --- Editor: 查找替换 ---
     DefaultShortcutSpec::new(
         CommandKindId("editor.open_find_replace"),
         ShortcutScope::Global,
@@ -418,6 +433,7 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         primary_secondary(KeyCode::Enter),
         100,
     ),
+    // --- Workspace: 保存与关闭 ---
     DefaultShortcutSpec::new(
         CommandKindId("workspace.save_active_buffer"),
         ShortcutScope::Global,
@@ -430,6 +446,7 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         primary_char('w'),
         120,
     ),
+    // --- Workspace: 聚焦目标 ---
     DefaultShortcutSpec::new(
         CommandKindId("workspace.focus_panel.editor"),
         ShortcutScope::Global,
@@ -485,12 +502,6 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         80,
     ),
     DefaultShortcutSpec::new(
-        CommandKindId("workspace.focus_panel.notification"),
-        ShortcutScope::Global,
-        primary_shift_char('n'),
-        80,
-    ),
-    DefaultShortcutSpec::new(
         CommandKindId("workspace.focus_panel.shortcut"),
         ShortcutScope::Global,
         primary_shift_char('k'),
@@ -503,47 +514,12 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         80,
     ),
     DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.clear_all"),
-        ShortcutScope::Focus(FocusTarget::NotificationPanel),
-        primary_char('k'),
-        70,
-    ),
-    DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.clear_read"),
-        ShortcutScope::Focus(FocusTarget::NotificationPanel),
-        primary_char('u'),
-        70,
-    ),
-    DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.focus_unread_error"),
-        ShortcutScope::Focus(FocusTarget::NotificationPanel),
-        primary_char('x'),
-        70,
-    ),
-    DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.select_prev"),
-        ShortcutScope::Focus(FocusTarget::NotificationPanel),
-        plain(KeyCode::Up),
-        110,
-    ),
-    DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.select_next"),
-        ShortcutScope::Focus(FocusTarget::NotificationPanel),
-        plain(KeyCode::Down),
-        110,
-    ),
-    DefaultShortcutSpec::new(
-        CommandKindId("workspace.notification.mark_selected_read"),
-        ShortcutScope::Focus(FocusTarget::NotificationPanel),
-        plain(KeyCode::Enter),
-        110,
-    ),
-    DefaultShortcutSpec::new(
         CommandKindId("workspace.focus_panel.editor"),
         ShortcutScope::Focus(FocusTarget::TerminalPanel),
         plain(KeyCode::Enter),
         110,
     ),
+    // --- Workspace.FileTree: 面板内动作 ---
     DefaultShortcutSpec::new(
         CommandKindId("workspace.file_tree.select_prev"),
         ShortcutScope::Focus(FocusTarget::FileTreePanel),
@@ -574,6 +550,7 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         plain(KeyCode::Enter),
         110,
     ),
+    // --- Workspace.Tab: 标签页切换 ---
     DefaultShortcutSpec::new(
         CommandKindId("workspace.tab.activate_prev"),
         ShortcutScope::Global,

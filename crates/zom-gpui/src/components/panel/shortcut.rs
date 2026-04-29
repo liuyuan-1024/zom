@@ -4,7 +4,10 @@ use gpui::{
     App, Context, FocusHandle, Focusable, InteractiveElement, ParentElement, Render, Styled,
     StatefulInteractiveElement, Window, div, px, rgb,
 };
-use zom_input::{default_shortcut_registry, format_keystroke_for_display, format_scope_for_display};
+use zom_input::{
+    ShortcutScope, default_shortcut_registry, format_keystroke_for_display, format_scope_for_display,
+};
+use zom_protocol::FocusTarget;
 
 use crate::{
     components::panel::shell,
@@ -36,9 +39,10 @@ impl Render for ShortcutPanel {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
         let mut rows = shortcut_rows();
         rows.sort_by(|left, right| {
-            left.scope
-                .cmp(&right.scope)
-                .then(left.command_title.cmp(&right.command_title))
+            left.scope_order
+                .cmp(&right.scope_order)
+                .then(left.focus_order.cmp(&right.focus_order))
+                .then(left.command_id.cmp(right.command_id))
                 .then(left.keystroke.cmp(&right.keystroke))
         });
 
@@ -119,6 +123,9 @@ impl Render for ShortcutPanel {
 
 #[derive(Debug, Clone)]
 struct ShortcutRow {
+    scope_order: u8,
+    focus_order: u8,
+    command_id: &'static str,
     command_title: String,
     scope: String,
     keystroke: String,
@@ -128,10 +135,31 @@ fn shortcut_rows() -> Vec<ShortcutRow> {
     default_shortcut_registry()
         .bindings()
         .iter()
-        .map(|binding| ShortcutRow {
-            command_title: binding.command.meta().title.to_string(),
-            scope: format_scope_for_display(binding.scope),
-            keystroke: format_keystroke_for_display(&binding.keystroke),
+        .map(|binding| {
+            let (scope_order, focus_order) = scope_sort_key(binding.scope);
+            ShortcutRow {
+                scope_order,
+                focus_order,
+                command_id: binding.command.kind_id().0,
+                command_title: binding.command.meta().title.to_string(),
+                scope: format_scope_for_display(binding.scope),
+                keystroke: format_keystroke_for_display(&binding.keystroke),
+            }
         })
         .collect()
+}
+
+fn scope_sort_key(scope: ShortcutScope) -> (u8, u8) {
+    match scope {
+        ShortcutScope::Global => (0, 0),
+        ShortcutScope::Focus(target) => (1, focus_target_sort_order(target)),
+    }
+}
+
+fn focus_target_sort_order(target: FocusTarget) -> u8 {
+    FocusTarget::ALL
+        .iter()
+        .position(|candidate| *candidate == target)
+        .map(|index| index as u8)
+        .unwrap_or(u8::MAX)
 }
