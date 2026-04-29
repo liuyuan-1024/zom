@@ -11,6 +11,7 @@ pub fn cursor_text(position: Position) -> String {
 
 /// 将通知状态投影为工具栏可展示的短文案。
 pub fn notification_status_text(state: &DesktopAppState) -> Option<String> {
+    // 常驻状态提示优先级高于未读计数，避免错误/进度信息被计数文案覆盖。
     if let Some(notification) = state.active_status_notification.as_ref() {
         let level = match notification.level {
             DesktopNotificationLevel::Info => "INFO",
@@ -37,12 +38,14 @@ mod tests {
     use crate::state::{DesktopNotification, DesktopNotificationLevel, DesktopNotificationSource};
 
     #[test]
+    /// 光标文案使用从 1 开始的行列显示。
     fn cursor_text_uses_one_based_display() {
         assert_eq!(cursor_text(Position::new(0, 0)), "1:1");
         assert_eq!(cursor_text(Position::new(9, 3)), "10:4");
     }
 
     #[test]
+    /// 计算状态栏通知结果。
     fn notification_status_prefers_active_status_notification() {
         let mut state = DesktopAppState::from_current_workspace();
         state.unread_notification_count = 5;
@@ -65,6 +68,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算状态栏结果。
     fn notification_status_uses_unread_count_when_no_status_item() {
         let mut state = DesktopAppState::from_current_workspace();
         state.focused_target = FocusTarget::Editor;

@@ -19,6 +19,7 @@ use super::{
 };
 use crate::state::{FileTreeNodeKind, PanelDock};
 
+/// 为测试场景构造快捷键命令触发输入，统一使用全局作用域解析路径。
 fn shortcut_for(command: CommandInvocation) -> Keystroke {
     zom_input::default_shortcut_registry()
         .bindings()
@@ -29,6 +30,7 @@ fn shortcut_for(command: CommandInvocation) -> Keystroke {
 }
 
 #[test]
+/// 计算文件树标签页结果。
 fn activating_file_tree_file_opens_tab_and_activates_it() {
     let workspace = create_temp_workspace("activate-file-opens-tab");
     fs::write(workspace.join("main.rs"), "fn main() {}").expect("write main.rs");
@@ -56,6 +58,7 @@ fn activating_file_tree_file_opens_tab_and_activates_it() {
 }
 
 #[test]
+/// 计算文件窗格结果。
 fn keyboard_select_and_activate_opens_file_in_pane() {
     let workspace = create_temp_workspace("keyboard-open");
     fs::write(workspace.join("main.rs"), "fn main() {}").expect("write main.rs");
@@ -78,6 +81,7 @@ fn keyboard_select_and_activate_opens_file_in_pane() {
 }
 
 #[test]
+/// 计算面板文件树焦点结果。
 fn focus_panel_shows_file_tree_and_requests_focus() {
     let mut state = DesktopAppState::from_current_workspace();
     state.visible_panels.remove(&FocusTarget::FileTreePanel);
@@ -100,6 +104,7 @@ fn focus_panel_shows_file_tree_and_requests_focus() {
 }
 
 #[test]
+/// 关闭文件树编辑器并同步相关状态。
 fn close_focused_hides_focused_file_tree_and_falls_back_to_editor() {
     let mut state = DesktopAppState::from_current_workspace();
     state.focused_target = FocusTarget::FileTreePanel;
@@ -113,6 +118,7 @@ fn close_focused_hides_focused_file_tree_and_falls_back_to_editor() {
 }
 
 #[test]
+/// 关闭标签页编辑器并同步相关状态。
 fn close_focused_closes_active_tab_when_editor_is_focused() {
     let mut state = DesktopAppState::from_current_workspace();
     state.focused_target = FocusTarget::Editor;
@@ -133,6 +139,7 @@ fn close_focused_closes_active_tab_when_editor_is_focused() {
 }
 
 #[test]
+/// 计算工具栏状态结果。
 fn tab_activation_commands_cycle_tabs_and_sync_toolbar_state() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -165,6 +172,7 @@ fn tab_activation_commands_cycle_tabs_and_sync_toolbar_state() {
 }
 
 #[test]
+/// 计算文件树选区标签页结果。
 fn tab_activation_commands_sync_file_tree_selection_to_active_tab() {
     let workspace = create_temp_workspace("tab-activation-syncs-file-tree");
     fs::write(workspace.join("a.rs"), "fn a() {}").expect("write a.rs");
@@ -212,6 +220,7 @@ fn tab_activation_commands_sync_file_tree_selection_to_active_tab() {
 }
 
 #[test]
+/// 计算快捷键标签页结果。
 fn keyboard_shortcut_can_activate_next_tab() {
     let mut state = DesktopAppState::from_current_workspace();
     state.focused_target = FocusTarget::FileTreePanel;
@@ -234,6 +243,7 @@ fn keyboard_shortcut_can_activate_next_tab() {
 }
 
 #[test]
+/// 计算快捷键工作区命令结果。
 fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -252,6 +262,7 @@ fn keyboard_shortcut_resolves_via_input_layer_and_dispatches_workspace_command()
 }
 
 #[test]
+/// 计算命令标签页缓冲区光标结果。
 fn editor_command_updates_active_tab_buffer_and_cursor() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -287,6 +298,7 @@ fn editor_command_updates_active_tab_buffer_and_cursor() {
 }
 
 #[test]
+/// 计算选区工具栏光标结果。
 fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -319,6 +331,7 @@ fn editor_select_all_updates_active_selection_and_toolbar_cursor() {
 }
 
 #[test]
+/// 计算编辑器焦点文本结果。
 fn plain_character_keystroke_in_editor_focus_inserts_text() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -347,6 +360,7 @@ fn plain_character_keystroke_in_editor_focus_inserts_text() {
 }
 
 #[test]
+/// 计算文本编辑器结果。
 fn shift_left_then_backspace_deletes_selected_text_in_editor() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -471,6 +485,7 @@ fn continuous_typing_merges_into_single_undo_step() {
 }
 
 #[test]
+/// 计算光标结果。
 fn moving_cursor_breaks_typing_merge_group() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -602,6 +617,7 @@ fn undo_stack_restores_cut_replacement_and_clears_redo_after_new_edit() {
 }
 
 #[test]
+/// 读取替换命令选区并返回匹配结果。
 fn find_replace_command_updates_selection_and_supports_undo_after_replace() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -627,7 +643,14 @@ fn find_replace_command_updates_selection_and_supports_undo_after_replace() {
     );
 
     state.dispatch_command(CommandInvocation::from(EditorInvocation::find_replace(
-        FindReplaceRequest::new("foo", "bar", FindReplaceAction::ReplaceNext, false, false, false),
+        FindReplaceRequest::new(
+            "foo",
+            "bar",
+            FindReplaceAction::ReplaceNext,
+            false,
+            false,
+            false,
+        ),
     )));
     assert_eq!(
         state
@@ -672,6 +695,7 @@ fn copy_command_emits_clipboard_write_ui_action() {
 }
 
 #[test]
+/// 计算命令文本结果。
 fn cut_command_writes_clipboard_and_deletes_selected_text() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(
@@ -725,6 +749,7 @@ fn paste_command_emits_clipboard_read_ui_action() {
 }
 
 #[test]
+/// 保存缓冲区文本行并同步相关状态。
 fn save_active_buffer_writes_current_text_with_original_line_ending() {
     let workspace = create_temp_workspace("save-active-buffer");
     let file_path = workspace.join("main.rs");
@@ -744,6 +769,7 @@ fn save_active_buffer_writes_current_text_with_original_line_ending() {
 }
 
 #[test]
+/// 计算文本草稿缓冲区结果。
 fn editing_text_writes_draft_for_active_buffer() {
     let workspace = create_temp_workspace("draft-write-on-edit");
     fs::write(workspace.join("main.rs"), "ab").expect("write main.rs");
@@ -761,6 +787,7 @@ fn editing_text_writes_draft_for_active_buffer() {
 }
 
 #[test]
+/// 计算文件草稿结果。
 fn opening_file_restores_unsaved_draft_content() {
     let workspace = create_temp_workspace("draft-restore-on-open");
     fs::write(workspace.join("main.rs"), "disk").expect("write main.rs");
@@ -799,6 +826,7 @@ fn opening_file_restores_unsaved_draft_content() {
 }
 
 #[test]
+/// 计算文件草稿结果。
 fn saving_file_clears_recovered_draft() {
     let workspace = create_temp_workspace("draft-clear-on-save");
     fs::write(workspace.join("main.rs"), "ab").expect("write main.rs");
@@ -820,6 +848,7 @@ fn saving_file_clears_recovered_draft() {
 }
 
 #[test]
+/// 计算命令标签页结果。
 fn editor_command_without_active_tab_is_noop() {
     let mut state = DesktopAppState::from_current_workspace();
     state.pane.tabs.clear();
@@ -834,6 +863,7 @@ fn editor_command_without_active_tab_is_noop() {
 }
 
 #[test]
+/// 计算快捷键焦点面板结果。
 fn keyboard_shortcut_can_focus_and_close_git_panel() {
     let mut state = DesktopAppState::from_current_workspace();
     let focus_git = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -861,6 +891,7 @@ fn keyboard_shortcut_can_focus_and_close_git_panel() {
 }
 
 #[test]
+/// 计算面板结果。
 fn focus_panel_replaces_existing_left_slot_panel() {
     let mut state = DesktopAppState::from_current_workspace();
     assert!(state.is_panel_visible(FocusTarget::FileTreePanel));
@@ -875,6 +906,7 @@ fn focus_panel_replaces_existing_left_slot_panel() {
 }
 
 #[test]
+/// 计算面板停靠区结果。
 fn focus_panel_replaces_existing_bottom_dock_panel() {
     let mut state = DesktopAppState::from_current_workspace();
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -906,6 +938,7 @@ fn right_and_bottom_docks_can_stay_visible_together() {
 }
 
 #[test]
+/// 关闭面板并同步相关状态。
 fn close_focused_bottom_panel_keeps_right_panel_visible() {
     let mut state = DesktopAppState::from_current_workspace();
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -923,6 +956,7 @@ fn close_focused_bottom_panel_keeps_right_panel_visible() {
 }
 
 #[test]
+/// 计算面板停靠区编辑器结果。
 fn hide_visible_panel_in_dock_hides_target_and_falls_back_to_editor() {
     let mut state = DesktopAppState::from_current_workspace();
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -939,6 +973,7 @@ fn hide_visible_panel_in_dock_hides_target_and_falls_back_to_editor() {
 }
 
 #[test]
+/// 计算快捷键焦点通知面板结果。
 fn keyboard_shortcut_can_focus_and_close_notification_panel() {
     let mut state = DesktopAppState::from_current_workspace();
     let focus_notification = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
@@ -965,6 +1000,7 @@ fn keyboard_shortcut_can_focus_and_close_notification_panel() {
 }
 
 #[test]
+/// 计算快捷键项目结果。
 fn keyboard_shortcut_can_request_open_project_picker_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::OpenProjectPicker));
@@ -979,6 +1015,7 @@ fn keyboard_shortcut_can_request_open_project_picker_ui_action() {
 }
 
 #[test]
+/// 计算快捷键查找替换结果。
 fn keyboard_shortcut_can_request_open_find_replace_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     set_tabs(&mut state, vec![zom_runtime_test_tab("main.rs", 1)]);
@@ -998,6 +1035,7 @@ fn keyboard_shortcut_can_request_open_find_replace_ui_action() {
 }
 
 #[test]
+/// 计算快捷键查找替换标签页结果。
 fn keyboard_shortcut_open_find_replace_requires_active_tab() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(EditorAction::OpenFindReplace));
@@ -1010,6 +1048,7 @@ fn keyboard_shortcut_open_find_replace_requires_active_tab() {
 }
 
 #[test]
+/// 计算快捷键窗口结果。
 fn keyboard_shortcut_can_request_minimize_window_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::MinimizeWindow));
@@ -1024,6 +1063,7 @@ fn keyboard_shortcut_can_request_minimize_window_ui_action() {
 }
 
 #[test]
+/// 计算快捷键结果。
 fn keyboard_shortcut_can_request_quit_app_ui_action() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::QuitApp));
@@ -1038,6 +1078,7 @@ fn keyboard_shortcut_can_request_quit_app_ui_action() {
 }
 
 #[test]
+/// 计算快捷键焦点浮层结果。
 fn keyboard_shortcut_can_focus_settings_overlay() {
     let mut state = DesktopAppState::from_current_workspace();
     let keystroke = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusOverlay(
@@ -1057,6 +1098,7 @@ fn keyboard_shortcut_can_focus_settings_overlay() {
 }
 
 #[test]
+/// 写入通知提示历史并同步相关状态。
 fn push_notification_sets_active_toast_and_persists_history() {
     let mut state = DesktopAppState::from_current_workspace();
 
@@ -1153,6 +1195,7 @@ fn dedupe_event_aggregates_count_and_avoids_second_toast() {
 }
 
 #[test]
+/// 计算状态栏结果。
 fn progress_event_updates_status_bar_only() {
     let mut state = DesktopAppState::from_current_workspace();
     let mut event = DesktopNotificationEvent::new(
@@ -1281,6 +1324,7 @@ fn notification_command_clear_read_keeps_only_unread_items() {
 }
 
 #[test]
+/// 计算通知面板结果。
 fn focusing_notification_panel_does_not_auto_mark_all_read() {
     let mut state = DesktopAppState::from_current_workspace();
     state.publish_notification_event(
@@ -1307,6 +1351,7 @@ fn focusing_notification_panel_does_not_auto_mark_all_read() {
 }
 
 #[test]
+/// 计算命令历史状态栏结果。
 fn notification_command_clear_all_empties_history_and_status() {
     let mut state = DesktopAppState::from_current_workspace();
     state.publish_notification_event(
@@ -1329,6 +1374,7 @@ fn notification_command_clear_all_empties_history_and_status() {
 }
 
 #[test]
+/// 计算通知焦点选区结果。
 fn focus_unread_error_notification_sets_focus_and_selection_target() {
     let mut state = DesktopAppState::from_current_workspace();
     state.publish_notification_event(
@@ -1423,6 +1469,7 @@ fn notification_selection_commands_move_between_rows() {
 }
 
 #[test]
+/// 关闭浮层并同步相关状态。
 fn close_focused_closes_active_settings_overlay_first() {
     let mut state = DesktopAppState::from_current_workspace();
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusOverlay(
@@ -1439,6 +1486,7 @@ fn close_focused_closes_active_settings_overlay_first() {
 }
 
 #[test]
+/// 计算项目文件树结果。
 fn switch_project_reloads_real_file_tree_and_clears_tabs() {
     let workspace = create_temp_workspace("switch-project-tree");
     fs::create_dir_all(workspace.join("src")).expect("create src directory");
@@ -1472,6 +1520,7 @@ fn switch_project_reloads_real_file_tree_and_clears_tabs() {
 }
 
 #[test]
+/// 打开文件项目并同步相关状态。
 fn open_file_reads_from_selected_project_root() {
     let workspace = create_temp_workspace("open-file-from-root");
     fs::create_dir_all(workspace.join("src")).expect("create src directory");
@@ -1496,6 +1545,7 @@ fn open_file_reads_from_selected_project_root() {
 }
 
 #[test]
+/// 打开文件编辑器状态并同步相关状态。
 fn open_file_failure_keeps_existing_editor_state() {
     let workspace = create_temp_workspace("open-missing-file");
     fs::write(workspace.join("old.rs"), "let old = 1;").expect("write old.rs");
@@ -1520,6 +1570,7 @@ fn open_file_failure_keeps_existing_editor_state() {
     remove_temp_workspace(workspace);
 }
 
+/// 创建工作区并完成初始化。
 fn create_temp_workspace(name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -1530,12 +1581,14 @@ fn create_temp_workspace(name: &str) -> PathBuf {
     workspace
 }
 
+/// 移除工作区并同步相关状态。
 fn remove_temp_workspace(path: PathBuf) {
     let draft_root = crate::draft_store::workspace_draft_root(&path);
     let _ = fs::remove_dir_all(draft_root);
     fs::remove_dir_all(path).expect("remove temp workspace");
 }
 
+/// 计算标签页结果。
 fn zom_runtime_test_tab(
     relative_path: &str,
     buffer_id: u64,
@@ -1550,6 +1603,7 @@ fn zom_runtime_test_tab(
     )
 }
 
+/// 计算标签页状态结果。
 fn runtime_test_tab_state(
     relative_path: &str,
     buffer_id: zom_protocol::BufferId,
@@ -1564,6 +1618,7 @@ fn runtime_test_tab_state(
     }
 }
 
+/// 计算标签页文本光标结果。
 fn zom_runtime_test_tab_with_text_and_cursor(
     relative_path: &str,
     text: &str,
@@ -1588,6 +1643,7 @@ fn zom_runtime_test_tab_with_text_and_cursor(
     )
 }
 
+/// 设置目标并同步相关状态。
 fn set_tabs(
     state: &mut DesktopAppState,
     tabs_with_states: Vec<(crate::state::TabState, zom_editor::EditorState)>,
@@ -1602,6 +1658,7 @@ fn set_tabs(
     }
 }
 
+/// 返回当前平台应使用的行尾风格，供跨平台断言文本结果时对齐预期。
 fn expected_platform_line_ending() -> LineEnding {
     if cfg!(windows) {
         LineEnding::Crlf

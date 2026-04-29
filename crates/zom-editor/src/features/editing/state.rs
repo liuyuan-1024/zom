@@ -1,24 +1,26 @@
-//! 编辑器核心状态定义。
 
 use zom_protocol::{Position, Selection};
 use zom_text::TextBuffer;
 
-/// 文档版本号。
+/// 编辑器文档版本号，用于 editor/runtime 之间的乐观并发控制。
+///
+/// `EditorState` 每次提交有效变更（文本或选区）都会递增版本，
+/// 上层可用它拒绝过期请求，避免“旧操作覆盖新状态”。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DocVersion(u64);
 
 impl DocVersion {
-    /// 返回初始版本。
+    /// 新建文档快照的初始版本。
     pub const fn zero() -> Self {
         Self(0)
     }
 
-    /// 返回下一个版本号。
+    /// 返回严格递增后的版本值。
     pub const fn next(self) -> Self {
         Self(self.0 + 1)
     }
 
-    /// 读取内部值。
+    /// 导出底层计数值，供序列化和协议层互操作使用。
     pub const fn get(self) -> u64 {
         self.0
     }
@@ -30,19 +32,20 @@ impl From<u64> for DocVersion {
     }
 }
 
-/// 文本偏移（字节单位）。
 pub type Offset = usize;
 
-/// 编辑器状态快照。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorState {
+    /// 文本真值源；所有位置/偏移换算都依赖该缓冲区。
     buffer: TextBuffer,
+    /// 逻辑坐标（`line`,`column`）下的选区（anchor/active）。
     selection: Selection,
+    /// 当前快照版本，供事务和 runtime 桥接层做并发校验。
     version: DocVersion,
 }
 
 impl EditorState {
-    /// 用文本创建初始状态，默认版本号为 0、光标位于起点。
+    /// 用给定文本构造状态：光标默认在 `(0,0)`，版本为 `0`。
     pub fn from_text(text: impl Into<String>) -> Self {
         Self {
             buffer: TextBuffer::from_text(text),
@@ -51,49 +54,42 @@ impl EditorState {
         }
     }
 
-    /// 返回当前完整文本副本（面向快照/序列化场景）。
     pub fn text(&self) -> String {
         self.buffer.to_string()
     }
 
-    /// 返回文本长度（字节）。
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
 
-    /// 判断当前文档是否为空。
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
 
-    /// 返回当前选区。
     pub fn selection(&self) -> Selection {
         self.selection
     }
 
-    /// 将逻辑位置映射到字节偏移（越界时夹紧到文档边界）。
+    /// 逻辑位置转 UTF-8 字节偏移；越界输入按 `TextBuffer` 规则自动钳制。
     pub fn position_to_offset(&self, position: Position) -> Offset {
         self.buffer.position_to_offset(position)
     }
 
-    /// 将字节偏移映射到逻辑位置（越界时夹紧到文档边界）。
+    /// 字节偏移转逻辑位置；会先钳制到当前文档末尾，保证总能落在有效位置。
     pub fn offset_to_position(&self, offset: Offset) -> Position {
         self.buffer
             .offset_to_position(offset.min(self.buffer.len()))
             .expect("clamped offset should always map to a position")
     }
 
-    /// 返回当前版本号。
     pub fn version(&self) -> DocVersion {
         self.version
     }
 
-    /// 读取底层文本缓冲区（仅供编辑域内部复用）。
     pub(crate) fn buffer(&self) -> &TextBuffer {
         &self.buffer
     }
 
-    /// 由既有部件组装状态（用于事务推进后的状态重建）。
     pub(crate) fn from_parts(
         buffer: TextBuffer,
         selection: Selection,
@@ -107,7 +103,9 @@ impl EditorState {
     }
 }
 
-/// 将选区夹紧到给定文本范围内。
+/// 通过 `position -> offset -> position` 回写选区，统一修正非法 anchor/active。
+///
+/// 这个过程可同时处理越界坐标、多字节字符边界和“落在文档末尾之后”的情况。
 pub fn clamp_selection_to_text(buffer: &TextBuffer, selection: Selection) -> Selection {
     let anchor_offset = buffer.position_to_offset(selection.anchor());
     let active_offset = buffer.position_to_offset(selection.active());

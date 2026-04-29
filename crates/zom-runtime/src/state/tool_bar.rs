@@ -3,14 +3,14 @@
 use zom_protocol::CommandInvocation;
 use zom_protocol::Position;
 
-/// 工具栏展示信息。
+/// 工具栏按钮入口。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolBarEntry {
     /// 该入口对应的命令语义。
     pub command: CommandInvocation,
 }
 
-/// 工具栏展示信息。
+/// 底部工具栏状态快照。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolBarState {
     /// 左侧工具入口。

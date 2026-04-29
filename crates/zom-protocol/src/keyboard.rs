@@ -27,6 +27,8 @@ impl Modifiers {
     }
 
     /// 判断当前是否没有任何修饰键。
+    ///
+    /// 输入解析里常用它区分“纯字符输入”与“快捷键触发”。
     pub fn is_empty(self) -> bool {
         !self.has_ctrl && !self.has_alt && !self.has_shift && !self.has_meta
     }
@@ -88,11 +90,11 @@ impl Keystroke {
 pub struct InputContext {
     /// 当前焦点所在区域。
     pub focus: FocusTarget,
-    /// 是否处于原生文本输入语境中。
+    /// 是否处于原生文本输入语境中（如输入框、IME 组合态）。
     pub is_in_text_input: bool,
     /// 命令面板当前是否打开。
     pub is_command_palette_open: bool,
-    /// 编辑器相关上下文，仅在焦点位于编辑器时存在。
+    /// 编辑器相关上下文，仅在焦点位于编辑器时通常存在。
     pub editor: Option<EditorInputContext>,
 }
 
@@ -108,6 +110,8 @@ impl InputContext {
     }
 
     /// 用编辑器上下文补全当前输入上下文。
+    ///
+    /// 适用于保持 builder 风格链式构造测试/调用输入。
     pub fn with_editor(mut self, editor: EditorInputContext) -> Self {
         self.editor = Some(editor);
         self
@@ -129,11 +133,11 @@ impl InputContext {
 /// 编辑器局部输入上下文。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorInputContext {
-    /// 当前编辑器是否允许编辑。
+    /// 当前编辑器是否允许编辑（例如非预览态）。
     pub is_editable: bool,
-    /// 当前缓冲区是否只读。
+    /// 当前缓冲区是否只读；即便可聚焦，也不应接收写入命令。
     pub is_read_only: bool,
-    /// 当前是否已有选区。
+    /// 当前是否已有非空选区，常用于复制/剪切等命令可用性判定。
     pub has_selection: bool,
 }
 
@@ -151,9 +155,9 @@ impl EditorInputContext {
 /// 输入系统解析后的结果。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InputResolution {
-    /// 解析成一个抽象命令。
+    /// 解析成一个抽象命令（后续走命令总线）。
     Command(CommandInvocation),
-    /// 解析成直接插入的文本。
+    /// 解析成直接插入的文本（通常来自纯字符输入降级）。
     InsertText(String),
     /// 当前输入没有匹配任何行为。
     Noop,
@@ -171,6 +175,8 @@ impl InputResolution {
     }
 
     /// 判断当前结果是否为空操作。
+    ///
+    /// 供上层快速决定是否继续走后备解析链路。
     pub fn is_noop(&self) -> bool {
         matches!(self, Self::Noop)
     }

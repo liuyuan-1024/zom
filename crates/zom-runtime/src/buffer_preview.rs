@@ -11,7 +11,7 @@ use zom_text_tokens::{CR_CHAR, CRLF, LF, LineEnding};
 pub struct BufferPreview {
     /// 编辑器状态。
     pub editor_state: EditorState,
-    /// 原始文件换行符格式（用于保存时 preserve）。
+    /// 原始文件换行符格式（用于保存时按原风格回写）。
     pub line_ending: LineEnding,
 }
 
@@ -25,6 +25,8 @@ pub enum LoadBufferPreviewError {
 }
 
 /// 读取真实文件内容并构建预览数据。
+///
+/// 内部统一把文本归一化为 `LF` 进入编辑器状态，换行风格单独保存在 `line_ending`。
 pub fn load_buffer_preview(path: &Path) -> Result<BufferPreview, LoadBufferPreviewError> {
     let bytes = fs::read(path).map_err(|_| LoadBufferPreviewError::ReadFailed)?;
     let text = String::from_utf8(bytes).map_err(|_| LoadBufferPreviewError::NonUtf8Text)?;
@@ -35,6 +37,7 @@ pub fn load_buffer_preview(path: &Path) -> Result<BufferPreview, LoadBufferPrevi
 }
 
 fn normalize_to_lf(text: &str) -> String {
+    // 编辑核心以 LF 作为单一内部表示，避免 CRLF/CR 混用导致偏移映射复杂化。
     text.replace(CRLF, LF).replace(CR_CHAR, LF)
 }
 
@@ -50,6 +53,7 @@ mod tests {
     }
 
     #[test]
+    /// 读取缓冲区文件并返回匹配结果。
     fn load_buffer_preview_rejects_missing_file() {
         let missing = std::env::temp_dir().join("zom-missing-buffer-preview-file");
         let result = load_buffer_preview(&missing);
@@ -57,6 +61,7 @@ mod tests {
     }
 
     #[test]
+    /// 读取缓冲区文本并返回匹配结果。
     fn load_buffer_preview_rejects_non_utf8_text() {
         let path = std::env::temp_dir().join("zom-non-utf8-buffer-preview.bin");
         fs::write(&path, [0xff, 0xfe]).expect("write non-utf8 bytes");

@@ -13,6 +13,9 @@ pub struct CommandKindSpec {
 
 impl CommandKindSpec {
     /// 创建一条命令语义族声明。
+    ///
+    /// 该结构是命令目录的单一声明单元：`kind` 负责稳定分类，
+    /// `meta` 负责对外展示与文档索引。
     pub const fn new(
         kind: CommandKind,
         id: &'static str,

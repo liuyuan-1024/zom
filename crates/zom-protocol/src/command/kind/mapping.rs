@@ -63,9 +63,9 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorOpenFindReplace => {
             Some(CommandInvocation::from(EditorAction::OpenFindReplace))
         }
-        CommandKind::EditorToggleFindCaseSensitive => {
-            Some(CommandInvocation::from(EditorAction::ToggleFindCaseSensitive))
-        }
+        CommandKind::EditorToggleFindCaseSensitive => Some(CommandInvocation::from(
+            EditorAction::ToggleFindCaseSensitive,
+        )),
         CommandKind::EditorToggleFindWholeWord => {
             Some(CommandInvocation::from(EditorAction::ToggleFindWholeWord))
         }

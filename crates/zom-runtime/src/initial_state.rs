@@ -16,6 +16,9 @@ use crate::{
 
 impl DesktopAppState {
     /// 基于当前工作区构造应用初始状态。
+    ///
+    /// 该函数集中定义“冷启动默认布局”：标题栏、工具栏、面板显隐、焦点与通知计数。
+    /// 后续恢复会话或项目切换都应在此约定之上做增量覆盖。
     pub fn from_current_workspace() -> Self {
         let workspace_root =
             workspace_paths::normalize_workspace_root(workspace_paths::detect_workspace_root());
@@ -62,6 +65,8 @@ impl DesktopAppState {
 }
 
 /// 构造工作台默认可见面板集合。
+///
+/// 可见性来源于 `FocusTarget` 目录，不在 runtime 重复硬编码，避免双份配置漂移。
 fn default_visible_panels() -> HashSet<FocusTarget> {
     FocusTarget::VISIBILITY_MANAGED_PANELS
         .into_iter()
@@ -69,6 +74,9 @@ fn default_visible_panels() -> HashSet<FocusTarget> {
         .collect()
 }
 
+/// 生成工具栏某一侧的面板切换入口。
+///
+/// 入口顺序继承 `VISIBILITY_MANAGED_PANELS` 的声明顺序，保证 UI 排列稳定。
 fn panel_toolbar_entries(side: ToolBarSide) -> Vec<ToolBarEntry> {
     FocusTarget::VISIBILITY_MANAGED_PANELS
         .into_iter()
@@ -86,6 +94,7 @@ mod tests {
     use crate::state::DesktopAppState;
 
     #[test]
+    /// 计算状态文件树结果。
     fn initial_state_has_buffers_and_file_tree_content() {
         let state = DesktopAppState::from_current_workspace();
 
@@ -94,6 +103,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算状态标签页结果。
     fn initial_state_starts_without_active_tab() {
         let state = DesktopAppState::from_current_workspace();
         assert!(state.pane.active_tab().is_none());
@@ -101,6 +111,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算状态编辑器焦点结果。
     fn initial_state_requests_editor_focus() {
         let mut state = DesktopAppState::from_current_workspace();
         assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));

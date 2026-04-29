@@ -15,10 +15,10 @@ impl fmt::Display for CommandKindId {
 /// 命令元信息（纯描述，不含行为）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CommandMeta {
-    /// 稳定 ID，供跨层引用与文档检索。
+    /// 稳定 ID，供跨层引用、埋点归因和文档检索。
     pub id: CommandKindId,
-    /// 简短标题。
+    /// 简短标题（适合按钮、菜单项等短文本场景）。
     pub title: &'static str,
-    /// 语义说明。
+    /// 语义说明（面向帮助文档或命令面板详情）。
     pub description: &'static str,
 }

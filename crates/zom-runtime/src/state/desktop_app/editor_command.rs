@@ -8,6 +8,7 @@ use super::{DesktopAppState, DesktopUiAction};
 impl DesktopAppState {
     /// 处理编辑器命令，并把结果写回当前活动标签页与工具栏状态。
     pub(super) fn dispatch_editor_invocation(&mut self, command: EditorInvocation) {
+        // 先修复“活动索引存在但无有效缓冲区”的异常状态，避免后续链路 panic。
         let Some(active_buffer_id) = self.active_buffer_id() else {
             if self.pane.active_tab_index.is_some() {
                 self.pane.active_tab_index = None;
@@ -47,6 +48,7 @@ impl DesktopAppState {
                 }
             }
             EditorInvocation::Action(EditorAction::Paste) => {
+                // 粘贴内容依赖系统剪贴板，由 UI 层回调具体文本后再发 InsertText。
                 self.pending_ui_action = Some(DesktopUiAction::PasteFromClipboard);
                 current_state.clone()
             }
@@ -60,6 +62,7 @@ impl DesktopAppState {
             }
             _ => self.apply_editor_change_with_history(active_buffer_id, &current_state, command),
         };
+        // 仅在文本变化时落草稿；纯选区移动不触发磁盘写入。
         let should_persist_draft = current_state.text() != next_state.text();
         if should_persist_draft {
             self.persist_editor_draft(active_buffer_id, &next_state);
@@ -68,12 +71,14 @@ impl DesktopAppState {
         self.sync_tool_bar_with_active_tab();
     }
 
+    /// 应用编辑器历史并同步相关状态。
     fn apply_editor_change_with_history(
         &mut self,
         buffer_id: BufferId,
         current_state: &EditorState,
         command: EditorInvocation,
     ) -> EditorState {
+        // 光标来源取工具栏快照，保证键盘命令与当前 UI 活动光标一致。
         let result = apply_editor_invocation(current_state, self.tool_bar.cursor, &command);
         if Self::should_record_history(&command) {
             self.record_editor_history(buffer_id, current_state, &result.state, &command);
@@ -82,6 +87,9 @@ impl DesktopAppState {
     }
 }
 
+/// 提取当前选区文本；无选区或区间非法时返回 `None`。
+///
+/// 这里使用 UTF-8 字节切片，依赖 `EditorState` 的位置到偏移映射保证边界合法。
 fn selected_text(state: &EditorState) -> Option<String> {
     let selection = state.selection();
     if selection.is_caret() {

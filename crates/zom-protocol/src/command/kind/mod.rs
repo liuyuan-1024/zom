@@ -39,6 +39,7 @@ pub fn command_kind_specs() -> &'static [CommandKindSpec] {
 
 /// 从运行时调用解析稳定语义族。
 pub fn command_kind(command: &CommandInvocation) -> CommandKind {
+    // 动态载荷命令先走专门分流，避免把 payload 纳入静态查表键。
     if let Some(kind) = dynamic_command_kind(command) {
         return kind;
     }
@@ -78,23 +79,27 @@ static COMMAND_KIND_SPECS: LazyLock<Vec<CommandKindSpec>> = LazyLock::new(specs:
 static COMMAND_KIND_LOOKUP: LazyLock<HashMap<CommandInvocation, CommandKind>> =
     LazyLock::new(build_command_kind_lookup);
 
+/// 提取需要动态 payload 参与判定的命令类型；找不到时返回 `None`。
 fn dynamic_command_kind(command: &CommandInvocation) -> Option<CommandKind> {
     match command {
         CommandInvocation::Editor(EditorInvocation::InsertText { .. }) => {
             Some(CommandKind::EditorInsertText)
         }
-        CommandInvocation::Editor(EditorInvocation::FindReplace { request }) => Some(match request
-            .action
-        {
-            FindReplaceAction::FindNext => CommandKind::EditorFindNext,
-            FindReplaceAction::FindPrev => CommandKind::EditorFindPrev,
-            FindReplaceAction::ReplaceNext => CommandKind::EditorReplaceNext,
-            FindReplaceAction::ReplaceAll => CommandKind::EditorReplaceAll,
-        }),
+        CommandInvocation::Editor(EditorInvocation::FindReplace { request }) => {
+            Some(match request.action {
+                FindReplaceAction::FindNext => CommandKind::EditorFindNext,
+                FindReplaceAction::FindPrev => CommandKind::EditorFindPrev,
+                FindReplaceAction::ReplaceNext => CommandKind::EditorReplaceNext,
+                FindReplaceAction::ReplaceAll => CommandKind::EditorReplaceAll,
+            })
+        }
         _ => None,
     }
 }
 
+/// 构建“静态调用 -> CommandKind”查找表。
+///
+/// 仅收录可静态构造的命令；动态命令由 `dynamic_command_kind` 兜底。
 fn build_command_kind_lookup() -> HashMap<CommandInvocation, CommandKind> {
     let mut lookup = HashMap::new();
 
@@ -166,14 +171,15 @@ mod tests {
 
     #[test]
     fn editor_find_replace_uses_dynamic_kind_mapping() {
-        let command = CommandInvocation::from(EditorInvocation::find_replace(FindReplaceRequest::new(
-            "hello",
-            "world",
-            FindReplaceAction::ReplaceAll,
-            true,
-            false,
-            false,
-        )));
+        let command =
+            CommandInvocation::from(EditorInvocation::find_replace(FindReplaceRequest::new(
+                "hello",
+                "world",
+                FindReplaceAction::ReplaceAll,
+                true,
+                false,
+                false,
+            )));
         assert_eq!(command_kind(&command), CommandKind::EditorReplaceAll);
     }
 }

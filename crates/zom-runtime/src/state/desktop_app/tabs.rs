@@ -14,6 +14,9 @@ impl DesktopAppState {
         }
     }
 
+    /// 关闭当前活动标签并维护活动索引与焦点状态。
+    ///
+    /// 同时清理关联编辑状态与历史，避免孤儿 `buffer_id` 残留。
     fn close_active_tab(&mut self) {
         let Some(active_index) = self.pane.active_tab_index else {
             self.sync_tool_bar_with_active_tab();
@@ -39,6 +42,7 @@ impl DesktopAppState {
         self.sync_tool_bar_with_active_tab();
     }
 
+    /// 激活上一个标签页（循环切换）并同步关联视图。
     fn activate_prev_tab(&mut self) {
         let tab_count = self.pane.tabs.len();
         if tab_count == 0 {
@@ -62,6 +66,7 @@ impl DesktopAppState {
         self.sync_tool_bar_with_active_tab();
     }
 
+    /// 激活下一个标签页（循环切换）并同步关联视图。
     fn activate_next_tab(&mut self) {
         let tab_count = self.pane.tabs.len();
         if tab_count == 0 {
@@ -81,6 +86,9 @@ impl DesktopAppState {
         self.sync_tool_bar_with_active_tab();
     }
 
+    /// 根据活动标签刷新工具栏光标和语言。
+    ///
+    /// 当活动标签不存在时重置为默认值，防止展示陈旧元信息。
     pub(super) fn sync_tool_bar_with_active_tab(&mut self) {
         if let Some(active_tab) = self.pane.active_tab()
             && let Some(editor_state) = self.editor_state(active_tab.buffer_id)
@@ -93,6 +101,7 @@ impl DesktopAppState {
         self.tool_bar.language.clear();
     }
 
+    /// 让文件树高亮与当前活动标签保持一致。
     pub(super) fn sync_file_tree_with_active_tab(&mut self) {
         let Some(relative_path) = self
             .pane

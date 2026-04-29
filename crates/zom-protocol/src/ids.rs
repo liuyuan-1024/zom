@@ -12,11 +12,13 @@ macro_rules! define_id {
 
         impl $name {
             /// 用底层整数值构造一个强类型 ID。
+            ///
+            /// 不在协议层做“是否已注册/是否存在”校验，生命周期约束由上层负责。
             pub fn new(value: u64) -> Self {
                 Self(value)
             }
 
-            /// 取出底层整数值。
+            /// 取出底层整数值（用于序列化、日志和跨边界传输）。
             pub fn value(self) -> u64 {
                 self.0
             }

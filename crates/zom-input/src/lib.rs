@@ -1,5 +1,3 @@
-//! 输入策略层：默认键位注册、键位解析与快捷键提示。
-
 mod defaults;
 mod keymap;
 mod shortcuts;
@@ -15,17 +13,17 @@ pub use zom_protocol::keyboard::{
     EditorInputContext, InputContext, InputResolution, KeyCode, Keystroke, Modifiers,
 };
 
-/// 读取默认快捷键注册表（单例）。
+/// 返回全局默认快捷键注册表（进程内单例）。
 pub fn default_shortcut_registry() -> &'static ShortcutRegistry {
     &DEFAULT_SHORTCUT_REGISTRY
 }
 
-/// 读取某个命令对应的默认快捷键文案。
+/// 查询命令对应的默认快捷键提示文本（如 `Cmd+S`）。
 pub fn shortcut_hint(command: &CommandInvocation) -> Option<String> {
     default_shortcut_registry().shortcut_hint(command)
 }
 
-/// 基于默认注册表构建默认键位映射。
+/// 基于默认注册表构造 `Keymap` 快照。
 pub fn default_keymap() -> Keymap {
     Keymap::from_shortcut_registry(default_shortcut_registry())
 }
@@ -34,7 +32,8 @@ static DEFAULT_SHORTCUT_REGISTRY: LazyLock<ShortcutRegistry> =
     LazyLock::new(build_default_shortcut_registry);
 static DEFAULT_KEYMAP: LazyLock<Keymap> = LazyLock::new(default_keymap);
 
-/// 使用默认键位方案解析一次输入。
+/// 默认输入解析入口：
+/// 1) 先走声明式快捷键映射；2) 未命中时再尝试编辑器文本输入降级。
 pub fn resolve_default(input: &Keystroke, context: &InputContext) -> InputResolution {
     let resolution = DEFAULT_KEYMAP.resolve(input, context);
     if !resolution.is_noop() {
@@ -45,6 +44,8 @@ pub fn resolve_default(input: &Keystroke, context: &InputContext) -> InputResolu
 }
 
 fn resolve_editor_text_fallback(input: &Keystroke, context: &InputContext) -> InputResolution {
+    // 仅在编辑器焦点且无 ctrl/alt/meta 时把字符输入降级为 InsertText，
+    // 其余场景交给上层命令解析或保持 Noop。
     if context.focus != FocusTarget::Editor {
         return InputResolution::Noop;
     }

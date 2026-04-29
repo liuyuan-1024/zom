@@ -13,6 +13,9 @@ pub struct Range {
 
 impl Range {
     /// 用起点和终点构造一个范围，并保证结果是规范化的。
+    ///
+    /// 即便调用方给的是反向坐标，也会被重排为 `start <= end`，
+    /// 从而让后续判定逻辑不必重复做方向分支。
     pub fn new(start: Position, end: Position) -> Self {
         if start <= end {
             Self { start, end }
@@ -35,6 +38,8 @@ impl Range {
     }
 
     /// 返回一个保证 `start <= end` 的范围。
+    ///
+    /// `Range` 在构造时已规范化，因此这里是零成本恒等返回。
     pub fn normalized(self) -> Self {
         self
     }
@@ -44,7 +49,9 @@ impl Range {
         self.start == self.end
     }
 
-    /// 判断一个位置是否落在当前范围内。
+    /// 判断一个位置是否落在当前范围内（半开区间）。
+    ///
+    /// `end` 被视为“下一个位置”，不会被包含。
     pub fn contains(self, position: Position) -> bool {
         self.start <= position && position < self.end
     }
@@ -55,6 +62,8 @@ impl Range {
     }
 
     /// 判断两个范围是否存在交集。
+    ///
+    /// 两个范围若仅在边界相接（`left.end == right.start`）则不算相交。
     pub fn intersects(self, other: Self) -> bool {
         self.start < other.end && other.start < self.end
     }
@@ -78,6 +87,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算范围结果。
     fn empty_range_is_detected() {
         let point = Position::new(1, 1);
         assert!(Range::new(point, point).is_empty());
@@ -93,6 +103,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算范围结果。
     fn contains_range_requires_full_coverage() {
         let outer = Range::new(Position::new(1, 0), Position::new(3, 0));
         let inner = Range::new(Position::new(1, 2), Position::new(2, 4));

@@ -23,6 +23,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算行宽度结果。
     fn wrap_visual_line_guards_against_zero_width() {
         assert_eq!(
             wrap_visual_line("abc", 0),

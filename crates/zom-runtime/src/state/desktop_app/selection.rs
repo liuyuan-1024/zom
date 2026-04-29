@@ -8,6 +8,9 @@ use zom_protocol::{Position, Selection};
 use super::DesktopAppState;
 
 impl DesktopAppState {
+    /// 选择当前文档全部内容，并通过事务层安全更新选区版本。
+    ///
+    /// 该操作不直接改写文本，但会触发选区变更版本号，便于协同层感知。
     pub(super) fn select_all_in_editor(&self, current: &EditorState) -> EditorState {
         let full_selection =
             Selection::new(Position::zero(), current.offset_to_position(current.len()));

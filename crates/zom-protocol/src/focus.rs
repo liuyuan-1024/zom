@@ -52,7 +52,7 @@ pub enum FocusTarget {
 }
 
 impl FocusTarget {
-    /// 所有焦点目标。
+    /// 所有焦点目标目录（用于遍历与静态校验）。
     pub const ALL: [Self; 12] = [
         Self::Editor,
         Self::Palette,
@@ -69,6 +69,8 @@ impl FocusTarget {
     ];
 
     /// 所有受工作台显隐策略管理的面板目标。
+    ///
+    /// 这些目标可被统一的“显示/隐藏/恢复布局”策略接管。
     pub const VISIBILITY_MANAGED_PANELS: [Self; 8] = [
         Self::FileTreePanel,
         Self::GitPanel,
@@ -121,6 +123,8 @@ impl FocusTarget {
     }
 
     /// 返回目标面板所属停靠区域。
+    ///
+    /// 非面板焦点（如编辑器、overlay）返回 `None`。
     pub const fn panel_dock(self) -> Option<PanelDock> {
         match self {
             Self::FileTreePanel
@@ -135,6 +139,8 @@ impl FocusTarget {
     }
 
     /// 返回面板命令在工具栏中的分组。
+    ///
+    /// 该分组用于决定按钮落在工具栏左/右哪一组，不等同于 `panel_dock`。
     pub const fn tool_bar_side(self) -> Option<ToolBarSide> {
         match self {
             Self::FileTreePanel
@@ -156,6 +162,8 @@ pub const fn panel_dock(target: FocusTarget) -> Option<PanelDock> {
 }
 
 /// 返回指定停靠区域允许挂载的面板目标列表。
+///
+/// 返回值直接引用 `FocusTarget` 内的静态目录，作为单一事实源。
 pub fn dock_targets(dock: PanelDock) -> &'static [FocusTarget] {
     match dock {
         PanelDock::Left => &FocusTarget::LEFT_DOCK_PANELS,
@@ -174,6 +182,7 @@ pub enum OverlayTarget {
 }
 
 impl From<OverlayTarget> for FocusTarget {
+    /// 将 overlay 枚举映射到统一焦点目标，保证命令分发与焦点路由使用同一坐标系。
     fn from(target: OverlayTarget) -> Self {
         match target {
             OverlayTarget::Settings => FocusTarget::SettingsOverlay,
@@ -187,18 +196,21 @@ mod tests {
     use super::{FocusTarget, PanelDock, ToolBarSide, dock_targets, panel_dock};
 
     #[test]
+    /// 计算树结果。
     fn file_tree_is_visibility_managed_and_visible_by_default() {
         assert!(FocusTarget::FileTreePanel.is_visibility_managed_panel());
         assert!(FocusTarget::FileTreePanel.is_visible_by_default());
     }
 
     #[test]
+    /// 计算面板结果。
     fn editor_is_not_visibility_managed_panel() {
         assert!(!FocusTarget::Editor.is_visibility_managed_panel());
         assert!(!FocusTarget::Editor.is_visible_by_default());
     }
 
     #[test]
+    /// 计算停靠区结果。
     fn panel_dock_mapping_matches_catalog() {
         assert_eq!(
             panel_dock(FocusTarget::NotificationPanel),
@@ -223,6 +235,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算面板结果。
     fn toolbar_side_groups_panel_commands() {
         assert_eq!(
             FocusTarget::FileTreePanel.tool_bar_side(),

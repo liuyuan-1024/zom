@@ -8,8 +8,7 @@ use zom_protocol::BufferId;
 use zom_text_tokens::{LF_CHAR, LineEnding};
 
 use crate::{
-    buffer_preview,
-    draft_store,
+    buffer_preview, draft_store,
     state::{FileTreeNodeKind, FileTreeState, TabState},
     workspace_paths,
 };
@@ -47,6 +46,8 @@ impl DesktopAppState {
     }
 
     /// 在当前 Pane 打开文件：已打开则切换并刷新内容，未打开则新增标签页。
+    ///
+    /// 对已打开标签会复用原 `buffer_id`，以保持外围引用稳定。
     pub(super) fn open_file_in_pane(&mut self, relative_path: &str) -> bool {
         let absolute_path =
             workspace_paths::workspace_file_absolute_path(&self.project_root, relative_path);
@@ -105,6 +106,8 @@ impl DesktopAppState {
     }
 
     /// 保存当前活动标签页到磁盘。
+    ///
+    /// 保存成功后会清理对应草稿；草稿清理失败不会影响“文件已保存”这一主流程结果。
     pub(super) fn save_active_editor_buffer(&mut self) {
         let Some(active_tab) = self.pane.active_tab().cloned() else {
             return;
@@ -120,15 +123,14 @@ impl DesktopAppState {
         let content = text_with_line_ending(&editor_state.text(), active_tab.line_ending());
         let event = match fs::write(&absolute_path, content) {
             Ok(_) => {
-                if let Err(error) = draft_store::remove_draft(&self.project_root, &active_tab.relative_path) {
+                if let Err(error) =
+                    draft_store::remove_draft(&self.project_root, &active_tab.relative_path)
+                {
                     self.publish_notification_event(
                         DesktopNotificationEvent::new(
                             DesktopNotificationLevel::Warning,
                             DesktopNotificationSource::System,
-                            format!(
-                                "草稿清理失败 {} ({error})",
-                                active_tab.relative_path
-                            ),
+                            format!("草稿清理失败 {} ({error})", active_tab.relative_path),
                         )
                         .with_dedupe_key(format!(
                             "workspace:draft:clear:error:{}",
@@ -155,6 +157,9 @@ impl DesktopAppState {
         self.publish_notification_event(event);
     }
 
+    /// 将指定缓冲区的当前文本持久化为草稿文件。
+    ///
+    /// 草稿是“恢复兜底”，不是正式保存；写入失败会告警但不阻断编辑流程。
     pub(super) fn persist_editor_draft(&mut self, buffer_id: BufferId, state: &EditorState) {
         let Some(relative_path) = self
             .pane
@@ -166,7 +171,9 @@ impl DesktopAppState {
             return;
         };
 
-        if let Err(error) = draft_store::store_draft(&self.project_root, &relative_path, &state.text()) {
+        if let Err(error) =
+            draft_store::store_draft(&self.project_root, &relative_path, &state.text())
+        {
             self.publish_notification_event(
                 DesktopNotificationEvent::new(
                     DesktopNotificationLevel::Warning,
@@ -178,7 +185,14 @@ impl DesktopAppState {
         }
     }
 
-    fn restore_editor_draft_if_exists(&mut self, relative_path: &str, editor_state: &mut EditorState) {
+    /// 若存在未保存草稿且内容与当前文本不同，则恢复草稿并通知用户。
+    ///
+    /// 通过文本对比避免“文件已保存但残留旧草稿”时误覆盖磁盘最新内容。
+    fn restore_editor_draft_if_exists(
+        &mut self,
+        relative_path: &str,
+        editor_state: &mut EditorState,
+    ) {
         match draft_store::load_draft(&self.project_root, relative_path) {
             Ok(Some(draft_text)) if draft_text != editor_state.text() => {
                 *editor_state = EditorState::from_text(draft_text);
@@ -207,6 +221,8 @@ impl DesktopAppState {
 }
 
 /// 按标签页记录的换行风格把内存文本编码为落盘文本。
+///
+/// 编辑器内部统一使用 LF，保存时再按文件原风格回写以减少无关 diff。
 fn text_with_line_ending(text: &str, line_ending: LineEnding) -> String {
     if matches!(line_ending, LineEnding::Lf) {
         return text.to_string();

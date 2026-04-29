@@ -20,6 +20,8 @@ pub enum CommandInvocation {
 
 impl CommandInvocation {
     /// 判断当前调用是否属于编辑器领域。
+    ///
+    /// 常用于输入系统在命令分发前做轻量路由分支。
     pub fn is_editor(&self) -> bool {
         matches!(self, Self::Editor(_))
     }
@@ -37,18 +39,21 @@ impl From<EditorInvocation> for CommandInvocation {
 }
 
 impl From<EditorAction> for CommandInvocation {
+    /// 无参编辑动作自动提升为顶层命令调用。
     fn from(action: EditorAction) -> Self {
         Self::Editor(EditorInvocation::from(action))
     }
 }
 
 impl From<WorkspaceAction> for CommandInvocation {
+    /// 工作台动作直接包装为顶层调用。
     fn from(command: WorkspaceAction) -> Self {
         Self::Workspace(command)
     }
 }
 
 impl From<FileTreeAction> for CommandInvocation {
+    /// 子域动作通过 `WorkspaceAction` 统一提升，避免分发层感知子类型。
     fn from(action: FileTreeAction) -> Self {
         Self::Workspace(WorkspaceAction::from(action))
     }
@@ -87,6 +92,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算树标签页命令结果。
     fn file_tree_and_tab_actions_are_promoted_to_top_level_command() {
         let file_tree = CommandInvocation::from(FileTreeAction::SelectNext);
         let tab = CommandInvocation::from(TabAction::CloseActiveTab);

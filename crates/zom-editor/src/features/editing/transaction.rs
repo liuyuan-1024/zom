@@ -1,23 +1,20 @@
-//! 事务定义与状态推进逻辑。
 
 use zom_protocol::Selection;
 use zom_text::{TextBuffer, TextBufferError};
 
 use super::state::{DocVersion, EditorState, Offset, clamp_selection_to_text};
 
-/// 单次文本替换操作。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextChange {
-    /// 起始偏移（包含）。
+    /// 变更前文档中的起始字节偏移（包含）。
     pub from: Offset,
-    /// 结束偏移（不包含）。
+    /// 变更前文档中的结束字节偏移（不包含）。
     pub to: Offset,
-    /// 替换文本。
+    /// 用于替换 `[from, to)` 的新文本。
     pub insert: String,
 }
 
 impl TextChange {
-    /// 创建一个文本变更。
     pub fn new(from: Offset, to: Offset, insert: impl Into<String>) -> Self {
         Self {
             from,
@@ -27,25 +24,29 @@ impl TextChange {
     }
 }
 
-/// 事务来源。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionSource {
+    /// 本地键盘输入或快捷键触发。
     Keyboard,
+    /// 鼠标/指针行为触发（点击、拖拽等）。
     Mouse,
+    /// runtime 同步通道发起的修改。
     Runtime,
+    /// 撤销/重做历史回放。
     History,
 }
 
-/// 事务元信息。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionMeta {
+    /// 变更来源标签，供历史策略和埋点归因。
     pub source: TransactionSource,
+    /// 该事务是否应写入撤销历史。
     pub should_add_to_history: bool,
+    /// 可选的人类可读标签（用于历史面板展示）。
     pub label: Option<String>,
 }
 
 impl TransactionMeta {
-    /// 基于来源构造默认元信息。
     pub fn from_source(source: TransactionSource) -> Self {
         Self {
             source,
@@ -55,17 +56,19 @@ impl TransactionMeta {
     }
 }
 
-/// 事务输入规格。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionSpec {
+    /// 基于“事务开始时文档版本”的字节区间编辑列表。
     pub changes: Vec<TextChange>,
+    /// 显式指定下一选区；为 `None` 时按变更自动映射旧选区。
     pub selection: Option<Selection>,
+    /// 事务元信息（来源、是否入历史等）。
     pub meta: TransactionMeta,
+    /// 乐观并发校验版本；不匹配时在执行前直接拒绝。
     pub expected_version: Option<DocVersion>,
 }
 
 impl TransactionSpec {
-    /// 仅携带文本变更的事务。
     pub fn with_changes(changes: Vec<TextChange>, source: TransactionSource) -> Self {
         Self {
             changes,
@@ -76,32 +79,39 @@ impl TransactionSpec {
     }
 }
 
-/// 应用事务后的结果。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionResult {
+    /// 事务执行后的完整编辑器状态。
     pub state: EditorState,
+    /// 排序并校验后、最终真正应用的变更列表。
     pub applied_changes: Vec<TextChange>,
+    /// 文本内容是否发生变化。
     pub is_document_changed: bool,
+    /// 结果选区是否不同于事务前选区。
     pub is_selection_changed: bool,
 }
 
-/// 事务失败原因。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApplyError {
+    /// 请求携带的 `expected_version` 已过期。
     VersionMismatch {
         current_version: DocVersion,
     },
+    /// 按原始坐标排序后，两个变更区间发生重叠。
     OverlappingChanges {
         previous_to: Offset,
         current_from: Offset,
     },
+    /// 变更区间不合法（越界或破坏字符边界）。
     InvalidChangeRange {
         index: usize,
         error: TextBufferError,
     },
 }
 
-/// 将一笔事务应用到状态并返回新状态。
+/// 以原子方式执行标准化事务：
+/// 1) 可选版本校验 2) 区间合法性校验 3) 文本替换
+/// 4) 选区映射与钳制 5) 版本号更新策略。
 pub fn apply_transaction(
     state: &EditorState,
     spec: TransactionSpec,
@@ -171,6 +181,7 @@ fn validate_changes(buffer: &TextBuffer, changes: &[TextChange]) -> Result<(), A
 }
 
 fn apply_sorted_changes(buffer: &mut TextBuffer, changes: &[TextChange]) -> Result<(), ApplyError> {
+    // `delta` 表示“原始坐标”到“当前已编辑缓冲区坐标”的累计偏移差。
     let mut delta = 0isize;
     for (index, change) in changes.iter().enumerate() {
         let removed = change.to - change.from;
@@ -185,6 +196,7 @@ fn apply_sorted_changes(buffer: &mut TextBuffer, changes: &[TextChange]) -> Resu
 }
 
 fn map_offset(offset: Offset, changes: &[TextChange]) -> Offset {
+    // 光标若落在被替换区间内，吸附到替换后文本末尾，保证光标语义稳定。
     let mut mapped = offset;
     for change in changes {
         let removed = change.to - change.from;
@@ -304,7 +316,10 @@ mod tests {
 
         let result = apply_transaction(&state, spec).expect("transaction should apply");
         assert_eq!(result.state.text(), "WXcdYZ");
-        assert_eq!(result.state.selection(), Selection::caret(Position::new(0, 2)));
+        assert_eq!(
+            result.state.selection(),
+            Selection::caret(Position::new(0, 2))
+        );
         assert_eq!(result.state.version(), DocVersion::from(1));
     }
 
@@ -318,7 +333,8 @@ mod tests {
             meta: super::TransactionMeta::from_source(TransactionSource::Keyboard),
         };
 
-        let result = apply_transaction(&state, spec).expect("selection-only transaction should apply");
+        let result =
+            apply_transaction(&state, spec).expect("selection-only transaction should apply");
         assert_eq!(result.state.text(), "abcdef");
         assert_eq!(
             result.state.selection(),

@@ -83,7 +83,7 @@ pub struct DesktopNotificationEvent {
     pub message: String,
     /// 是否属于“用户主动触发动作”的反馈。
     pub is_user_initiated: bool,
-    /// 去重键（同键短窗口内聚合）。
+    /// 去重键（同键短窗口内聚合）；为 `None` 表示每条都独立入库。
     pub dedupe_key: Option<String>,
 }
 
@@ -136,7 +136,7 @@ pub struct DesktopNotification {
     pub is_read: bool,
     /// 去重键（同键在短窗口内聚合）。
     pub dedupe_key: Option<String>,
-    /// 聚合计数（最小为 1）。
+    /// 聚合计数（最小为 1），用于向用户表达“同类事件重复出现次数”。
     pub occurrence_count: u32,
 }
 
@@ -150,6 +150,8 @@ pub struct ActiveEditorSnapshot {
     /// 当前选区。
     pub selection: Selection,
     /// 当前完整文本。
+    ///
+    /// 这是渲染快照，不应在 UI 层原地修改后再写回状态机。
     pub text: String,
 }
 
@@ -162,9 +164,11 @@ pub struct DesktopAppState {
     pub tool_bar: ToolBarState,
     /// 左侧文件树内容。
     pub file_tree: FileTreeState,
-    /// 窗格
+    /// 中央窗格状态（标签页集合与活动索引）。
     pub pane: PaneState,
     /// 活跃标签页对应的编辑器状态仓库（key = buffer id）。
+    ///
+    /// 与 `pane.tabs` 通过 `buffer_id` 关联，二者需保持引用一致。
     pub(crate) editor_states: HashMap<BufferId, EditorState>,
     /// 活跃标签页对应的编辑历史仓库（key = buffer id）。
     pub(crate) editor_histories: HashMap<BufferId, history::EditorHistory>,
@@ -194,7 +198,7 @@ pub struct DesktopAppState {
     pub(crate) pending_focus_target: Option<FocusTarget>,
     /// 下一帧需要由 UI 层执行的一次性动作。
     pub(crate) pending_ui_action: Option<DesktopUiAction>,
-    /// 下一条通知 id（单调递增）。
+    /// 下一条通知 id（单调递增，不因清空列表而回退）。
     pub(crate) next_notification_id: u64,
 }
 
@@ -221,7 +225,8 @@ impl DesktopAppState {
     }
 
     /// 隐藏指定停靠区域当前可见面板。
-    /// 若该面板当前持有焦点，会自动回退焦点到编辑区。
+    ///
+    /// 若该面板当前持有焦点，会自动把焦点回退到编辑器，避免焦点悬空。
     pub fn hide_visible_panel_in_dock(&mut self, dock: PanelDock) -> bool {
         let Some(target) = self.visible_panel_in_dock(dock) else {
             return false;
@@ -249,6 +254,8 @@ impl DesktopAppState {
     }
 
     /// 返回当前激活编辑器的只读快照（用于渲染层）。
+    ///
+    /// 若标签页索引损坏或状态缺失，返回 `None` 让上层回退空态展示。
     pub fn active_editor_snapshot(&self) -> Option<ActiveEditorSnapshot> {
         let active_tab = self.pane.active_tab()?;
         let editor_state = self.editor_states.get(&active_tab.buffer_id)?;
@@ -260,27 +267,33 @@ impl DesktopAppState {
         })
     }
 
+    /// 提取缓冲区结果；找不到时返回 `None`。
     pub(super) fn active_buffer_id(&self) -> Option<BufferId> {
         self.pane.active_tab().map(|tab| tab.buffer_id)
     }
 
+    /// 提取状态结果；找不到时返回 `None`。
     pub(super) fn editor_state(&self, buffer_id: BufferId) -> Option<&EditorState> {
         self.editor_states.get(&buffer_id)
     }
 
+    /// 用新的编辑器状态替换当前活动标签的编辑快照。
     pub(super) fn replace_editor_state(&mut self, buffer_id: BufferId, next_state: EditorState) {
         self.editor_states.insert(buffer_id, next_state);
     }
 
+    /// 取出 `take_editor_state` 结果，并清理内部暂存状态。
     pub(super) fn take_editor_state(&mut self, buffer_id: BufferId) -> Option<EditorState> {
         self.editor_states.remove(&buffer_id)
     }
 
+    /// 移除编辑器状态并同步相关状态。
     pub(super) fn remove_editor_state(&mut self, buffer_id: BufferId) {
         self.editor_states.remove(&buffer_id);
         self.editor_histories.remove(&buffer_id);
     }
 
+    /// 清理编辑器并同步相关状态。
     pub(super) fn clear_editor_states(&mut self) {
         self.editor_states.clear();
         self.editor_histories.clear();

@@ -1,5 +1,3 @@
-//! 查看器布局相关的编辑领域能力。
-
 /// 按字符数把长行拆成多个显示段，供查看器模式软换行使用。
 pub fn wrap_visual_line(line: &str, max_chars_per_line: usize) -> Vec<String> {
     if line.is_empty() {

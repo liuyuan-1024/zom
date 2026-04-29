@@ -1,4 +1,3 @@
-//! runtime 与编辑器核心之间的最小桥接协议。
 
 use zom_protocol::Selection;
 
@@ -10,12 +9,10 @@ use crate::features::editing::{
     },
 };
 
-/// runtime 请求的关联 ID。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeRequestId(String);
 
 impl RuntimeRequestId {
-    /// 创建请求 ID。
     pub fn new(value: impl Into<String>) -> Self {
         Self(value.into())
     }
@@ -27,7 +24,6 @@ impl From<&str> for RuntimeRequestId {
     }
 }
 
-/// editor 发送给 runtime 的事件。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EditorToRuntimeEvent {
     Snapshot {
@@ -44,7 +40,6 @@ pub enum EditorToRuntimeEvent {
     },
 }
 
-/// runtime 发给 editor 的请求。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuntimeToEditorRequest {
     RequestSnapshot,
@@ -61,7 +56,6 @@ pub enum RuntimeToEditorRequest {
     },
 }
 
-/// editor 对 runtime 请求的响应。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuntimeResponse {
     Snapshot(EditorToRuntimeEvent),
@@ -77,14 +71,12 @@ pub enum RuntimeResponse {
     },
 }
 
-/// runtime 协议错误码。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimeErrorCode {
     VersionMismatch,
     InvalidRequest,
 }
 
-/// 处理 runtime 请求并返回响应。
 pub fn dispatch_runtime_request(
     state: &mut EditorState,
     request: RuntimeToEditorRequest,
@@ -132,6 +124,7 @@ fn apply_runtime_transaction(
     request_id: RuntimeRequestId,
     spec: TransactionSpec,
 ) -> RuntimeResponse {
+    // 编辑域错误在桥接层被压缩为协议错误码，避免向 runtime 泄露内部细节。
     match apply_transaction(state, spec) {
         Ok(result) => {
             let event = event_from_transaction(&result);
@@ -158,6 +151,7 @@ fn apply_runtime_transaction(
 }
 
 fn event_from_transaction(result: &TransactionResult) -> Option<EditorToRuntimeEvent> {
+    // 同时发生文本与选区变更时优先发 Delta，避免重复事件。
     if result.is_document_changed {
         return Some(EditorToRuntimeEvent::Delta {
             version: result.state.version(),

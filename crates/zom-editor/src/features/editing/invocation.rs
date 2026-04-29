@@ -1,4 +1,3 @@
-//! 编辑命令到事务的核心转换与执行。
 
 use regex::RegexBuilder;
 use zom_protocol::{
@@ -16,14 +15,18 @@ use super::{
 
 const OUTDENT_SPACES: usize = 4;
 
-/// 编辑命令执行结果。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InvocationResult {
+    /// 执行命令后的状态快照，保证与最终选区/光标一致。
     pub state: EditorState,
+    /// `state.selection().active()` 的便捷镜像，供 UI 直接消费。
     pub cursor: Position,
 }
 
-/// 对给定编辑状态执行一次编辑器调用。
+/// 执行高层编辑指令，并处理光标归一化与过期选区降级逻辑。
+///
+/// 外部传入光标会先按当前缓冲区钳制；若它与当前 active 不一致，
+/// 则退化为单光标选区，避免命令误作用到过期 UI 选区。
 pub fn apply_editor_invocation(
     state: &EditorState,
     cursor: Position,
@@ -154,6 +157,8 @@ fn apply_action(
 }
 
 fn selection_for_invocation(state: &EditorState, cursor: Position) -> Selection {
+    // 只有“调用方光标 == 当前 active”时才复用选区，
+    // 否则收缩为 caret，让命令以最新指针/输入法位置为准。
     let selection = clamp_selection_to_text(state.buffer(), state.selection());
     if selection.active() == cursor {
         selection
@@ -283,6 +288,7 @@ fn touched_line_range(selection: Selection) -> (u32, u32) {
     let start = selection.start();
     let end = selection.end();
     let mut end_line = end.line;
+    // 选区若以“下一行 column=0”结束，按行操作时语义上不包含下一行。
     if end.column == 0 && end_line > start.line {
         end_line -= 1;
     }
@@ -533,6 +539,8 @@ fn apply_with_selection(
     selection: Selection,
     mut spec: TransactionSpec,
 ) -> InvocationResult {
+    // 先把事务绑定到显式工作选区，再加版本保护；
+    // 任意失败都降级为 no-op，保证动作处理函数总是可返回且不 panic。
     let working_state = state_with_selection(state, selection);
     spec.expected_version = Some(working_state.version());
 
@@ -697,6 +705,7 @@ fn apply_find_replace_request(
 }
 
 fn build_find_regex(request: &FindReplaceRequest) -> Option<regex::Regex> {
+    // 非正则模式先 escape，再复用同一 regex 管线处理大小写/整词匹配开关。
     let mut pattern = if request.use_regex {
         request.query.clone()
     } else {
@@ -714,6 +723,7 @@ fn build_find_regex(request: &FindReplaceRequest) -> Option<regex::Regex> {
 }
 
 fn next_match(matches: &[(usize, usize)], cursor_offset: usize) -> Option<(usize, usize)> {
+    // 从光标开始向后找，未命中时回绕到第一项。
     matches
         .iter()
         .copied()
@@ -722,6 +732,7 @@ fn next_match(matches: &[(usize, usize)], cursor_offset: usize) -> Option<(usize
 }
 
 fn prev_match(matches: &[(usize, usize)], cursor_offset: usize) -> Option<(usize, usize)> {
+    // 从光标开始向前找，未命中时回绕到最后一项。
     matches
         .iter()
         .rev()
@@ -736,7 +747,8 @@ fn select_range_by_offsets(
     from: usize,
     to: usize,
 ) -> InvocationResult {
-    let next_selection = Selection::new(state.offset_to_position(from), state.offset_to_position(to));
+    let next_selection =
+        Selection::new(state.offset_to_position(from), state.offset_to_position(to));
     apply_with_selection(
         state,
         selection,
@@ -756,6 +768,7 @@ fn collect_replacement_items(
     use_regex: bool,
 ) -> Vec<(usize, usize, String)> {
     if use_regex {
+        // 正则替换需要先展开捕获组模板，避免后续逐条替换时重复解析模板。
         return regex
             .captures_iter(text)
             .filter_map(|captures| {
@@ -1134,7 +1147,8 @@ mod tests {
 
     #[test]
     fn move_right_steps_over_emoji_in_single_command() {
-        let state = state_with_selection("a🙂b", Selection::caret(zom_protocol::Position::new(0, 1)));
+        let state =
+            state_with_selection("a🙂b", Selection::caret(zom_protocol::Position::new(0, 1)));
 
         let result = apply_editor_invocation(
             &state,
@@ -1151,7 +1165,8 @@ mod tests {
 
     #[test]
     fn delete_backward_removes_full_emoji_scalar_value() {
-        let state = state_with_selection("a🙂b", Selection::caret(zom_protocol::Position::new(0, 2)));
+        let state =
+            state_with_selection("a🙂b", Selection::caret(zom_protocol::Position::new(0, 2)));
 
         let result = apply_editor_invocation(
             &state,
@@ -1169,7 +1184,8 @@ mod tests {
 
     #[test]
     fn delete_forward_removes_full_multibyte_cjk_scalar_value() {
-        let state = state_with_selection("a中b", Selection::caret(zom_protocol::Position::new(0, 1)));
+        let state =
+            state_with_selection("a中b", Selection::caret(zom_protocol::Position::new(0, 1)));
 
         let result = apply_editor_invocation(
             &state,
@@ -1208,8 +1224,10 @@ mod tests {
 
     #[test]
     fn find_next_selects_match_case_insensitive() {
-        let state =
-            state_with_selection("foo Bar baz", Selection::caret(zom_protocol::Position::new(0, 0)));
+        let state = state_with_selection(
+            "foo Bar baz",
+            Selection::caret(zom_protocol::Position::new(0, 0)),
+        );
 
         let result = apply_editor_invocation(
             &state,

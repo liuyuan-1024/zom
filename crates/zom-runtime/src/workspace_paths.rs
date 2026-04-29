@@ -6,11 +6,15 @@ use std::{
 };
 
 /// 生成工作区文件的绝对路径。
+///
+/// `relative_path` 由上层保证是项目内相对路径，这里只做路径拼接。
 pub fn workspace_file_absolute_path(workspace_root: &Path, relative_path: &str) -> PathBuf {
     workspace_root.join(relative_path)
 }
 
 /// 推断当前进程所在目录，作为工作区根目录的默认值。
+///
+/// 获取失败时回退 `.`，保证启动流程不被环境异常阻断。
 pub fn detect_workspace_root() -> PathBuf {
     env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
@@ -22,6 +26,8 @@ pub fn normalize_workspace_root(path: impl Into<PathBuf>) -> PathBuf {
 }
 
 /// 从工作区根目录推断项目名称。
+///
+/// 无法推断时回退为 `"workspace"`，用于 UI 标题等可展示字段。
 pub fn project_name_from_root(workspace_root: &Path) -> String {
     workspace_root
         .file_name()
@@ -39,6 +45,8 @@ pub fn file_name_from_path(relative_path: &str) -> String {
 }
 
 /// 从文件路径推断语言名称（用于工具栏与标签元信息）。
+///
+/// 先看扩展名，再处理特殊文件名（如 `Dockerfile` / `Makefile`）。
 pub fn language_from_path(relative_path: &str) -> String {
     let path = Path::new(relative_path);
     let extension = path
@@ -92,6 +100,7 @@ mod tests {
     use super::language_from_path;
 
     #[test]
+    /// 计算路径结果。
     fn language_from_path_uses_extension_mapping() {
         assert_eq!(language_from_path("src/main.rs"), "Rust");
         assert_eq!(language_from_path("web/app.tsx"), "TypeScript React");
@@ -99,11 +108,13 @@ mod tests {
     }
 
     #[test]
+    /// 计算路径文本结果。
     fn language_from_path_falls_back_to_plain_text() {
         assert_eq!(language_from_path("notes/README"), "Unknown");
     }
 
     #[test]
+    /// 计算路径文件结果。
     fn language_from_path_supports_special_file_names() {
         assert_eq!(language_from_path("Dockerfile"), "Dockerfile");
         assert_eq!(language_from_path("build/Makefile"), "Makefile");

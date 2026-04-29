@@ -9,17 +9,20 @@ use zom_text_tokens::{CR_BYTE, CR_CHAR, LF_BYTE, LF_CHAR, LineEnding};
 /// 轻量文本缓冲区，提供基础插入/删除与位置映射能力。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TextBuffer {
+    /// 底层 Rope 存储；以字符索引为主能力，外层负责桥接字节偏移协议。
     rope: Rope,
 }
 
 /// 文本区间校验错误。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TextBufferError {
+    /// 字节区间越界或 `start > end`。
     InvalidRange {
         start: usize,
         end: usize,
         len: usize,
     },
+    /// 偏移不在 UTF-8 字符边界，无法安全切片/替换。
     NotCharBoundary {
         offset: usize,
     },
@@ -40,6 +43,8 @@ impl TextBuffer {
     }
 
     /// 返回底层 rope 只读视图。
+    ///
+    /// 主要用于只读高级能力（例如按行/按字符遍历），避免复制文本。
     pub fn rope(&self) -> &Rope {
         &self.rope
     }
@@ -54,7 +59,9 @@ impl TextBuffer {
         self.rope.len_bytes() == 0
     }
 
-    /// 返回指定区间文本切片。
+    /// 返回指定字节区间文本切片。
+    ///
+    /// 输入必须满足 UTF-8 边界约束，否则返回 `NotCharBoundary`。
     pub fn slice(&self, range: Range<usize>) -> Result<String, TextBufferError> {
         self.validate_byte_range(range.clone())?;
         let start_char = self.rope.byte_to_char(range.start);
@@ -62,7 +69,9 @@ impl TextBuffer {
         Ok(self.rope.slice(start_char..end_char).to_string())
     }
 
-    /// 用 `text` 替换指定区间。
+    /// 用 `text` 替换指定字节区间。
+    ///
+    /// 先校验边界，再按字符索引执行 `remove + insert`，保证多字节字符不被截断。
     pub fn replace_range(
         &mut self,
         range: Range<usize>,
@@ -77,6 +86,8 @@ impl TextBuffer {
     }
 
     /// 将逻辑位置映射到字节偏移（越界时夹紧到文档边界）。
+    ///
+    /// 列语义按“可视列”计算：`\r` 不计列宽，`\n` 终止当前行。
     pub fn position_to_offset(&self, position: Position) -> usize {
         let target = self.clamp_position(position);
         let line_index = target.line as usize;
@@ -100,6 +111,8 @@ impl TextBuffer {
     }
 
     /// 将字节偏移映射到行列坐标，越界时返回 `None`。
+    ///
+    /// 仅当偏移不超过文本末尾才可映射；列统计同样忽略 `\r`。
     pub fn offset_to_position(&self, offset: usize) -> Option<Position> {
         if offset > self.rope.len_bytes() {
             return None;
@@ -120,6 +133,8 @@ impl TextBuffer {
     }
 
     /// 文档总行数（最少为 1）。
+    ///
+    /// 与大多数编辑器一致，空文本视为单行空行。
     pub fn line_count(&self) -> u32 {
         u32::try_from(self.rope.len_lines()).unwrap_or(u32::MAX)
     }
@@ -142,13 +157,17 @@ impl TextBuffer {
     }
 
     /// 将位置夹紧到当前文档范围。
+    ///
+    /// 先夹行再夹列，避免把列夹到错误行宽。
     pub fn clamp_position(&self, position: Position) -> Position {
         let line = position.line.min(self.line_count().saturating_sub(1));
         let column = position.column.min(self.line_len(line));
         Position::new(line, column)
     }
 
-    /// 返回指定字节偏移对应字符的起始偏移（前一个字符）。
+    /// 返回指定字节偏移对应“前一个字符”的起始偏移。
+    ///
+    /// 要求 `offset` 本身是字符边界；落在字符中间时返回 `None`。
     pub fn prev_char_start(&self, offset: usize) -> Option<usize> {
         if offset == 0 || offset > self.rope.len_bytes() {
             return None;
@@ -161,6 +180,8 @@ impl TextBuffer {
     }
 
     /// 返回指定字节偏移处字符的结束偏移（下一个字符边界）。
+    ///
+    /// 要求 `offset` 位于当前字符起点，且不超过最后一个字符。
     pub fn next_char_end(&self, offset: usize) -> Option<usize> {
         if offset >= self.rope.len_bytes() {
             return None;
@@ -189,6 +210,7 @@ impl TextBuffer {
         self.validate_range(range)
     }
 
+    /// 校验单个偏移是否合法且落在字符边界。
     fn validate_offset(&self, offset: usize) -> Result<(), TextBufferError> {
         if offset > self.rope.len_bytes() {
             return Err(TextBufferError::InvalidRange {
@@ -204,6 +226,7 @@ impl TextBuffer {
         Ok(())
     }
 
+    /// 校验字节范围：顺序合法、未越界、两端都在字符边界。
     fn validate_range(&self, range: Range<usize>) -> Result<(), TextBufferError> {
         if range.start > range.end || range.end > self.rope.len_bytes() {
             return Err(TextBufferError::InvalidRange {
@@ -219,12 +242,15 @@ impl TextBuffer {
 }
 
 impl fmt::Display for TextBuffer {
+    /// 为 `fmt` 输出稳定的文本表示。
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.rope.to_string())
     }
 }
 
-/// 将逻辑位置映射到字节偏移（越界时夹紧到文档边界）。
+/// 将逻辑位置映射到字节偏移（基于 `&str` 的轻量实现）。
+///
+/// 与 `TextBuffer::position_to_offset` 语义对齐：忽略 `\r` 列宽并按文档边界夹紧。
 pub fn position_to_offset(text: &str, position: Position) -> usize {
     let target = clamp_position_to_text(text, position);
     let mut line = 0u32;
@@ -257,7 +283,9 @@ pub fn position_to_offset(text: &str, position: Position) -> usize {
     text.len()
 }
 
-/// 将字节偏移映射到逻辑位置（越界时夹紧到文档边界）。
+/// 将字节偏移映射到逻辑位置（基于 `&str` 的轻量实现）。
+///
+/// 越界偏移会先夹到文本末尾，再映射到最近可达位置。
 pub fn offset_to_position(text: &str, offset: usize) -> Position {
     let clamped_offset = offset.min(text.len());
     let mut line = 0u32;
@@ -295,6 +323,7 @@ fn line_count(text: &str) -> u32 {
     u32::try_from(line_count).unwrap_or(u32::MAX)
 }
 
+/// 返回目标行的可视列宽（忽略行尾 `\r`），超出行数范围时返回 `0`。
 fn line_len(text: &str, target_line: u32) -> u32 {
     let mut line = 0u32;
     let mut column = 0u32;
@@ -318,6 +347,8 @@ fn line_len(text: &str, target_line: u32) -> u32 {
 }
 
 /// 按编辑器视角拆分文本行，并保留空行。
+///
+/// 该函数按 `\n` 分行，并去掉每行末尾的 `\r`，用于统一 CRLF/LF 读取表现。
 pub fn split_lines(text: &str) -> Vec<String> {
     let mut lines = text
         .split(LF_CHAR)
@@ -332,6 +363,8 @@ pub fn split_lines(text: &str) -> Vec<String> {
 }
 
 /// 识别文本的换行风格。
+///
+/// 同时出现多种换行符时返回 `Mixed`，未发现换行时默认视为 `LF`。
 pub fn detect_line_ending(text: &str) -> LineEnding {
     let bytes = text.as_bytes();
     let mut has_crlf = false;
@@ -381,6 +414,7 @@ mod tests {
     use zom_protocol::Position;
 
     #[test]
+    /// 替换范围并同步相关状态。
     fn replace_range_and_slice_work() {
         let mut buffer = TextBuffer::from_text("hello");
         buffer
@@ -392,6 +426,7 @@ mod tests {
     }
 
     #[test]
+    /// 替换范围并同步相关状态。
     fn replace_range_rejects_invalid_range() {
         let mut buffer = TextBuffer::from_text("abc");
         let err = buffer
@@ -408,6 +443,7 @@ mod tests {
     }
 
     #[test]
+    /// 替换范围并同步相关状态。
     fn replace_range_rejects_non_char_boundary() {
         let mut buffer = TextBuffer::from_text("a中b");
         let err = buffer
@@ -417,6 +453,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算位置结果。
     fn offset_to_position_works() {
         let buffer = TextBuffer::from_text("ab\ncd");
         assert_eq!(buffer.offset_to_position(0), Some(Position::new(0, 0)));
@@ -427,6 +464,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算偏移范围行结果。
     fn position_to_offset_clamps_out_of_range_line() {
         let text = "ab\ncd";
         let offset = position_to_offset(text, Position::new(99, 0));
@@ -434,6 +472,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算位置文本结果。
     fn offset_to_position_ignores_cr_in_crlf_text() {
         let text = "a\r\nb";
         assert_eq!(offset_to_position(text, 1), Position::new(0, 1));
@@ -474,6 +513,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算位置偏移结果。
     fn unicode_position_and_offset_mapping_remains_stable() {
         let text = "a🙂中\ne\u{301}f";
 
@@ -497,6 +537,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算缓冲区结果。
     fn text_buffer_char_boundary_helpers_handle_multibyte_characters() {
         let buffer = TextBuffer::from_text("🙂a");
 
@@ -510,6 +551,7 @@ mod tests {
     }
 
     #[test]
+    /// 替换范围并同步相关状态。
     fn replace_range_rejects_ranges_that_split_emoji_bytes() {
         let mut buffer = TextBuffer::from_text("a🙂b");
 

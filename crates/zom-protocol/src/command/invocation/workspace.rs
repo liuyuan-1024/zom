@@ -64,7 +64,9 @@ pub enum WorkspaceAction {
     FocusPanel(FocusTarget),
     /// 聚焦到并显示指定悬浮层。
     FocusOverlay(OverlayTarget),
-    /// 关闭当前聚焦组件如悬浮层、面板、标签页等）。
+    /// 关闭当前聚焦组件（如悬浮层、面板、标签页等）。
+    ///
+    /// 具体“谁来处理关闭”由当前焦点目标决定。
     CloseFocused,
 
     /// 作用于标签页的动作。
@@ -76,6 +78,7 @@ pub enum WorkspaceAction {
 }
 
 impl From<FileTreeAction> for WorkspaceAction {
+    /// 文件树动作提升到工作台动作，复用统一分发通道。
     fn from(action: FileTreeAction) -> Self {
         Self::FileTree(action)
     }

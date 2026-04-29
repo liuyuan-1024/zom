@@ -14,8 +14,11 @@ const DEDUPE_WINDOW_MS: u128 = 3_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct NotificationChannels {
+    /// 是否弹出短时提示（toast）。
     should_emit_toast: bool,
+    /// 是否进入通知面板持久化列表。
     should_persist_to_panel: bool,
+    /// 是否更新状态栏常驻提示位。
     should_update_status_bar: bool,
 }
 
@@ -29,6 +32,7 @@ impl DesktopAppState {
         let mut panel_notification_id = None;
 
         if channels.should_persist_to_panel {
+            // 面板通道支持短窗口去重聚合，避免同类错误在瞬时刷屏。
             if let Some(existing_index) = self.find_dedupe_candidate(
                 event.level,
                 event.source,
@@ -64,6 +68,7 @@ impl DesktopAppState {
                 };
                 self.notifications.push(notification.clone());
                 if self.notifications.len() > MAX_NOTIFICATION_HISTORY {
+                    // 限制历史容量，同时精确回收被裁剪项的未读计数。
                     let overflow = self.notifications.len() - MAX_NOTIFICATION_HISTORY;
                     let removed_unread = self
                         .notifications
@@ -97,6 +102,7 @@ impl DesktopAppState {
         }
 
         if should_emit_toast {
+            // 优先复用面板里那条通知，保证 toast 与侧栏展示同一实体。
             if let Some(notification_id) = panel_notification_id {
                 self.active_toast_notification = self
                     .notifications
@@ -231,6 +237,7 @@ impl DesktopAppState {
         dedupe_key: Option<&str>,
         now_ms: u128,
     ) -> Option<usize> {
+        // 使用 rposition 命中最近一条，保留新语境下的展示顺序。
         let dedupe_key = dedupe_key?;
         self.notifications.iter().rposition(|notification| {
             notification.level == level
@@ -240,6 +247,7 @@ impl DesktopAppState {
         })
     }
 
+    /// 在“最新在前”的通知序列中移动选中指针，并同步面板待滚动目标。
     fn shift_notification_selection(&mut self, step: i8) {
         if self.notifications.is_empty() {
             self.selected_notification_id = None;
@@ -268,6 +276,7 @@ impl DesktopAppState {
     }
 }
 
+/// 根据通知类型与等级决定分发通道：toast、面板持久化、状态栏更新三者可独立开关。
 fn channels_for_event(event: &DesktopNotificationEvent) -> NotificationChannels {
     match event.kind {
         DesktopNotificationKind::Progress => NotificationChannels {

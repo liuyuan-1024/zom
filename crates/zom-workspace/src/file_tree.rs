@@ -19,17 +19,17 @@ pub enum FileTreeNodeKind {
 pub struct FileTreeNode {
     /// 节点显示名称。
     pub name: String,
-    /// 节点在工作区中的相对路径。
+    /// 节点在工作区中的相对路径（统一使用 `/` 分隔）。
     pub path: String,
     /// 节点类型。
     pub kind: FileTreeNodeKind,
-    /// 当前节点是否处于展开状态。
+    /// 当前节点是否处于展开状态（仅目录节点有意义）。
     pub is_expanded: bool,
-    /// 当前节点是否被文件树选中。
+    /// 当前节点是否被文件树选中（整棵树期望至多一个为 `true`）。
     pub is_selected: bool,
-    /// 当前节点是否对应激活文件。
+    /// 当前节点是否对应激活文件（通常与选中同步，但语义上更偏“活动编辑目标”）。
     pub is_active: bool,
-    /// 子节点列表。
+    /// 子节点列表（文件节点应保持为空）。
     pub children: Vec<FileTreeNode>,
 }
 
@@ -44,6 +44,8 @@ pub struct FileTreeState {
 
 impl FileTreeState {
     /// 从真实工作区目录构建文件树状态。
+    ///
+    /// 根节点 `path` 为空字符串，便于后续相对路径拼接且不引入虚假前缀。
     pub fn from_workspace_root(workspace_root: &Path) -> Self {
         let root_name = workspace_root
             .file_name()
@@ -63,6 +65,8 @@ impl FileTreeState {
     }
 
     /// 折叠或展开指定目录节点。
+    ///
+    /// 若目标不存在或不是目录，则保持树状态不变。
     pub fn toggle_directory(&mut self, relative_path: &str) {
         for root in &mut self.roots {
             if toggle_directory_node(root, relative_path) {
@@ -72,18 +76,20 @@ impl FileTreeState {
     }
 
     /// 将指定文件标记为当前激活项，并清理其他节点的激活态。
+    ///
+    /// 命中路径的祖先目录会自动展开，确保激活项在可见树中可达。
     pub fn activate_file(&mut self, relative_path: &str) {
         for root in &mut self.roots {
             activate_file_node(root, relative_path);
         }
     }
 
-    /// 选中下一条可见节点。
+    /// 选中下一条可见节点（到末尾后保持在末尾，不循环）。
     pub fn select_next_visible(&mut self) {
         self.move_selection(1);
     }
 
-    /// 选中上一条可见节点。
+    /// 选中上一条可见节点（到开头后保持在开头，不循环）。
     pub fn select_prev_visible(&mut self) {
         self.move_selection(-1);
     }
@@ -119,7 +125,9 @@ impl FileTreeState {
         }
     }
 
-    /// 返回当前选中节点的路径和类型。
+    /// 返回当前选中且可见节点的路径和类型。
+    ///
+    /// 若内部选中项已不可见（例如祖先被折叠），会返回 `None`。
     pub fn selected_node(&self) -> Option<(String, FileTreeNodeKind)> {
         let visible_nodes = self.visible_nodes();
         let selected_path = self.selected_path()?;
@@ -148,6 +156,9 @@ impl FileTreeState {
         true
     }
 
+    /// 按可见节点顺序移动文件树选中项。
+    ///
+    /// 当当前无选中项时，向下移动选第一项，向上移动选最后一项。
     fn move_selection(&mut self, direction: isize) {
         let visible_nodes = self.visible_nodes();
         if visible_nodes.is_empty() {
@@ -178,6 +189,7 @@ impl FileTreeState {
         self.select_only(&visible_nodes[target_index].path);
     }
 
+    /// 返回当前已选可见节点；若还没有合法选中项，会回退到首个可见节点并同步选中状态。
     fn selected_visible_node_or_first(&mut self) -> Option<VisibleNode> {
         let visible_nodes = self.visible_nodes();
         if visible_nodes.is_empty() {
@@ -197,6 +209,7 @@ impl FileTreeState {
         Some(first)
     }
 
+    /// 清除整棵树的旧选中态，并将目标相对路径设置为唯一选中节点。
     fn select_only(&mut self, relative_path: &str) {
         for root in &mut self.roots {
             select_only_node(root, relative_path);
@@ -210,6 +223,9 @@ impl FileTreeState {
             .map(ToString::to_string)
     }
 
+    /// 收集当前“可见树”中的节点线性序列（前序）。
+    ///
+    /// 该序列是键盘导航、父子跳转和选中恢复的统一依据。
     fn visible_nodes(&self) -> Vec<VisibleNode> {
         let mut visible_nodes = Vec::new();
         for root in &self.roots {
@@ -257,13 +273,19 @@ fn activate_file_node(node: &mut FileTreeNode, relative_path: &str) -> bool {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct VisibleNode {
+    /// 当前节点相对路径。
     path: String,
+    /// 当前节点类型。
     kind: FileTreeNodeKind,
+    /// 父节点相对路径（根节点为 `None`）。
     parent_path: Option<String>,
+    /// 当前节点是否展开（目录节点有效）。
     is_expanded: bool,
+    /// 第一个子节点路径（用于“下探”行为）。
     first_child_path: Option<String>,
 }
 
+/// 以前序遍历收集当前可见节点序列，供键盘导航与父子跳转复用。
 fn collect_visible_nodes(
     node: &FileTreeNode,
     parent_path: Option<&str>,
@@ -277,6 +299,7 @@ fn collect_visible_nodes(
         first_child_path: node.children.first().map(|child| child.path.clone()),
     });
 
+    // 只有展开目录才会把子节点纳入可见序列。
     if matches!(node.kind, FileTreeNodeKind::Directory) && node.is_expanded {
         for child in &node.children {
             collect_visible_nodes(child, Some(&node.path), visible_nodes);
@@ -284,6 +307,7 @@ fn collect_visible_nodes(
     }
 }
 
+/// 递归清除同层及子树选中态，仅保留目标路径为选中节点。
 fn select_only_node(node: &mut FileTreeNode, relative_path: &str) {
     node.is_selected = node.path == relative_path;
     for child in &mut node.children {
@@ -291,6 +315,7 @@ fn select_only_node(node: &mut FileTreeNode, relative_path: &str) {
     }
 }
 
+/// 在节点子树中查找选中路径；找到首个选中节点后立即返回。
 fn find_selected_node_path(node: &FileTreeNode) -> Option<&str> {
     if node.is_selected {
         return Some(&node.path);
@@ -302,6 +327,7 @@ fn find_selected_node_path(node: &FileTreeNode) -> Option<&str> {
 const SKIPPED_DIRECTORY_NAMES: &[&str] = &[".git", "node_modules", "target"];
 const SKIPPED_FILE_NAMES: &[&str] = &[".DS_Store"];
 
+/// 从磁盘目录读取并构建文件树子节点：目录优先、跳过黑名单、名称按不区分大小写排序。
 fn collect_directory_children(absolute_dir: &Path, relative_dir: &Path) -> Vec<FileTreeNode> {
     let Ok(entries) = fs::read_dir(absolute_dir) else {
         return Vec::new();
@@ -350,6 +376,7 @@ fn sort_nodes_by_name(nodes: &mut [FileTreeNode]) {
     nodes.sort_by_cached_key(|node| node.name.to_lowercase());
 }
 
+/// 组装相对子路径；当基路径为空时直接返回子名，避免生成前导分隔符。
 fn path_join(base: &Path, child_name: &str) -> PathBuf {
     if base.as_os_str().is_empty() {
         PathBuf::from(child_name)
@@ -358,10 +385,12 @@ fn path_join(base: &Path, child_name: &str) -> PathBuf {
     }
 }
 
+/// 将相对路径标准化为 Unix 风格字符串，避免平台分隔符差异影响匹配。
 fn to_unix_style_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
+/// 构造目录节点并初始化默认状态。
 fn directory_node(
     name: impl Into<String>,
     path: impl Into<String>,
@@ -379,6 +408,7 @@ fn directory_node(
     }
 }
 
+/// 构造文件节点并初始化默认状态。
 fn file_node(name: impl Into<String>, path: impl Into<String>) -> FileTreeNode {
     FileTreeNode {
         name: name.into(),
@@ -402,6 +432,7 @@ mod tests {
     use super::{FileTreeNode, FileTreeNodeKind, FileTreeState};
 
     #[test]
+    /// 切换目标并同步相关状态。
     fn toggle_directory_updates_expanded_flag() {
         let mut tree = FileTreeState {
             title: "EXPLORER".into(),
@@ -416,6 +447,7 @@ mod tests {
     }
 
     #[test]
+    /// 激活文件并同步相关状态。
     fn activate_file_marks_only_target_node() {
         let mut tree = FileTreeState {
             title: "EXPLORER".into(),
@@ -541,6 +573,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算工作区结果。
     fn from_workspace_root_loads_real_directory_entries() {
         let workspace = create_temp_workspace("load-real-directory");
 
@@ -575,6 +608,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算工作区结果。
     fn from_workspace_root_skips_common_generated_directories() {
         let workspace = create_temp_workspace("skip-generated-directories");
 
@@ -622,6 +656,7 @@ mod tests {
         }
     }
 
+    /// 创建工作区并完成初始化。
     fn create_temp_workspace(name: &str) -> PathBuf {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -632,10 +667,12 @@ mod tests {
         workspace
     }
 
+    /// 移除工作区并同步相关状态。
     fn remove_temp_workspace(path: PathBuf) {
         fs::remove_dir_all(path).expect("remove temp workspace");
     }
 
+    /// 计算文件结果。
     fn workspace_file_name(path: &std::path::Path) -> String {
         path.file_name()
             .map(|name| name.to_string_lossy().to_string())

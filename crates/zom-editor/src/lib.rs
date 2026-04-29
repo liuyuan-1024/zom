@@ -1,5 +1,3 @@
-//! `zom-editor` 的公共入口。
-//! 负责承载编辑领域行为与文本视图语义。
 
 mod features;
 mod viewer_layout;

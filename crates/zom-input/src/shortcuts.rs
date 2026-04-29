@@ -1,29 +1,24 @@
-//! 快捷键绑定模型与注册表实现。
-
 use zom_protocol::{CommandInvocation, FocusTarget, InputResolution, KeyCode, Keystroke};
 
-/// 快捷键作用域。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShortcutScope {
-    /// 全局快捷键。
+    /// 全局作用域：不依赖当前焦点面板。
     Global,
-    /// 仅在指定焦点下生效。
+    /// 焦点作用域：仅当焦点落在目标区域时生效。
     Focus(FocusTarget),
 }
 
-/// 快捷键绑定契约（不含运行时解析结果）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShortcutBindingSpec {
-    /// 语义命令。
+    /// 目标命令（不含运行时载荷）。
     pub command: CommandInvocation,
-    /// 按键定义。
+    /// 触发该命令的按键组合。
     pub keystroke: Keystroke,
-    /// 冲突处理优先级（越大越优先）。
+    /// 冲突解决优先级，数值越大越优先（由上层注册策略解释）。
     pub priority: u8,
 }
 
 impl ShortcutBindingSpec {
-    /// 创建一个默认绑定契约。
     pub fn new(command: CommandInvocation, keystroke: Keystroke) -> Self {
         Self {
             command,
@@ -32,51 +27,49 @@ impl ShortcutBindingSpec {
         }
     }
 
-    /// 设置绑定优先级。
     pub fn with_priority(mut self, priority: u8) -> Self {
         self.priority = priority;
         self
     }
 }
 
-/// 统一快捷键绑定定义（按键 + 作用域 + 语义命令）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShortcutBinding {
-    /// 语义命令。
+    /// 绑定目标命令。
     pub command: CommandInvocation,
-    /// 作用域。
+    /// 生效作用域（全局或焦点限定）。
     pub scope: ShortcutScope,
-    /// 按键定义。
+    /// 原始按键输入描述。
     pub keystroke: Keystroke,
-    /// 冲突处理优先级（越大越优先）。
+    /// 预留冲突优先级（用于未来排序/裁决策略）。
     pub priority: u8,
-    /// 解析后的执行结果。
+    /// 解析结果缓存，避免命中后再二次构造 `InputResolution`。
     pub resolution: InputResolution,
 }
 
-/// 默认快捷键注册表（单一事实源）。
 #[derive(Debug, Clone, Default)]
 pub struct ShortcutRegistry {
+    /// 按注册顺序存储绑定；顺序会影响 `shortcut_hint` 的首个命中结果。
     bindings: Vec<ShortcutBinding>,
 }
 
 impl ShortcutRegistry {
-    /// 创建空注册表。
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// 注册一条快捷键绑定。
     pub fn register(&mut self, binding: ShortcutBinding) {
         self.bindings.push(binding);
     }
 
-    /// 读取全部快捷键定义。
     pub fn bindings(&self) -> &[ShortcutBinding] {
         &self.bindings
     }
 
-    /// 读取某个命令对应的默认快捷键文案。
+    /// 返回命令的首个快捷键提示。
+    ///
+    /// 当前策略是“按注册顺序取第一个匹配项”，适合提供稳定 UI hint，
+    /// 但不负责完整冲突裁决。
     pub fn shortcut_hint(&self, command: &CommandInvocation) -> Option<String> {
         self.bindings
             .iter()
@@ -86,6 +79,7 @@ impl ShortcutRegistry {
 }
 
 fn format_keystroke(keystroke: &Keystroke) -> String {
+    // 统一平台无关展示格式：修饰键前缀 + 主键，方便状态栏/菜单复用。
     let mut parts = Vec::new();
     if keystroke.modifiers.has_meta {
         parts.push("Cmd".to_string());

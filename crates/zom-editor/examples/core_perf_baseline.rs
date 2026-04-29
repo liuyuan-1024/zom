@@ -10,24 +10,35 @@ use zom_protocol::{EditorAction, EditorInvocation, Position};
 
 #[derive(Debug, Clone, Copy)]
 struct Thresholds {
+    /// insert_1mb_p95_us 的时间值（us），用于细粒度性能对比。
     insert_1mb_p95_us: f64,
+    /// insert_5mb_p95_us 的时间值（us），用于细粒度性能对比。
     insert_5mb_p95_us: f64,
+    /// delete_1mb_p95_us 的时间值（us），用于细粒度性能对比。
     delete_1mb_p95_us: f64,
+    /// move_right_1mb_p95_us 的时间值（us），用于细粒度性能对比。
     move_right_1mb_p95_us: f64,
+    /// mapping_5mb_p95_us 的时间值（us），用于细粒度性能对比。
     mapping_5mb_p95_us: f64,
+    /// wrap_1mb_ms 的时间值（ms），用于耗时统计。
     wrap_1mb_ms: f64,
 }
 
 #[derive(Debug, Clone)]
 struct OpMetric {
+    /// 可读名称，用于展示与结果分组。
     name: &'static str,
     operations: usize,
+    /// total_ms 的时间值（ms），用于耗时统计。
     total_ms: f64,
+    /// avg_us 的时间值（us），用于细粒度性能对比。
     avg_us: f64,
+    /// p95_us 的时间值（us），用于细粒度性能对比。
     p95_us: f64,
 }
 
 impl OpMetric {
+    /// 基于总耗时换算吞吐量；总耗时为 0 时返回 0，避免除零。
     fn throughput_ops_per_sec(&self) -> f64 {
         let total_secs = self.total_ms / 1000.0;
         if total_secs == 0.0 {
@@ -37,6 +48,7 @@ impl OpMetric {
     }
 }
 
+/// 程序入口：初始化运行环境并启动主流程。
 fn main() {
     let enforce = env::args().skip(1).any(|arg| arg == "--enforce");
     let thresholds = Thresholds {
@@ -52,28 +64,34 @@ fn main() {
     let text_5mb = generate_ascii_text(5 * 1024 * 1024);
     let line_1mb = "a".repeat(1 * 1024 * 1024);
 
-    let insert_1mb = measure_editor_op_metric(
-        "insert_tail_1mb",
+    let insert_1mb =
+        measure_editor_op_metric("insert_tail_1mb", &text_1mb, 300, |state, cursor| {
+            apply_editor_invocation(state, cursor, &EditorInvocation::insert_text("x"))
+        });
+    let insert_5mb =
+        measure_editor_op_metric("insert_tail_5mb", &text_5mb, 300, |state, cursor| {
+            apply_editor_invocation(state, cursor, &EditorInvocation::insert_text("x"))
+        });
+    let delete_1mb = measure_editor_op_metric(
+        "delete_backward_tail_1mb",
         &text_1mb,
         300,
-        |state, cursor| apply_editor_invocation(state, cursor, &EditorInvocation::insert_text("x")),
+        |state, cursor| {
+            apply_editor_invocation(
+                state,
+                cursor,
+                &EditorInvocation::from(EditorAction::DeleteBackward),
+            )
+        },
     );
-    let insert_5mb = measure_editor_op_metric(
-        "insert_tail_5mb",
-        &text_5mb,
-        300,
-        |state, cursor| apply_editor_invocation(state, cursor, &EditorInvocation::insert_text("x")),
-    );
-    let delete_1mb = measure_editor_op_metric("delete_backward_tail_1mb", &text_1mb, 300, |state, cursor| {
-        apply_editor_invocation(
-            state,
-            cursor,
-            &EditorInvocation::from(EditorAction::DeleteBackward),
-        )
-    });
-    let move_right_1mb = measure_editor_op_metric("move_right_1mb", &text_1mb, 20_000, |state, cursor| {
-        apply_editor_invocation(state, cursor, &EditorInvocation::from(EditorAction::MoveRight))
-    });
+    let move_right_1mb =
+        measure_editor_op_metric("move_right_1mb", &text_1mb, 20_000, |state, cursor| {
+            apply_editor_invocation(
+                state,
+                cursor,
+                &EditorInvocation::from(EditorAction::MoveRight),
+            )
+        });
     let mapping_5mb = measure_mapping_metric(&text_5mb);
     let wrap_1mb_ms = measure_wrap_time_ms(&line_1mb, 120);
 
@@ -125,6 +143,7 @@ fn main() {
     }
 }
 
+/// 生成指定字节大小的 ASCII 文本，用于性能基准输入。
 fn generate_ascii_text(target_bytes: usize) -> String {
     let line = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
     let mut out = String::with_capacity(target_bytes + line.len());
@@ -135,6 +154,7 @@ fn generate_ascii_text(target_bytes: usize) -> String {
     out
 }
 
+/// 对同一操作循环执行采样，累计平均值与 p95，返回单场景性能指标。
 fn measure_editor_op_metric(
     name: &'static str,
     initial_text: &str,
@@ -166,6 +186,7 @@ fn measure_editor_op_metric(
     }
 }
 
+/// 对大文本执行 offset -> position -> offset 往返映射压测，验证映射正确性并输出分位指标。
 fn measure_mapping_metric(initial_text: &str) -> OpMetric {
     let state = EditorState::from_text(initial_text);
     let mut offsets = Vec::new();
@@ -184,7 +205,10 @@ fn measure_mapping_metric(initial_text: &str) -> OpMetric {
         let started = Instant::now();
         let position = state.offset_to_position(offset);
         let mapped_offset = state.position_to_offset(position);
-        assert!(mapped_offset <= state.len(), "mapped offset should be in bounds");
+        assert!(
+            mapped_offset <= state.len(),
+            "mapped offset should be in bounds"
+        );
         costs.push(started.elapsed().as_nanos());
     }
     let total_ms = total_start.elapsed().as_secs_f64() * 1000.0;
@@ -200,6 +224,7 @@ fn measure_mapping_metric(initial_text: &str) -> OpMetric {
     }
 }
 
+/// 统计一次软换行调用的耗时（毫秒），并确保结果至少产出一个分段。
 fn measure_wrap_time_ms(line: &str, width: usize) -> f64 {
     let started = Instant::now();
     let segments = wrap_visual_line(line, width);
@@ -207,6 +232,7 @@ fn measure_wrap_time_ms(line: &str, width: usize) -> f64 {
     started.elapsed().as_secs_f64() * 1000.0
 }
 
+/// 计算样本的 95 分位耗时（纳秒），空样本按 0 处理。
 fn p95_nanos(costs: &mut [u128]) -> u128 {
     costs.sort_unstable();
     if costs.is_empty() {
@@ -217,6 +243,7 @@ fn p95_nanos(costs: &mut [u128]) -> u128 {
     costs[index]
 }
 
+/// 汇总各场景阈值检查结果，返回所有超阈项文本。
 fn collect_regressions(
     thresholds: &Thresholds,
     insert_1mb: &OpMetric,
@@ -268,6 +295,7 @@ fn collect_regressions(
     out
 }
 
+/// 当 p95 超过阈值时向回归列表追加一条可读告警。
 fn check_p95(regressions: &mut Vec<String>, name: &str, actual: f64, threshold: f64) {
     if actual > threshold {
         regressions.push(format!("{name}: p95 {:.2}us > {:.2}us", actual, threshold));

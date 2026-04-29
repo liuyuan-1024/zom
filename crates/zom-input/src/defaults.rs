@@ -1,5 +1,3 @@
-//! 默认快捷键注册表构建逻辑（按 `CommandKindId` 维护）。
-
 use zom_protocol::{
     CommandInvocation, CommandKindId, EditorAction, FileTreeAction, FocusTarget, KeyCode,
     Keystroke, Modifiers, NotificationAction, OverlayTarget, TabAction, WorkspaceAction,
@@ -7,12 +5,15 @@ use zom_protocol::{
 
 use crate::{InputResolution, ShortcutBinding, ShortcutRegistry, ShortcutScope};
 
-/// 默认快捷键声明（语义 ID + 作用域 + 按键）。
 #[derive(Clone, Copy)]
 struct DefaultShortcutSpec {
+    /// 协议层命令 ID；用于把静态表映射到具体 `CommandInvocation`。
     command_id: CommandKindId,
+    /// 绑定作用域（全局或焦点限定）。
     scope: ShortcutScope,
+    /// 触发按键。
     keystroke: Keystroke,
+    /// 冲突优先级（保留给上层裁决策略）。
     priority: u8,
 }
 
@@ -32,8 +33,8 @@ impl DefaultShortcutSpec {
     }
 }
 
-/// 构造默认快捷键注册表（构建函数）。
 pub(crate) fn build_default_shortcut_registry() -> ShortcutRegistry {
+    // 默认快捷键表是“声明式规格 -> 可执行绑定”的一次性编译过程。
     let mut registry = ShortcutRegistry::new();
     for spec in DEFAULT_SHORTCUT_SPECS {
         let Some(command) = command_from_kind_id(spec.command_id) else {
@@ -51,6 +52,7 @@ pub(crate) fn build_default_shortcut_registry() -> ShortcutRegistry {
 }
 
 fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> {
+    // 需要运行时载荷的命令（如 insert_text）不在静态快捷键表直接构造。
     match command_id.0 {
         "editor.insert_text" => None,
         "editor.insert_newline" => Some(CommandInvocation::from(EditorAction::InsertNewline)),
@@ -90,9 +92,9 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "editor.find_replace.toggle_case_sensitive" => Some(CommandInvocation::from(
             EditorAction::ToggleFindCaseSensitive,
         )),
-        "editor.find_replace.toggle_whole_word" => Some(CommandInvocation::from(
-            EditorAction::ToggleFindWholeWord,
-        )),
+        "editor.find_replace.toggle_whole_word" => {
+            Some(CommandInvocation::from(EditorAction::ToggleFindWholeWord))
+        }
         "editor.find_replace.toggle_regex" => {
             Some(CommandInvocation::from(EditorAction::ToggleFindRegex))
         }
@@ -185,7 +187,6 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
 }
 
 const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
-    // editor
     DefaultShortcutSpec::new(
         CommandKindId("editor.insert_newline"),
         ShortcutScope::Focus(FocusTarget::Editor),
@@ -348,7 +349,6 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         primary_shift_char('z'),
         120,
     ),
-    // workspace actions
     DefaultShortcutSpec::new(
         CommandKindId("workspace.quit_app"),
         ShortcutScope::Global,
@@ -427,7 +427,6 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         primary_char('w'),
         120,
     ),
-    // workspace pane/panels/overlays
     DefaultShortcutSpec::new(
         CommandKindId("workspace.focus_panel.editor"),
         ShortcutScope::Global,
@@ -494,7 +493,6 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         primary_char(','),
         80,
     ),
-    // notification
     DefaultShortcutSpec::new(
         CommandKindId("workspace.notification.clear_all"),
         ShortcutScope::Focus(FocusTarget::NotificationPanel),
@@ -531,14 +529,12 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         plain(KeyCode::Enter),
         110,
     ),
-    // terminal scoped (placeholder)
     DefaultShortcutSpec::new(
         CommandKindId("workspace.focus_panel.editor"),
         ShortcutScope::Focus(FocusTarget::TerminalPanel),
         plain(KeyCode::Enter),
         110,
     ),
-    // file tree scoped
     DefaultShortcutSpec::new(
         CommandKindId("workspace.file_tree.select_prev"),
         ShortcutScope::Focus(FocusTarget::FileTreePanel),
@@ -569,7 +565,6 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         plain(KeyCode::Enter),
         110,
     ),
-    // tab
     DefaultShortcutSpec::new(
         CommandKindId("workspace.tab.activate_prev"),
         ShortcutScope::Global,
@@ -603,7 +598,10 @@ const fn alt_char(c: char) -> Keystroke {
 const fn primary_alt(key: KeyCode) -> Keystroke {
     Keystroke::new(
         key,
-        merge_modifiers(primary_modifier(), Modifiers::new(false, true, false, false)),
+        merge_modifiers(
+            primary_modifier(),
+            Modifiers::new(false, true, false, false),
+        ),
     )
 }
 
@@ -627,6 +625,7 @@ const fn with_logical_modifiers(
     has_secondary_modifier: bool,
     has_word_nav_modifier: bool,
 ) -> Modifiers {
+    // 逻辑修饰键会在此展开为平台实际组合（macOS 与非 macOS 不同）。
     let mut modifiers = Modifiers::new(false, false, is_shift_pressed, false);
     if has_primary_modifier {
         modifiers = merge_modifiers(modifiers, primary_modifier());
@@ -650,6 +649,7 @@ const fn merge_modifiers(base: Modifiers, extra: Modifiers) -> Modifiers {
 }
 
 const fn primary_modifier() -> Modifiers {
+    // “主命令键”：macOS 为 Command，其它平台为 Ctrl。
     #[cfg(target_os = "macos")]
     {
         Modifiers::new(false, false, false, true)
@@ -661,6 +661,7 @@ const fn primary_modifier() -> Modifiers {
 }
 
 const fn secondary_modifier() -> Modifiers {
+    // “次修饰键”：macOS 为 Ctrl，其它平台为 Alt。
     #[cfg(target_os = "macos")]
     {
         Modifiers::new(true, false, false, false)
@@ -672,6 +673,7 @@ const fn secondary_modifier() -> Modifiers {
 }
 
 const fn word_nav_modifier() -> Modifiers {
+    // 单词级导航修饰键：macOS 使用 Alt，其它平台使用 Ctrl。
     #[cfg(target_os = "macos")]
     {
         Modifiers::new(false, true, false, false)

@@ -95,7 +95,7 @@ pub enum FindReplaceAction {
 /// 编辑器内单文件查找替换请求。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FindReplaceRequest {
-    /// 查找模式（literal 或 regex）。
+    /// 查找模式（literal 或 regex）；为空时通常由执行层短路为 no-op。
     pub query: String,
     /// 替换文本（仅替换操作使用）。
     pub replacement: String,
@@ -105,12 +105,14 @@ pub struct FindReplaceRequest {
     pub case_sensitive: bool,
     /// 是否全词匹配。
     pub whole_word: bool,
-    /// 是否按正则表达式解释 `query`。
+    /// 是否按正则表达式解释 `query`；为 `false` 时应先进行转义再匹配。
     pub use_regex: bool,
 }
 
 impl FindReplaceRequest {
     /// 构造查找替换请求。
+    ///
+    /// 该构造只组装协议数据，不做正则合法性等运行时校验。
     pub fn new(
         query: impl Into<String>,
         replacement: impl Into<String>,
@@ -137,7 +139,7 @@ pub enum EditorInvocation {
     Action(EditorAction),
     /// 插入一段动态文本。
     InsertText {
-        /// 需要插入到光标位置的文本内容。
+        /// 需要插入到光标位置的文本内容（支持多字符批量输入）。
         text: String,
     },
     /// 单文件查找替换请求。
@@ -149,6 +151,8 @@ pub enum EditorInvocation {
 
 impl EditorInvocation {
     /// 构造一次文本插入调用。
+    ///
+    /// 用于承载动态 payload，因此与 `EditorAction`（无参动作）分离。
     pub fn insert_text(text: impl Into<String>) -> Self {
         Self::InsertText { text: text.into() }
     }

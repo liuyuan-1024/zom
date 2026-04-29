@@ -5,9 +5,9 @@ use crate::{Position, Range};
 /// 编辑器中的单个光标或单个选区。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Selection {
-    /// 固定端。
+    /// 固定端；扩展选区时通常保持不动。
     anchor: Position,
-    /// 活动端，也就是当前光标端。
+    /// 活动端，也就是当前光标端；移动选择时会变化。
     active: Position,
 }
 
@@ -57,7 +57,10 @@ impl Selection {
         Range::new(self.start(), self.end())
     }
 
-    /// 返回选区的逻辑排序键。
+    /// 返回选区的稳定排序键。
+    ///
+    /// 先按规范化范围排序，再用 `(anchor, active)` 打破并列，
+    /// 以确保反向选区与正向选区在集合里有稳定顺序。
     pub fn sort_key(self) -> (Position, Position, Position, Position) {
         (self.start(), self.end(), self.anchor, self.active)
     }
@@ -66,14 +69,16 @@ impl Selection {
 /// 多光标编辑时的一组稳定选区。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectionSet {
-    /// 当前所有选区，始终按逻辑位置排序。
+    /// 当前所有选区，始终保持“去重 + 稳定排序”不变式。
     selections: Vec<Selection>,
-    /// 主选区在有序数组中的索引。
+    /// 主选区在有序数组中的索引；为空表示当前无选区。
     primary_index: Option<usize>,
 }
 
 impl SelectionSet {
     /// 用一组选区构造选区集合，移除重复项并按逻辑位置排序。
+    ///
+    /// 传入列表的第一项被视为“主选区候选”，规范化后会重新定位其索引。
     pub fn new(selections: Vec<Selection>) -> Self {
         let primary = selections.first().copied();
         let selections = Self::normalize_selections(selections);
@@ -118,6 +123,8 @@ impl SelectionSet {
     }
 
     /// 追加一个选区；如果已存在则保持集合不变。
+    ///
+    /// 追加后会重新规范化，以维持集合全局不变式。
     pub fn push(&mut self, selection: Selection) {
         if self.selections.contains(&selection) {
             return;
@@ -128,6 +135,8 @@ impl SelectionSet {
     }
 
     /// 将某个已存在或新加入的选区标记为主选区。
+    ///
+    /// 即使规范化导致顺序变化，主选区语义也会被保留。
     pub fn set_primary(&mut self, selection: Selection) {
         if !self.selections.contains(&selection) {
             self.selections.push(selection);
@@ -147,15 +156,20 @@ impl SelectionSet {
         selections
     }
 
+    /// 以“当前主选区”为基准重建排序与主索引。
     fn update_primary_index_after_normalize(&mut self) {
         let primary = self.primary().copied();
         self.update_primary_index_after_normalize_with_optional(primary);
     }
 
+    /// 以指定主选区为基准重建排序与主索引。
     fn update_primary_index_after_normalize_with(&mut self, primary: Selection) {
         self.update_primary_index_after_normalize_with_optional(Some(primary));
     }
 
+    /// 规范化选区数组并回填主选区索引。
+    ///
+    /// 若指定主选区在去重后消失（理论上仅在 `None` 时），主索引会被清空。
     fn update_primary_index_after_normalize_with_optional(&mut self, primary: Option<Selection>) {
         self.selections = Self::normalize_selections(std::mem::take(&mut self.selections));
         self.primary_index = primary.and_then(|selection| {
@@ -183,6 +197,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算选区范围结果。
     fn reversed_selection_normalizes_to_range() {
         let selection = Selection::new(Position::new(4, 8), Position::new(1, 2));
 
@@ -211,6 +226,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算位置结果。
     fn selection_set_deduplicates_and_sorts_by_logical_position() {
         let first = Selection::caret(Position::new(2, 2));
         let second = Selection::caret(Position::new(0, 0));
@@ -222,6 +238,7 @@ mod tests {
     }
 
     #[test]
+    /// 写入选区并同步相关状态。
     fn push_keeps_selection_set_unique() {
         let first = Selection::caret(Position::new(0, 0));
         let mut set = SelectionSet::single(first);
@@ -233,6 +250,7 @@ mod tests {
     }
 
     #[test]
+    /// 设置目标并同步相关状态。
     fn set_primary_preserves_primary_semantics_after_sorting() {
         let first = Selection::caret(Position::new(2, 2));
         let second = Selection::caret(Position::new(0, 0));

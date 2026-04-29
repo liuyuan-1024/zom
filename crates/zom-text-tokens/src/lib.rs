@@ -32,12 +32,14 @@ pub enum LineEnding {
     Crlf,
     /// `\r`
     Cr,
-    /// 混合换行风格。
+    /// 混合换行风格（同一文本内出现多种换行符）。
     Mixed,
 }
 
 impl LineEnding {
-    /// 返回换行符文本。
+    /// 返回对应换行文本。
+    ///
+    /// `Mixed` 不存在单一可逆表示，这里约定回退 `LF` 作为写回默认值。
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Lf => LF,
@@ -47,7 +49,7 @@ impl LineEnding {
         }
     }
 
-    /// 返回换行风格标签。
+    /// 返回稳定标签（用于状态栏/诊断展示）。
     pub const fn label(self) -> &'static str {
         match self {
             Self::Lf => "LF",
@@ -64,12 +66,14 @@ pub enum IndentUnit {
     /// 使用制表符缩进。
     #[default]
     Tab,
-    /// 使用指定数量的空格缩进。
+    /// 使用指定数量的空格缩进（宽度由调用方策略决定）。
     Spaces(u8),
 }
 
 impl IndentUnit {
     /// 返回缩进文本。
+    ///
+    /// 该函数不做“宽度是否合理”校验，例如 `Spaces(0)` 会返回空串。
     pub fn as_string(self) -> String {
         match self {
             Self::Tab => TAB.to_string(),
@@ -93,6 +97,7 @@ mod tests {
     }
 
     #[test]
+    /// 计算标签页结果。
     fn indent_unit_builds_tab_and_spaces() {
         assert_eq!(IndentUnit::Tab.as_string(), "\t");
         assert_eq!(IndentUnit::Spaces(4).as_string(), "    ");

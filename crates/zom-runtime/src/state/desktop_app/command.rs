@@ -10,6 +10,8 @@ use super::{DesktopAppState, DesktopUiAction};
 
 impl DesktopAppState {
     /// 处理一个键盘输入，解析成命令后统一交给应用层分发。
+    ///
+    /// 返回值表示本次按键是否被 runtime 消费，供上层决定是否继续透传。
     pub fn dispatch_keystroke(&mut self, keystroke: &Keystroke) -> bool {
         let context = InputContext::new(self.focused_target);
         let resolution = resolve_default(keystroke, &context);
@@ -27,6 +29,8 @@ impl DesktopAppState {
     }
 
     /// 统一处理顶层命令，并分发到对应领域。
+    ///
+    /// 保持“单入口分发”可让日志、埋点和权限控制挂在同一层。
     pub fn dispatch_command(&mut self, command: CommandInvocation) {
         match command {
             CommandInvocation::Workspace(command) => self.dispatch_workspace_action(command),
@@ -57,6 +61,8 @@ impl DesktopAppState {
     }
 
     /// 处理文件树命令，并同步工作区状态。
+    ///
+    /// `ActivateSelection` 在无选中项时会先补一个选中，避免 Enter 无反馈。
     fn dispatch_file_tree_action(&mut self, command: FileTreeAction) {
         match command {
             FileTreeAction::SelectPrev => self.file_tree.select_prev_visible(),
