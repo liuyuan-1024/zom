@@ -33,9 +33,9 @@ allowed_deps_for() {
     zom-input) echo "zom-protocol" ;;
     zom-text) echo "zom-protocol zom-text-tokens" ;;
     zom-editor) echo "zom-protocol zom-text zom-text-tokens" ;;
-    zom-workspace) echo "zom-protocol" ;;
+    zom-workspace) echo "zom-protocol zom-text-tokens" ;;
     zom-runtime) echo "zom-protocol zom-input zom-text zom-editor zom-workspace zom-text-tokens" ;;
-    zom-gpui) echo "zom-protocol zom-runtime zom-text-tokens" ;;
+    zom-gpui) echo "zom-protocol zom-input zom-runtime zom-text-tokens" ;;
     zom-desktop) echo "zom-gpui" ;;
     *) return 1 ;;
   esac

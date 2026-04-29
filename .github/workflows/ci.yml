@@ -62,8 +62,17 @@ jobs:
       - name: Check control-char literal usage
         run: ./scripts/check-control-char-literals.sh
 
-      - name: Check rustdoc coverage
-        run: ./scripts/check-rustdoc-coverage.sh
+      - name: Check icon centralization
+        run: ./scripts/check-icon-centralization.sh
+
+      - name: Check zom-gpui
+        run: cargo check -p zom-gpui --locked
+
+      - name: Lint zom-gpui
+        run: cargo clippy -p zom-gpui --all-targets -- -D warnings
+
+      - name: Test zom-gpui
+        run: cargo test -p zom-gpui --locked
 
       - name: Run tests
         run: cargo test --workspace --locked

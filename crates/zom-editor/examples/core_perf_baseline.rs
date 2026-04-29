@@ -7,6 +7,7 @@ use std::{env, process, time::Instant};
 
 use zom_editor::{EditorState, apply_editor_invocation, wrap_visual_line};
 use zom_protocol::{EditorAction, EditorInvocation, Position};
+use zom_text_tokens::LF;
 
 #[derive(Debug, Clone, Copy)]
 struct Thresholds {
@@ -145,10 +146,10 @@ fn main() {
 
 /// 生成指定字节大小的 ASCII 文本，用于性能基准输入。
 fn generate_ascii_text(target_bytes: usize) -> String {
-    let line = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
+    let line = format!("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ{LF}");
     let mut out = String::with_capacity(target_bytes + line.len());
     while out.len() < target_bytes {
-        out.push_str(line);
+        out.push_str(&line);
     }
     out.truncate(target_bytes);
     out
