@@ -88,11 +88,6 @@ impl Chip {
         self
     }
 
-    /// 仅提示文案的 tooltip。
-    pub fn tooltip_text(self, label: impl Into<String>) -> Self {
-        self.tooltip_hint(label, Option::<String>::None)
-    }
-
     fn into_stateful(self) -> Stateful<Div> {
         let text_color = if self.is_active {
             color::COLOR_FG_PRIMARY
