@@ -5,6 +5,7 @@ use crate::{FocusTarget, OverlayTarget};
 /// 命令的稳定语义族（无 UI / 输入细节）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CommandKind {
+    // --- Editor: 插入与缩进 ---
     /// 编辑器插入动态文本。
     EditorInsertText,
     /// 编辑器插入换行。
@@ -13,6 +14,8 @@ pub enum CommandKind {
     EditorInsertIndent,
     /// 编辑器反缩进。
     EditorOutdent,
+
+    // --- Editor: 光标移动 ---
     /// 编辑器光标左移。
     EditorMoveLeft,
     /// 编辑器光标右移。
@@ -29,6 +32,8 @@ pub enum CommandKind {
     EditorMovePageUp,
     /// 编辑器向下翻页。
     EditorMovePageDown,
+
+    // --- Editor: 选区 ---
     /// 编辑器向左扩展选区。
     EditorSelectLeft,
     /// 编辑器向右扩展选区。
@@ -47,6 +52,8 @@ pub enum CommandKind {
     EditorSelectPageDown,
     /// 编辑器全选。
     EditorSelectAll,
+
+    // --- Editor: 删除 ---
     /// 编辑器向后删除一个字符。
     EditorDeleteBackward,
     /// 编辑器向前删除一个字符。
@@ -55,6 +62,8 @@ pub enum CommandKind {
     EditorDeleteWordBackward,
     /// 编辑器向前删除一个单词。
     EditorDeleteWordForward,
+
+    // --- Editor: 剪贴板与历史 ---
     /// 编辑器复制选区。
     EditorCopy,
     /// 编辑器剪切选区。
@@ -65,6 +74,8 @@ pub enum CommandKind {
     EditorUndo,
     /// 编辑器重做。
     EditorRedo,
+
+    // --- Editor: 查找替换 ---
     /// 打开当前活动编辑器的查找替换条。
     EditorOpenFindReplace,
     /// 查找条切换大小写匹配。
@@ -82,6 +93,7 @@ pub enum CommandKind {
     /// 编辑器替换全部匹配项。
     EditorReplaceAll,
 
+    // --- Workspace: 顶层动作 ---
     /// 退出应用。
     WorkspaceQuitApp,
     /// 最小化当前窗口。
@@ -91,14 +103,16 @@ pub enum CommandKind {
     WorkspaceOpenProjectPicker,
     /// 保存当前活动标签页。
     WorkspaceSaveActiveBuffer,
+    /// 关闭当前聚焦组件。
+    WorkspaceCloseFocused,
 
+    // --- Workspace: 聚焦 ---
     /// 显示并聚焦指定面板。
     WorkspaceFocusPanel(FocusTarget),
     /// 显示并聚焦指定悬浮层。
     WorkspaceFocusOverlay(OverlayTarget),
-    /// 关闭当前聚焦组件。
-    WorkspaceCloseFocused,
 
+    // --- Workspace.FileTree ---
     /// 文件树选择上一项。
     WorkspaceFileTreeSelectPrev,
     /// 文件树选择下一项。
@@ -110,6 +124,7 @@ pub enum CommandKind {
     /// 激活文件树当前选中项。
     WorkspaceFileTreeActivateSelection,
 
+    // --- Workspace.Tab ---
     /// 关闭当前活动标签页。
     WorkspaceTabCloseActive,
     /// 激活上一个标签页。
@@ -117,18 +132,4 @@ pub enum CommandKind {
     /// 激活下一个标签页。
     WorkspaceTabActivateNext,
 
-    /// 通知中心标记全部已读。
-    WorkspaceNotificationMarkAllRead,
-    /// 通知中心标记当前选中通知为已读。
-    WorkspaceNotificationMarkSelectedRead,
-    /// 通知中心清空全部通知。
-    WorkspaceNotificationClearAll,
-    /// 通知中心清空已读通知。
-    WorkspaceNotificationClearRead,
-    /// 聚焦并定位到未读错误通知。
-    WorkspaceNotificationFocusUnreadError,
-    /// 通知中心选择上一条通知。
-    WorkspaceNotificationSelectPrev,
-    /// 通知中心选择下一条通知。
-    WorkspaceNotificationSelectNext,
 }

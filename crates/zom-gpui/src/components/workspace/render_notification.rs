@@ -1,7 +1,5 @@
 //! `render_notification` 模块，负责 当前 域相关能力与数据组织。
 use gpui::{Context, Div, InteractiveElement, ParentElement, Stateful, Styled, div, px, rgb};
-use zom_input::shortcut_hint;
-use zom_protocol::{CommandInvocation, NotificationAction};
 use zom_runtime::state::DesktopNotificationLevel;
 
 use super::WorkspaceView;
@@ -58,17 +56,14 @@ impl WorkspaceView {
                             .child(self.render_notification_action_chip(
                                 "notification-chip-focus-unread-error",
                                 format!("未读错误 {unread_error_count}"),
-                                NotificationAction::FocusUnreadError,
                             ))
                             .child(self.render_notification_action_chip(
                                 "notification-chip-clear-read",
                                 format!("清空已读 {read_count}"),
-                                NotificationAction::ClearRead,
                             ))
                             .child(self.render_notification_action_chip(
                                 "notification-chip-clear-all",
                                 format!("清空全部 {total_count}"),
-                                NotificationAction::ClearAll,
                             )),
                     ),
             )
@@ -86,13 +81,11 @@ impl WorkspaceView {
         &self,
         id: &'static str,
         label: String,
-        action: NotificationAction,
     ) -> impl gpui::IntoElement {
-        let command = CommandInvocation::from(action);
         let label_for_tooltip = label.clone();
         let label_for_chip = label;
         Chip::new(id)
             .label(label_for_chip)
-            .tooltip_hint(label_for_tooltip, shortcut_hint(&command))
+            .tooltip_hint(label_for_tooltip, Option::<String>::None)
     }
 }

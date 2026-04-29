@@ -7,7 +7,7 @@ mod editor;
 mod workspace;
 
 pub use editor::{EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest};
-pub use workspace::{FileTreeAction, NotificationAction, TabAction, WorkspaceAction};
+pub use workspace::{FileTreeAction, TabAction, WorkspaceAction};
 
 /// 跨系统共享的顶层命令调用。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -65,19 +65,13 @@ impl From<TabAction> for CommandInvocation {
     }
 }
 
-impl From<NotificationAction> for CommandInvocation {
-    fn from(action: NotificationAction) -> Self {
-        Self::Workspace(WorkspaceAction::from(action))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::FocusTarget;
 
     use super::{
-        CommandInvocation, EditorAction, EditorInvocation, FileTreeAction, NotificationAction,
-        TabAction, WorkspaceAction,
+        CommandInvocation, EditorAction, EditorInvocation, FileTreeAction, TabAction,
+        WorkspaceAction,
     };
 
     #[test]
@@ -96,7 +90,6 @@ mod tests {
     fn file_tree_and_tab_actions_are_promoted_to_top_level_command() {
         let file_tree = CommandInvocation::from(FileTreeAction::SelectNext);
         let tab = CommandInvocation::from(TabAction::CloseActiveTab);
-        let notification = CommandInvocation::from(NotificationAction::MarkAllRead);
 
         assert_eq!(
             file_tree,
@@ -105,12 +98,6 @@ mod tests {
         assert_eq!(
             tab,
             CommandInvocation::Workspace(WorkspaceAction::Tab(TabAction::CloseActiveTab))
-        );
-        assert_eq!(
-            notification,
-            CommandInvocation::Workspace(WorkspaceAction::Notification(
-                NotificationAction::MarkAllRead
-            ))
         );
     }
 

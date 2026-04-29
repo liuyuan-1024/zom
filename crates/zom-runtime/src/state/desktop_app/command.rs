@@ -3,7 +3,7 @@
 use zom_input::resolve_default;
 use zom_protocol::{
     CommandInvocation, EditorInvocation, InputContext, InputResolution, Keystroke,
-    command::{FileTreeAction, NotificationAction, WorkspaceAction},
+    command::{FileTreeAction, WorkspaceAction},
 };
 
 use super::{DesktopAppState, DesktopUiAction};
@@ -56,7 +56,6 @@ impl DesktopAppState {
             WorkspaceAction::CloseFocused => self.close_focused(),
             WorkspaceAction::FileTree(command) => self.dispatch_file_tree_action(command),
             WorkspaceAction::Tab(command) => self.dispatch_tab_action(command),
-            WorkspaceAction::Notification(command) => self.dispatch_notification_action(command),
         }
     }
 
@@ -79,16 +78,4 @@ impl DesktopAppState {
         }
     }
 
-    /// 处理通知中心命令。
-    fn dispatch_notification_action(&mut self, command: NotificationAction) {
-        match command {
-            NotificationAction::MarkSelectedRead => self.mark_selected_notification_read(),
-            NotificationAction::MarkAllRead => self.mark_all_notifications_read(),
-            NotificationAction::ClearAll => self.clear_notifications(),
-            NotificationAction::ClearRead => self.clear_read_notifications(),
-            NotificationAction::FocusUnreadError => self.focus_unread_error_notification(),
-            NotificationAction::SelectPrev => self.select_prev_notification(),
-            NotificationAction::SelectNext => self.select_next_notification(),
-        }
-    }
 }

@@ -3,28 +3,15 @@
 /// 编辑器领域的无参动作语义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EditorAction {
-    /// 打开当前活动编辑器的查找替换条。
-    OpenFindReplace,
-    /// 查找条：查找上一个。
-    FindPrev,
-    /// 查找条：查找下一个。
-    FindNext,
-    /// 查找条：替换下一个。
-    ReplaceNext,
-    /// 查找条：替换全部。
-    ReplaceAll,
-    /// 查找条：切换大小写匹配。
-    ToggleFindCaseSensitive,
-    /// 查找条：切换整词匹配。
-    ToggleFindWholeWord,
-    /// 查找条：切换正则模式。
-    ToggleFindRegex,
+    // --- 插入与缩进 ---
     /// 插入换行。
     InsertNewline,
     /// 插入缩进。
     InsertIndent,
     /// 反缩进。
     Outdent,
+
+    // --- 光标移动 ---
     /// 光标向左移动。
     MoveLeft,
     /// 光标向右移动。
@@ -41,6 +28,8 @@ pub enum EditorAction {
     MovePageUp,
     /// 光标向下移动一页。
     MovePageDown,
+
+    // --- 选区扩展 ---
     /// 向左扩展选区。
     SelectLeft,
     /// 向右扩展选区。
@@ -59,6 +48,8 @@ pub enum EditorAction {
     SelectPageDown,
     /// 全选。
     SelectAll,
+
+    // --- 删除 ---
     /// 向后删除一个字符。
     DeleteBackward,
     /// 向前删除一个字符。
@@ -67,6 +58,8 @@ pub enum EditorAction {
     DeleteWordBackward,
     /// 向前删除一个单词。
     DeleteWordForward,
+
+    // --- 剪贴板与历史 ---
     /// 复制当前选区。
     Copy,
     /// 剪切当前选区。
@@ -77,15 +70,35 @@ pub enum EditorAction {
     Undo,
     /// 重做最近一次撤销。
     Redo,
+
+    // --- 查找替换 ---
+    /// 打开当前活动编辑器的查找替换条。
+    OpenFindReplace,
+    /// 查找条：切换大小写匹配。
+    ToggleFindCaseSensitive,
+    /// 查找条：切换整词匹配。
+    ToggleFindWholeWord,
+    /// 查找条：切换正则模式。
+    ToggleFindRegex,
+    /// 查找条：查找下一个。
+    FindNext,
+    /// 查找条：查找上一个。
+    FindPrev,
+    /// 查找条：替换下一个。
+    ReplaceNext,
+    /// 查找条：替换全部。
+    ReplaceAll,
 }
 
 /// 查找替换动作类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FindReplaceAction {
+    // --- 查找 ---
     /// 查找下一个匹配项。
     FindNext,
     /// 查找上一个匹配项。
     FindPrev,
+    // --- 替换 ---
     /// 替换下一个匹配项。
     ReplaceNext,
     /// 替换全部匹配项。

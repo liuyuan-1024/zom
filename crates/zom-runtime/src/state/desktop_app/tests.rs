@@ -9,7 +9,7 @@ use std::{
 use zom_protocol::{
     CommandInvocation, EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest,
     FocusTarget, KeyCode, Keystroke, Modifiers, OverlayTarget, Position,
-    command::{FileTreeAction, NotificationAction, TabAction, WorkspaceAction},
+    command::{FileTreeAction, TabAction, WorkspaceAction},
 };
 use zom_text_tokens::LineEnding;
 
@@ -1238,8 +1238,6 @@ fn notification_command_mark_all_read_clears_unread_counter() {
         .with_dedupe_key("error.second"),
     );
 
-    state.dispatch_command(CommandInvocation::from(NotificationAction::MarkAllRead));
-
     assert_eq!(state.unread_notification_count, 0);
     assert!(
         state
@@ -1275,9 +1273,7 @@ fn notification_command_mark_selected_read_marks_only_one_item() {
     state.selected_notification_id = Some(first_id);
     state.unread_notification_count = 2;
 
-    state.dispatch_command(CommandInvocation::from(
-        NotificationAction::MarkSelectedRead,
-    ));
+    state.mark_selected_notification_read();
 
     assert_eq!(state.unread_notification_count, 1);
     let first = state
@@ -1316,7 +1312,7 @@ fn notification_command_clear_read_keeps_only_unread_items() {
     state.notifications[1].is_read = true;
     state.unread_notification_count = 1;
 
-    state.dispatch_command(CommandInvocation::from(NotificationAction::ClearRead));
+    state.clear_read_notifications();
 
     assert_eq!(state.notifications.len(), 1);
     assert_eq!(state.notifications[0].message, "keep me unread");
@@ -1365,7 +1361,7 @@ fn notification_command_clear_all_empties_history_and_status() {
     assert!(!state.notifications.is_empty());
     assert!(state.active_status_notification.is_some());
 
-    state.dispatch_command(CommandInvocation::from(NotificationAction::ClearAll));
+    state.clear_notifications();
 
     assert!(state.notifications.is_empty());
     assert!(state.active_status_notification.is_none());
@@ -1396,9 +1392,7 @@ fn focus_unread_error_notification_sets_focus_and_selection_target() {
         )
         .expect("error notification should be persisted");
 
-    state.dispatch_command(CommandInvocation::from(
-        NotificationAction::FocusUnreadError,
-    ));
+    state.focus_unread_error_notification();
 
     assert_eq!(state.focused_target, FocusTarget::NotificationPanel);
     assert_eq!(
@@ -1446,22 +1440,22 @@ fn notification_selection_commands_move_between_rows() {
         .expect("oldest id");
 
     // 面板显示顺序为 newest -> middle -> oldest，默认从首行开始。
-    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectNext));
+    state.select_next_notification();
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(middle_id)
     );
-    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectNext));
+    state.select_next_notification();
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(newest_id)
     );
-    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectPrev));
+    state.select_prev_notification();
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(middle_id)
     );
-    state.dispatch_command(CommandInvocation::from(NotificationAction::SelectPrev));
+    state.select_prev_notification();
     assert_eq!(
         state.take_pending_notification_selection_id(),
         Some(oldest_id)

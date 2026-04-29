@@ -5,12 +5,14 @@ use crate::command::kind::{CommandKind, CommandKindSpec};
 
 /// 可见性托管面板聚焦命令规范列表。
 pub const SPECS: &[CommandKindSpec] = &[
+    // 命令面板（非 dock 管理，但作为统一 focus_panel 语义保留）。
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::Palette),
         "workspace.focus_panel.palette",
         "聚焦命令调色板",
         "显示并聚焦命令调色板",
     ),
+    // 左侧 dock。
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::FileTreePanel),
         "workspace.focus_panel.file_tree",
@@ -41,6 +43,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         "聚焦语言服务器面板",
         "显示并聚焦语言服务器面板",
     ),
+    // 底部 dock。
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::TerminalPanel),
         "workspace.focus_panel.terminal",
@@ -53,12 +56,7 @@ pub const SPECS: &[CommandKindSpec] = &[
         "聚焦调试面板",
         "显示并聚焦调试面板",
     ),
-    CommandKindSpec::new(
-        CommandKind::WorkspaceFocusPanel(FocusTarget::NotificationPanel),
-        "workspace.focus_panel.notification",
-        "聚焦通知面板",
-        "显示并聚焦通知面板",
-    ),
+    // 右侧 dock。
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::ShortcutPanel),
         "workspace.focus_panel.shortcut",

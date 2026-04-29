@@ -74,7 +74,7 @@ fn resolve_editor_text_fallback(input: &Keystroke, context: &InputContext) -> In
 mod tests {
     use zom_protocol::{
         CommandInvocation, EditorAction, FocusTarget, KeyCode, Keystroke, Modifiers,
-        NotificationAction, WorkspaceAction,
+        WorkspaceAction,
     };
 
     use super::{InputContext, InputResolution, default_shortcut_registry, resolve_default};
@@ -184,12 +184,6 @@ mod tests {
             resolve_default(&enter, &InputContext::new(FocusTarget::FileTreePanel)),
             InputResolution::command(CommandInvocation::from(
                 zom_protocol::FileTreeAction::ActivateSelection
-            ))
-        );
-        assert_eq!(
-            resolve_default(&enter, &InputContext::new(FocusTarget::NotificationPanel)),
-            InputResolution::command(CommandInvocation::from(
-                NotificationAction::MarkSelectedRead
             ))
         );
         assert_eq!(

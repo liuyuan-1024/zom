@@ -1,8 +1,8 @@
 //! 命令语义族到运行时调用的映射。
 
 use crate::{
-    CommandInvocation, EditorAction, FileTreeAction, NotificationAction, TabAction,
-    WorkspaceAction, command::kind::CommandKind,
+    CommandInvocation, EditorAction, FileTreeAction, TabAction, WorkspaceAction,
+    command::kind::CommandKind,
 };
 
 /// 将可静态构造的 `CommandKind` 映射为 `CommandInvocation`。
@@ -10,6 +10,7 @@ use crate::{
 /// 返回 `None` 表示该语义族需要动态载荷，无法在此静态构造。
 pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation> {
     match kind {
+        // --- Editor: 插入与缩进 ---
         CommandKind::EditorInsertText => None,
         CommandKind::EditorInsertNewline => {
             Some(CommandInvocation::from(EditorAction::InsertNewline))
@@ -18,6 +19,7 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
             Some(CommandInvocation::from(EditorAction::InsertIndent))
         }
         CommandKind::EditorOutdent => Some(CommandInvocation::from(EditorAction::Outdent)),
+        // --- Editor: 光标移动 ---
         CommandKind::EditorMoveLeft => Some(CommandInvocation::from(EditorAction::MoveLeft)),
         CommandKind::EditorMoveRight => Some(CommandInvocation::from(EditorAction::MoveRight)),
         CommandKind::EditorMoveUp => Some(CommandInvocation::from(EditorAction::MoveUp)),
@@ -28,6 +30,7 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorMovePageDown => {
             Some(CommandInvocation::from(EditorAction::MovePageDown))
         }
+        // --- Editor: 选区 ---
         CommandKind::EditorSelectLeft => Some(CommandInvocation::from(EditorAction::SelectLeft)),
         CommandKind::EditorSelectRight => Some(CommandInvocation::from(EditorAction::SelectRight)),
         CommandKind::EditorSelectUp => Some(CommandInvocation::from(EditorAction::SelectUp)),
@@ -43,6 +46,7 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
             Some(CommandInvocation::from(EditorAction::SelectPageDown))
         }
         CommandKind::EditorSelectAll => Some(CommandInvocation::from(EditorAction::SelectAll)),
+        // --- Editor: 删除 ---
         CommandKind::EditorDeleteBackward => {
             Some(CommandInvocation::from(EditorAction::DeleteBackward))
         }
@@ -55,11 +59,13 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorDeleteWordForward => {
             Some(CommandInvocation::from(EditorAction::DeleteWordForward))
         }
+        // --- Editor: 剪贴板与历史 ---
         CommandKind::EditorCopy => Some(CommandInvocation::from(EditorAction::Copy)),
         CommandKind::EditorCut => Some(CommandInvocation::from(EditorAction::Cut)),
         CommandKind::EditorPaste => Some(CommandInvocation::from(EditorAction::Paste)),
         CommandKind::EditorUndo => Some(CommandInvocation::from(EditorAction::Undo)),
         CommandKind::EditorRedo => Some(CommandInvocation::from(EditorAction::Redo)),
+        // --- Editor: 查找替换 ---
         CommandKind::EditorOpenFindReplace => {
             Some(CommandInvocation::from(EditorAction::OpenFindReplace))
         }
@@ -76,6 +82,7 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::EditorFindPrev => Some(CommandInvocation::from(EditorAction::FindPrev)),
         CommandKind::EditorReplaceNext => Some(CommandInvocation::from(EditorAction::ReplaceNext)),
         CommandKind::EditorReplaceAll => Some(CommandInvocation::from(EditorAction::ReplaceAll)),
+        // --- Workspace: 顶层动作 ---
         CommandKind::WorkspaceQuitApp => Some(CommandInvocation::from(WorkspaceAction::QuitApp)),
         CommandKind::WorkspaceMinimizeWindow => {
             Some(CommandInvocation::from(WorkspaceAction::MinimizeWindow))
@@ -86,15 +93,17 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::WorkspaceSaveActiveBuffer => {
             Some(CommandInvocation::from(WorkspaceAction::SaveActiveBuffer))
         }
+        CommandKind::WorkspaceCloseFocused => {
+            Some(CommandInvocation::from(WorkspaceAction::CloseFocused))
+        }
+        // --- Workspace: 聚焦 ---
         CommandKind::WorkspaceFocusPanel(target) => {
             Some(CommandInvocation::from(WorkspaceAction::FocusPanel(target)))
         }
         CommandKind::WorkspaceFocusOverlay(target) => Some(CommandInvocation::from(
             WorkspaceAction::FocusOverlay(target),
         )),
-        CommandKind::WorkspaceCloseFocused => {
-            Some(CommandInvocation::from(WorkspaceAction::CloseFocused))
-        }
+        // --- Workspace.FileTree ---
         CommandKind::WorkspaceFileTreeSelectPrev => {
             Some(CommandInvocation::from(FileTreeAction::SelectPrev))
         }
@@ -110,6 +119,7 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         CommandKind::WorkspaceFileTreeActivateSelection => {
             Some(CommandInvocation::from(FileTreeAction::ActivateSelection))
         }
+        // --- Workspace.Tab ---
         CommandKind::WorkspaceTabCloseActive => {
             Some(CommandInvocation::from(TabAction::CloseActiveTab))
         }
@@ -118,27 +128,6 @@ pub(super) fn invocation_for_kind(kind: CommandKind) -> Option<CommandInvocation
         }
         CommandKind::WorkspaceTabActivateNext => {
             Some(CommandInvocation::from(TabAction::ActivateNextTab))
-        }
-        CommandKind::WorkspaceNotificationMarkSelectedRead => Some(CommandInvocation::from(
-            NotificationAction::MarkSelectedRead,
-        )),
-        CommandKind::WorkspaceNotificationMarkAllRead => {
-            Some(CommandInvocation::from(NotificationAction::MarkAllRead))
-        }
-        CommandKind::WorkspaceNotificationClearAll => {
-            Some(CommandInvocation::from(NotificationAction::ClearAll))
-        }
-        CommandKind::WorkspaceNotificationClearRead => {
-            Some(CommandInvocation::from(NotificationAction::ClearRead))
-        }
-        CommandKind::WorkspaceNotificationFocusUnreadError => Some(CommandInvocation::from(
-            NotificationAction::FocusUnreadError,
-        )),
-        CommandKind::WorkspaceNotificationSelectPrev => {
-            Some(CommandInvocation::from(NotificationAction::SelectPrev))
-        }
-        CommandKind::WorkspaceNotificationSelectNext => {
-            Some(CommandInvocation::from(NotificationAction::SelectNext))
         }
     }
 }
