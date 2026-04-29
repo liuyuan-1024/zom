@@ -9,10 +9,8 @@ pub(crate) const COLOR_BG_PANEL: u32 = 0x161B22;
 
 // --- 交互元素与状态 (Elements & States) ---
 // 逻辑：统一所有组件的常态、悬停、激活表现。
-/// 元素底色 (用于胶囊常态、未激活的 Tab)。
+/// 元素底色 (用于胶囊常态)。
 pub(crate) const COLOR_BG_ELEMENT: u32 = 0x21262D;
-/// 统一悬停态 (Hover)。
-pub(crate) const COLOR_BG_HOVER: u32 = 0x30363D;
 /// 激活/选中态 (用于当前 Tab、文件树选中行)。
 pub(crate) const COLOR_BG_ACTIVE: u32 = 0x2A405A;
 
