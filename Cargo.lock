@@ -7178,6 +7178,7 @@ name = "zom-gpui"
 version = "0.1.0"
 dependencies = [
  "gpui",
+ "zom-input",
  "zom-protocol",
  "zom-runtime",
  "zom-text-tokens",
