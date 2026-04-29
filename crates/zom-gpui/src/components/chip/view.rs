@@ -2,7 +2,8 @@
 //! 定位：全键盘驱动下的状态指示器与快捷键提示容器（无点击交互）
 
 use gpui::{
-    AnyElement, Div, ElementId, Stateful, StatefulInteractiveElement, div, prelude::*, px, rgb, svg,
+    AnyElement, CursorStyle, Div, ElementId, Stateful, StatefulInteractiveElement, div, prelude::*,
+    px, rgb, svg,
 };
 
 use super::{tooltip::TooltipSpec, tooltip::tooltip_view};
@@ -11,22 +12,10 @@ use crate::{
     theme::{color, size},
 };
 
-/// 胶囊的视觉风格变体
-#[derive(Default, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum ChipStyle {
-    /// 幽灵样式：无边框，无默认背景色。
-    /// 常用于图标按钮（顶栏、底栏、Tab关闭）。
-    #[default]
-    Ghost,
-    /// 轮廓样式：带边框和内边距，区分选中态。
-    /// 常用于文本过滤或操作按钮（查找替换、通知栏操作）。
-    Outlined,
-}
-
 /// 语义化的胶囊组件构建器
+/// 幽灵样式：无边距，无边框，无默认背景色。
 pub(crate) struct Chip {
     id: ElementId,
-    style: ChipStyle,
     is_active: bool,
     tooltip: Option<TooltipSpec>,
     label: Option<AnyElement>,
@@ -38,7 +27,6 @@ impl Chip {
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
-            style: ChipStyle::default(),
             is_active: false,
             tooltip: None,
             label: None,
@@ -66,12 +54,6 @@ impl Chip {
         self
     }
 
-    /// 设置视觉风格
-    pub fn style(mut self, style: ChipStyle) -> Self {
-        self.style = style;
-        self
-    }
-
     /// 设置是否处于激活状态（主要影响 Outlined 风格的背景和文字颜色）
     pub fn active(mut self, is_active: bool) -> Self {
         self.is_active = is_active;
@@ -94,37 +76,15 @@ impl Chip {
         } else {
             color::COLOR_FG_MUTED
         };
+        let icon_color = text_color;
 
-        let mut base = div().id(self.id).flex().items_center().justify_center();
-
-        match self.style {
-            ChipStyle::Ghost => {
-                base = base.hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)));
-            }
-            ChipStyle::Outlined => {
-                let bg_color = if self.is_active {
-                    color::COLOR_BG_ACTIVE
-                } else {
-                    color::COLOR_BG_ELEMENT
-                };
-                let text_color = if self.is_active {
-                    color::COLOR_FG_PRIMARY
-                } else {
-                    color::COLOR_FG_MUTED
-                };
-
-                base = base
-                    .px(px(size::GAP_1))
-                    .py(px(size::GAP_1))
-                    .border_1()
-                    .border_color(rgb(color::COLOR_BORDER))
-                    .rounded_sm()
-                    .bg(rgb(bg_color))
-                    .text_xs()
-                    .text_color(rgb(text_color))
-                    .hover(|style| style.bg(rgb(color::COLOR_BG_HOVER)));
-            }
-        }
+        let mut base = div()
+            .id(self.id)
+            .flex()
+            .items_center()
+            .justify_center()
+            .text_sm()
+            .cursor(CursorStyle::PointingHand);
 
         // 文字颜色统一设置
         base = base.text_color(rgb(text_color));
@@ -153,7 +113,7 @@ impl Chip {
                         svg()
                             .path(icon.asset_path())
                             .size(px(self.icon_size))
-                            .text_color(rgb(text_color)),
+                            .text_color(rgb(icon_color)),
                     ),
             );
         }
