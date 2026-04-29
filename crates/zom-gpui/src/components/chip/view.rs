@@ -83,7 +83,9 @@ impl Chip {
             .flex()
             .items_center()
             .justify_center()
-            .text_sm()
+            // 显式使用，避免依赖 gpui 默认文本度量。
+            .text_size(px(size::FONT_CHIP))
+            .line_height(px(size::LINE_HEIGHT_CHIP))
             .cursor(CursorStyle::PointingHand);
 
         // 文字颜色统一设置
