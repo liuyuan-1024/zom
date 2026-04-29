@@ -20,8 +20,6 @@ pub(crate) const PADDING_SM: f32 = 8.0;
 pub(crate) const FONT_MD: f32 = 16.0;
 /// Chip 默认文字大小（用于图标 Chip / 文字 Chip 的统一视觉节奏）。
 pub(crate) const FONT_CHIP: f32 = 12.0;
-/// Chip 默认行高（显式覆盖框架默认 baseline/line-box 规则）。
-pub(crate) const LINE_HEIGHT_CHIP: f32 = FONT_CHIP;
 
 // --- 图标尺寸 (Icon Sizes) ---
 // 逻辑：统一不同场景的图标物理大小，不再根据“它是哪个组件”来命名

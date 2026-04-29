@@ -19,6 +19,7 @@ pub(crate) struct Chip {
     is_active: bool,
     tooltip: Option<TooltipSpec>,
     label: Option<AnyElement>,
+    label_size: f32,
     icon: Option<AppIcon>,
     icon_size: f32,
 }
@@ -30,6 +31,7 @@ impl Chip {
             is_active: false,
             tooltip: None,
             label: None,
+            label_size: size::FONT_CHIP,
             icon: None,
             icon_size: size::ICON_MD,
         }
@@ -42,7 +44,7 @@ impl Chip {
         self
     }
 
-    /// 按需覆盖默认的 ICON_MD 大小
+    /// 按需覆盖默认图标大小
     pub fn icon_size(mut self, size: f32) -> Self {
         self.icon_size = size;
         self
@@ -51,6 +53,12 @@ impl Chip {
     /// 显式添加文字标签
     pub fn label(mut self, label: impl IntoElement) -> Self {
         self.label = Some(label.into_any_element());
+        self
+    }
+
+    /// 按需覆盖默认文字大小
+    pub fn label_size(mut self, size: f32) -> Self {
+        self.label_size = size;
         self
     }
 
@@ -83,9 +91,9 @@ impl Chip {
             .flex()
             .items_center()
             .justify_center()
-            // 显式使用，避免依赖 gpui 默认文本度量。
-            .text_size(px(size::FONT_CHIP))
-            .line_height(px(size::LINE_HEIGHT_CHIP))
+            // 显式使用，避免依赖 gpui 默认文本度量
+            .text_size(px(self.label_size))
+            .line_height(px(self.label_size))
             .cursor(CursorStyle::PointingHand);
 
         // 文字颜色统一设置
