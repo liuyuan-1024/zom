@@ -1,51 +1,45 @@
 //! 文件树面板视图与状态同步逻辑。
 
 use gpui::{
-    AnyElement, App, Context, FocusHandle, Focusable, InteractiveElement, ParentElement, Render,
-    ScrollHandle, Styled, Window, div, prelude::*, px, rgb,
+    AnyElement, App, Context, Entity, FocusHandle, Focusable, InteractiveElement, ParentElement,
+    Render, ScrollHandle, Styled, Window, div, prelude::*, px, rgb,
 };
-use zom_runtime::state::{FileTreeNode, FileTreeNodeKind, FileTreeState};
+use zom_runtime::state::{FileTreeNode, FileTreeNodeKind};
 
 use super::row;
-use crate::components::panel::shell;
+use crate::components::panel::shell::PanelShell;
+use crate::root_view::store::AppStore;
 use crate::theme::{color, size};
 
-/// 文件树面板视图。
 pub struct FileTreePanel {
-    state: FileTreeState,
+    store: Entity<AppStore>,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
     should_scroll_to_selection: bool,
-    is_logically_focused: bool,
+    previous_selected_path: Option<String>,
 }
 
 impl FileTreePanel {
-    /// 创建一个新的文件树面板。
-    pub fn new(state: FileTreeState, is_logically_focused: bool, cx: &mut Context<Self>) -> Self {
+    pub fn new(store: Entity<AppStore>, cx: &mut Context<Self>) -> Self {
+        cx.observe(&store, |this, store, cx| {
+            let roots = store.read(cx).select_file_tree_state().roots;
+            let next_selected_path = selected_path(&roots).map(ToOwned::to_owned);
+            if this.previous_selected_path != next_selected_path {
+                this.should_scroll_to_selection = true;
+                this.previous_selected_path = next_selected_path;
+            }
+            cx.notify();
+        })
+        .detach();
+
+        let roots = store.read(cx).select_file_tree_state().roots;
         Self {
-            state,
+            store,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
             should_scroll_to_selection: true,
-            is_logically_focused,
+            previous_selected_path: selected_path(&roots).map(ToOwned::to_owned),
         }
-    }
-
-    /// 更新文件树展示状态（例如选中态、展开态）。
-    pub fn set_state(
-        &mut self,
-        state: FileTreeState,
-        is_logically_focused: bool,
-        cx: &mut Context<Self>,
-    ) {
-        let previous_selected_path = selected_path(&self.state.roots).map(ToOwned::to_owned);
-        let next_selected_path = selected_path(&state.roots).map(ToOwned::to_owned);
-        if previous_selected_path != next_selected_path {
-            self.should_scroll_to_selection = true;
-        }
-        self.state = state;
-        self.is_logically_focused = is_logically_focused;
-        cx.notify();
     }
 }
 
@@ -56,9 +50,11 @@ impl Focusable for FileTreePanel {
 }
 
 impl Render for FileTreePanel {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let is_panel_focused = self.is_logically_focused;
-        let visible_rows = collect_visible_rows(&self.state.roots);
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let store = self.store.read(cx);
+        let state = store.select_file_tree_state();
+        let is_panel_focused = store.select_focused_target() == zom_protocol::FocusTarget::FileTreePanel;
+        let visible_rows = collect_visible_rows(&state.roots);
         let selected_row_index = visible_rows.iter().position(|row| row.node.is_selected);
 
         if self.should_scroll_to_selection {
@@ -83,11 +79,12 @@ impl Render for FileTreePanel {
                     .map(|row| render_visible_row(row, is_panel_focused)),
             );
 
-        shell::render_shell("file-tree-container", &self.focus_handle, tree_content)
+        PanelShell::new("file-tree-container")
+            .track_focus(&self.focus_handle)
+            .child(tree_content)
     }
 }
 
-/// 可见文件树行（平铺后便于滚动到指定选中项）。
 struct VisibleRow<'a> {
     node: &'a FileTreeNode,
     depth: usize,
