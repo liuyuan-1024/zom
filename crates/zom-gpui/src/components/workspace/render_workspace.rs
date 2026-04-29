@@ -211,9 +211,13 @@ impl WorkspaceView {
             .border_color(rgb(color::COLOR_BORDER))
             .overflow_hidden();
 
-        if target == FocusTarget::NotificationPanel {
-            right_dock = right_dock.child(self.render_notification_panel_with_toolbar(cx));
-        }
+        right_dock = match target {
+            FocusTarget::NotificationPanel => {
+                right_dock.child(self.render_notification_panel_with_toolbar(cx))
+            }
+            FocusTarget::ShortcutPanel => right_dock.child(self.shortcut_panel.clone()),
+            _ => right_dock,
+        };
 
         right_dock
     }

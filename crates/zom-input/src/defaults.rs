@@ -143,6 +143,9 @@ fn command_from_kind_id(command_id: CommandKindId) -> Option<CommandInvocation> 
         "workspace.focus_panel.notification" => Some(CommandInvocation::from(
             WorkspaceAction::FocusPanel(FocusTarget::NotificationPanel),
         )),
+        "workspace.focus_panel.shortcut" => Some(CommandInvocation::from(
+            WorkspaceAction::FocusPanel(FocusTarget::ShortcutPanel),
+        )),
         "workspace.focus_overlay.settings" => Some(CommandInvocation::from(
             WorkspaceAction::FocusOverlay(OverlayTarget::Settings),
         )),
@@ -376,19 +379,19 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
     DefaultShortcutSpec::new(
         CommandKindId("editor.find_replace.toggle_case_sensitive"),
         ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
-        alt_char('c'),
+        secondary_char('c'),
         100,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("editor.find_replace.toggle_whole_word"),
         ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
-        alt_char('w'),
+        secondary_char('w'),
         100,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("editor.find_replace.toggle_regex"),
         ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
-        alt_char('r'),
+        secondary_char('r'),
         100,
     ),
     DefaultShortcutSpec::new(
@@ -406,13 +409,13 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
     DefaultShortcutSpec::new(
         CommandKindId("editor.replace_next"),
         ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
-        alt(KeyCode::Enter),
+        secondary(KeyCode::Enter),
         100,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("editor.replace_all"),
         ShortcutScope::Focus(FocusTarget::FindReplaceOverlay),
-        primary_alt(KeyCode::Enter),
+        primary_secondary(KeyCode::Enter),
         100,
     ),
     DefaultShortcutSpec::new(
@@ -486,6 +489,12 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         ShortcutScope::Global,
         primary_shift_char('n'),
         80,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.focus_panel.shortcut"),
+        ShortcutScope::Global,
+        primary_shift_char('k'),
+        100,
     ),
     DefaultShortcutSpec::new(
         CommandKindId("workspace.focus_overlay.settings"),
@@ -579,32 +588,24 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
     ),
 ];
 
+/// 构造“无修饰键”的按键。
+///
+/// 适用于方向键、回车等纯按键输入，不附带任何逻辑修饰语义。
 const fn plain(key: KeyCode) -> Keystroke {
     Keystroke::new(key, Modifiers::new(false, false, false, false))
 }
 
+/// 构造“仅 Shift 修饰”的按键。
+///
+/// `Shift` 在各平台语义一致，因此可直接使用物理位。
 const fn shift(key: KeyCode) -> Keystroke {
     Keystroke::new(key, Modifiers::new(false, false, true, false))
 }
 
-const fn alt(key: KeyCode) -> Keystroke {
-    Keystroke::new(key, Modifiers::new(false, true, false, false))
-}
-
-const fn alt_char(c: char) -> Keystroke {
-    Keystroke::new(KeyCode::Char(c), Modifiers::new(false, true, false, false))
-}
-
-const fn primary_alt(key: KeyCode) -> Keystroke {
-    Keystroke::new(
-        key,
-        merge_modifiers(
-            primary_modifier(),
-            Modifiers::new(false, true, false, false),
-        ),
-    )
-}
-
+/// 构造 “Primary + 字符” 的快捷键。
+///
+/// `Primary` 会在 `with_logical_modifiers` 中映射为：
+/// macOS -> `Cmd(Command)`；其它平台 -> `Ctrl`。
 const fn primary_char(c: char) -> Keystroke {
     Keystroke::new(
         KeyCode::Char(c),
@@ -612,6 +613,9 @@ const fn primary_char(c: char) -> Keystroke {
     )
 }
 
+/// 构造 “Primary + Shift + 字符” 的快捷键。
+///
+/// 常用于“主命令的扩展动作”（例如 redo / 打开同类面板）。
 const fn primary_shift_char(c: char) -> Keystroke {
     Keystroke::new(
         KeyCode::Char(c),
@@ -619,6 +623,35 @@ const fn primary_shift_char(c: char) -> Keystroke {
     )
 }
 
+/// 构造 “Primary + Secondary + 主键” 的组合快捷键。
+///
+/// 适用于需要双逻辑修饰键的高级动作。
+const fn primary_secondary(key: KeyCode) -> Keystroke {
+    Keystroke::new(key, with_logical_modifiers(false, true, true, false))
+}
+
+/// 构造 “Secondary + 主键” 的快捷键。
+///
+/// `Secondary` 会在 `with_logical_modifiers` 中映射为：
+/// macOS -> `Ctrl`；其它平台 -> `Alt`。
+const fn secondary(key: KeyCode) -> Keystroke {
+    Keystroke::new(key, with_logical_modifiers(false, false, true, false))
+}
+
+/// 构造 “Secondary + 字符” 的快捷键。
+///
+/// 与 `secondary` 语义一致，仅主键固定为字符键。
+const fn secondary_char(c: char) -> Keystroke {
+    Keystroke::new(
+        KeyCode::Char(c),
+        with_logical_modifiers(false, false, true, false),
+    )
+}
+
+/// 按逻辑修饰键组合构造平台相关 `Modifiers`。
+///
+/// 该函数是默认快捷键声明层的核心入口：调用方只描述“逻辑意图”，
+/// 由这里统一展开成当前平台的实际修饰键位。
 const fn with_logical_modifiers(
     is_shift_pressed: bool,
     has_primary_modifier: bool,
@@ -639,12 +672,15 @@ const fn with_logical_modifiers(
     modifiers
 }
 
+/// 合并两组修饰键位（按位 OR）。
+///
+/// 用于把多个逻辑修饰键结果叠加为一份最终 `Modifiers`。
 const fn merge_modifiers(base: Modifiers, extra: Modifiers) -> Modifiers {
     Modifiers::new(
         base.has_ctrl || extra.has_ctrl,
         base.has_alt || extra.has_alt,
         base.has_shift || extra.has_shift,
-        base.has_meta || extra.has_meta,
+        base.has_cmd || extra.has_cmd,
     )
 }
 

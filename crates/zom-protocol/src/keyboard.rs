@@ -11,18 +11,18 @@ pub struct Modifiers {
     pub has_alt: bool,
     /// 是否按下 Shift。
     pub has_shift: bool,
-    /// 是否按下 Meta 或 Command。
-    pub has_meta: bool,
+    /// 是否按下 Command。
+    pub has_cmd: bool,
 }
 
 impl Modifiers {
     /// 构造一组显式的修饰键状态。
-    pub const fn new(has_ctrl: bool, has_alt: bool, has_shift: bool, has_meta: bool) -> Self {
+    pub const fn new(has_ctrl: bool, has_alt: bool, has_shift: bool, has_cmd: bool) -> Self {
         Self {
             has_ctrl,
             has_alt,
             has_shift,
-            has_meta,
+            has_cmd,
         }
     }
 
@@ -30,7 +30,7 @@ impl Modifiers {
     ///
     /// 输入解析里常用它区分“纯字符输入”与“快捷键触发”。
     pub fn is_empty(self) -> bool {
-        !self.has_ctrl && !self.has_alt && !self.has_shift && !self.has_meta
+        !self.has_ctrl && !self.has_alt && !self.has_shift && !self.has_cmd
     }
 }
 

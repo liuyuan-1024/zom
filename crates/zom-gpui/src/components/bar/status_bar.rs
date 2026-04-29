@@ -53,7 +53,7 @@ const LEFT_PANEL_SPECS: [PanelChipSpec; 5] = [
     },
 ];
 
-const RIGHT_PANEL_SPECS: [PanelChipSpec; 3] = [
+const RIGHT_PANEL_SPECS: [PanelChipSpec; 4] = [
     PanelChipSpec {
         id: "status-panel-terminal",
         target: FocusTarget::TerminalPanel,
@@ -71,6 +71,12 @@ const RIGHT_PANEL_SPECS: [PanelChipSpec; 3] = [
         target: FocusTarget::NotificationPanel,
         icon: AppIcon::Notification,
         label: "通知中心",
+    },
+    PanelChipSpec {
+        id: "status-panel-shortcut-panel",
+        target: FocusTarget::ShortcutPanel,
+        icon: AppIcon::Keyboard,
+        label: "快捷键面板",
     },
 ];
 
@@ -98,7 +104,7 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
         shell = shell.right(render_value_chip("status-language", language, "当前语言"));
     }
 
-    // 终端、Debug、通知中心
+    // 终端、Debug、通知中心、快捷键面板
     for spec in RIGHT_PANEL_SPECS {
         shell = shell.right(render_panel_chip(state, spec));
     }

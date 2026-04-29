@@ -334,7 +334,7 @@ impl ZomRootView {
 
         if modifiers.has_alt
             && !modifiers.has_ctrl
-            && !modifiers.has_meta
+            && !modifiers.has_cmd
             && let KeyCode::Char(ch) = key
         {
             let matched = match ch {
@@ -353,7 +353,7 @@ impl ZomRootView {
         }
 
         if matches!(key, KeyCode::Enter) {
-            let action = if modifiers.has_alt && (modifiers.has_ctrl || modifiers.has_meta) {
+            let action = if modifiers.has_alt && (modifiers.has_ctrl || modifiers.has_cmd) {
                 FindReplaceAction::ReplaceAll
             } else if modifiers.has_alt {
                 FindReplaceAction::ReplaceNext
@@ -485,7 +485,7 @@ fn clipboard_text(cx: &mut Context<ZomRootView>) -> Option<String> {
 
 /// 从键盘事件中提取可直接插入的字符；带 Ctrl/Meta/Alt 的组合键不参与文本输入。
 fn typed_char(event: &KeyDownEvent, modifiers: Modifiers) -> Option<char> {
-    if modifiers.has_ctrl || modifiers.has_meta || modifiers.has_alt {
+    if modifiers.has_ctrl || modifiers.has_cmd || modifiers.has_alt {
         return None;
     }
     let key = event.keystroke.key.as_str();

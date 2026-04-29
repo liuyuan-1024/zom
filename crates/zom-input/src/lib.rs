@@ -8,7 +8,10 @@ use defaults::build_default_shortcut_registry;
 use zom_protocol::{CommandInvocation, FocusTarget};
 
 pub use keymap::Keymap;
-pub use shortcuts::{ShortcutBinding, ShortcutBindingSpec, ShortcutRegistry, ShortcutScope};
+pub use shortcuts::{
+    ShortcutBinding, ShortcutBindingSpec, ShortcutRegistry, ShortcutScope,
+    format_keystroke_for_display, format_scope_for_display,
+};
 pub use zom_protocol::keyboard::{
     EditorInputContext, InputContext, InputResolution, KeyCode, Keystroke, Modifiers,
 };
@@ -18,7 +21,7 @@ pub fn default_shortcut_registry() -> &'static ShortcutRegistry {
     &DEFAULT_SHORTCUT_REGISTRY
 }
 
-/// 查询命令对应的默认快捷键提示文本（如 `Cmd+S`）。
+/// 查询命令对应的默认快捷键提示文本（如 `Cmd+S` / `Ctrl+S`）。
 pub fn shortcut_hint(command: &CommandInvocation) -> Option<String> {
     default_shortcut_registry().shortcut_hint(command)
 }
@@ -44,13 +47,13 @@ pub fn resolve_default(input: &Keystroke, context: &InputContext) -> InputResolu
 }
 
 fn resolve_editor_text_fallback(input: &Keystroke, context: &InputContext) -> InputResolution {
-    // 仅在编辑器焦点且无 ctrl/alt/meta 时把字符输入降级为 InsertText，
+    // 仅在编辑器焦点且无 ctrl/alt/cmd 时把字符输入降级为 InsertText，
     // 其余场景交给上层命令解析或保持 Noop。
     if context.focus != FocusTarget::Editor {
         return InputResolution::Noop;
     }
 
-    if input.modifiers.has_ctrl || input.modifiers.has_alt || input.modifiers.has_meta {
+    if input.modifiers.has_ctrl || input.modifiers.has_alt || input.modifiers.has_cmd {
         return InputResolution::Noop;
     }
 

@@ -15,6 +15,6 @@ pub(crate) use overlay::{
 pub(crate) use pane::PaneView;
 pub(crate) use panel::{
     DebugPanel, FileTreePanel, GitPanel, LanguageServersPanel, NotificationPanel, OutlinePanel,
-    ProjectSearchPanel, TerminalPanel,
+    ProjectSearchPanel, ShortcutPanel, TerminalPanel,
 };
 pub(crate) use workspace::WorkspaceView;

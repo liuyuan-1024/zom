@@ -74,24 +74,34 @@ impl ShortcutRegistry {
         self.bindings
             .iter()
             .find(|binding| &binding.command == command)
-            .map(|binding| format_keystroke(&binding.keystroke))
+            .map(|binding| format_keystroke_for_display(&binding.keystroke))
     }
 }
 
-fn format_keystroke(keystroke: &Keystroke) -> String {
-    // 统一平台无关展示格式：修饰键前缀 + 主键，方便状态栏/菜单复用。
+/// 统一快捷键显示格式（修饰键前缀 + 主键）。
+pub fn format_keystroke_for_display(keystroke: &Keystroke) -> String {
+    // 统一快捷键展示：直接输出当前平台的实际按键名。
     let mut parts = Vec::new();
-    if keystroke.modifiers.has_meta {
-        parts.push("Cmd".to_string());
-    }
-    if keystroke.modifiers.has_ctrl {
+    let modifiers = keystroke.modifiers;
+
+    if modifiers.has_ctrl {
         parts.push("Ctrl".to_string());
     }
-    if keystroke.modifiers.has_alt {
+    if modifiers.has_alt {
         parts.push("Alt".to_string());
     }
-    if keystroke.modifiers.has_shift {
+    if modifiers.has_shift {
         parts.push("Shift".to_string());
+    }
+    if modifiers.has_cmd {
+        #[cfg(target_os = "macos")]
+        {
+            parts.push("Cmd".to_string());
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            parts.push("Meta".to_string());
+        }
     }
 
     let key = match keystroke.key {
@@ -114,4 +124,12 @@ fn format_keystroke(keystroke: &Keystroke) -> String {
     parts.push(key);
 
     parts.join("+")
+}
+
+/// 统一快捷键作用域显示格式。
+pub fn format_scope_for_display(scope: ShortcutScope) -> String {
+    match scope {
+        ShortcutScope::Global => "Global".to_string(),
+        ShortcutScope::Focus(target) => format!("Focus({target:?})"),
+    }
 }

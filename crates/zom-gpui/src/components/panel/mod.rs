@@ -8,6 +8,7 @@ mod notification;
 mod outline;
 mod placeholder;
 mod project_search;
+mod shortcut;
 mod shell;
 mod terminal;
 
@@ -18,4 +19,5 @@ pub(crate) use language_servers::LanguageServersPanel;
 pub(crate) use notification::NotificationPanel;
 pub(crate) use outline::OutlinePanel;
 pub(crate) use project_search::ProjectSearchPanel;
+pub(crate) use shortcut::ShortcutPanel;
 pub(crate) use terminal::TerminalPanel;

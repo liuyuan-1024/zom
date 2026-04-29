@@ -59,4 +59,10 @@ pub const SPECS: &[CommandKindSpec] = &[
         "聚焦通知面板",
         "显示并聚焦通知面板",
     ),
+    CommandKindSpec::new(
+        CommandKind::WorkspaceFocusPanel(FocusTarget::ShortcutPanel),
+        "workspace.focus_panel.shortcut",
+        "聚焦快捷键面板",
+        "显示并聚焦快捷键面板",
+    ),
 ];
