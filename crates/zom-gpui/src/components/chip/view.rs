@@ -25,6 +25,8 @@ pub(crate) struct Chip {
 }
 
 impl Chip {
+    /// 创建一个默认未激活的 Chip，并注入稳定元素 ID。
+    /// 初始样式使用中等字号与图标尺寸，后续可链式覆写。
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -78,6 +80,7 @@ impl Chip {
         self
     }
 
+    /// 将构建参数收敛为可渲染状态节点，统一处理颜色、图标和 tooltip 组合逻辑。
     fn into_stateful(self) -> Stateful<Div> {
         let text_color = if self.is_active {
             color::COLOR_FG_PRIMARY
@@ -137,6 +140,7 @@ impl Chip {
 }
 
 impl IntoElement for Chip {
+    /// 为 `Element` 提供语义化类型别名。
     type Element = Stateful<Div>;
 
     fn into_element(self) -> Self::Element {

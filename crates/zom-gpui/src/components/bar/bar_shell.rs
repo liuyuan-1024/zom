@@ -14,6 +14,8 @@ pub(crate) struct BarShell {
 }
 
 impl BarShell {
+    /// 创建顶部或底部条容器，并初始化左右插槽为空集合。
+    /// `is_top` 决定边框样式与定位语义。
     pub fn new(is_top: bool) -> Self {
         Self {
             left_children: Vec::new(),
@@ -38,6 +40,7 @@ impl BarShell {
 impl IntoElement for BarShell {
     type Element = Div;
 
+    /// 组装顶栏/底栏通用壳层，依据 `is_top` 切换边框方向并拼接左右插槽内容。
     fn into_element(self) -> Self::Element {
         let mut base = div()
             .w_full()

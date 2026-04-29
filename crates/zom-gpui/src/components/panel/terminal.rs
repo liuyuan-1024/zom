@@ -19,6 +19,7 @@ impl TerminalPanel {
 }
 
 impl Focusable for TerminalPanel {
+    /// 返回当前组件的焦点句柄，用于键盘焦点路由。
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
     }

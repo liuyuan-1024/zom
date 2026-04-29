@@ -61,6 +61,7 @@ impl TooltipView {
 }
 
 impl Render for TooltipView {
+    /// 组装 tooltip 视觉层：主文案始终显示，快捷键文案仅在存在时追加。
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let mut visual_box = div()
             .flex()

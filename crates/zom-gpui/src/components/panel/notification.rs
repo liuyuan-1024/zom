@@ -14,6 +14,7 @@ use crate::{
     theme::{color, size},
 };
 
+/// 通知面板视图状态，维护选中项与滚动定位以支持键盘导航。
 pub(crate) struct NotificationPanel {
     store: Entity<AppStore>,
     focus_handle: FocusHandle,
@@ -23,20 +24,19 @@ pub(crate) struct NotificationPanel {
 }
 
 impl NotificationPanel {
+    /// 创建通知面板并订阅通知列表变化。
+    /// 每次更新会重算选中项与滚动目标，保证键盘导航与可见性一致。
     pub(crate) fn new(store: Entity<AppStore>, cx: &mut Context<Self>) -> Self {
         cx.observe(&store, |this, store, cx| {
             let notifications = store.read(cx).select_notifications();
-            let preferred_selected_id = store
-                .update(cx, |store, _cx| store.take_pending_notification_selection_id())
-                ;
+            let preferred_selected_id = store.update(cx, |store, _cx| {
+                store.take_pending_notification_selection_id()
+            });
             let previous_selected = this.selected_notification_id;
-            this.selected_notification_id = selected_notification_id(
-                previous_selected,
-                preferred_selected_id,
-                &notifications,
-            );
-            let is_logically_focused =
-                store.read(cx).select_focused_target() == zom_protocol::FocusTarget::NotificationPanel;
+            this.selected_notification_id =
+                selected_notification_id(previous_selected, preferred_selected_id, &notifications);
+            let is_logically_focused = store.read(cx).select_focused_target()
+                == zom_protocol::FocusTarget::NotificationPanel;
             if is_logically_focused && previous_selected != this.selected_notification_id {
                 this.should_scroll_to_selection = true;
             }
@@ -55,16 +55,18 @@ impl NotificationPanel {
 }
 
 impl Focusable for NotificationPanel {
+    /// 返回当前组件的焦点句柄，用于键盘焦点路由。
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
 }
 
 impl Render for NotificationPanel {
+    /// 渲染通知列表并维护“选中项可见”滚动约束，空列表时回落到占位文案。
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl gpui::IntoElement {
         let notifications = self.store.read(cx).select_notifications();
-        let is_panel_focused =
-            self.store.read(cx).select_focused_target() == zom_protocol::FocusTarget::NotificationPanel;
+        let is_panel_focused = self.store.read(cx).select_focused_target()
+            == zom_protocol::FocusTarget::NotificationPanel;
 
         let selected_row_index = notifications
             .iter()
@@ -114,6 +116,7 @@ fn render_empty_placeholder() -> impl IntoElement {
         .child("暂无通知")
 }
 
+/// 渲染通知并组装对应界面节点。
 fn render_notification_item(
     notification: &DesktopNotification,
     has_focus_emphasis: bool,
@@ -177,6 +180,7 @@ fn render_notification_item(
         .into_any_element()
 }
 
+/// 当通知来源进入 UI 时，转成紧凑标签用于元信息行展示。
 fn source_badge(source: DesktopNotificationSource) -> &'static str {
     match source {
         DesktopNotificationSource::Workspace => "WORKSPACE",
@@ -185,6 +189,7 @@ fn source_badge(source: DesktopNotificationSource) -> &'static str {
     }
 }
 
+/// 把通知等级映射为统一短标签，保证列表与 toast 文案一致。
 fn level_badge(level: DesktopNotificationLevel) -> &'static str {
     match level {
         DesktopNotificationLevel::Info => "INFO",
@@ -193,6 +198,7 @@ fn level_badge(level: DesktopNotificationLevel) -> &'static str {
     }
 }
 
+/// 返回等级主题色：前景强调色 + 未读背景色。
 fn level_palette(level: DesktopNotificationLevel) -> (u32, u32) {
     match level {
         DesktopNotificationLevel::Info => (0x58A6FF, 0x1A2433),
@@ -201,6 +207,9 @@ fn level_palette(level: DesktopNotificationLevel) -> (u32, u32) {
     }
 }
 
+/// 解析当前应选中的通知 id。
+///
+/// 优先级：`preferred_selected_id`（若仍存在） > `current_selected_id` > 最新一条通知。
 fn selected_notification_id(
     current_selected_id: Option<u64>,
     preferred_selected_id: Option<u64>,

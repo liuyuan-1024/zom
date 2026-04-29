@@ -39,6 +39,7 @@ pub(crate) fn layer(notification: &DesktopNotification) -> Stateful<Div> {
         )
 }
 
+/// 把通知级别映射为 toast 的边框色与背景色。
 fn level_tone(level: DesktopNotificationLevel) -> (u32, u32) {
     match level {
         DesktopNotificationLevel::Info => (color::COLOR_FG_MUTED, color::COLOR_BG_PANEL),

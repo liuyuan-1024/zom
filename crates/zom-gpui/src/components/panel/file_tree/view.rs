@@ -11,6 +11,7 @@ use crate::components::panel::shell::PanelShell;
 use crate::root_view::store::AppStore;
 use crate::theme::{color, size};
 
+/// 文件树面板视图状态，维护滚动定位与选中路径追踪。
 pub struct FileTreePanel {
     store: Entity<AppStore>,
     focus_handle: FocusHandle,
@@ -20,6 +21,8 @@ pub struct FileTreePanel {
 }
 
 impl FileTreePanel {
+    /// 创建文件树面板并订阅文件树状态变化。
+    /// 当选中路径变化时会置位滚动标记，以便下一帧滚动到目标节点。
     pub fn new(store: Entity<AppStore>, cx: &mut Context<Self>) -> Self {
         cx.observe(&store, |this, store, cx| {
             let roots = store.read(cx).select_file_tree_state().roots;
@@ -44,16 +47,19 @@ impl FileTreePanel {
 }
 
 impl Focusable for FileTreePanel {
+    /// 返回当前组件的焦点句柄，用于键盘焦点路由。
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
 }
 
 impl Render for FileTreePanel {
+    /// 渲染可见节点列表，并在选中项变化后自动滚动到对应行。
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let store = self.store.read(cx);
         let state = store.select_file_tree_state();
-        let is_panel_focused = store.select_focused_target() == zom_protocol::FocusTarget::FileTreePanel;
+        let is_panel_focused =
+            store.select_focused_target() == zom_protocol::FocusTarget::FileTreePanel;
         let visible_rows = collect_visible_rows(&state.roots);
         let selected_row_index = visible_rows.iter().position(|row| row.node.is_selected);
 
@@ -109,6 +115,7 @@ fn collect_visible_rows_inner<'a>(
     }
 }
 
+/// 渲染行并组装对应界面节点。
 fn render_visible_row(row: &VisibleRow<'_>, is_panel_focused: bool) -> AnyElement {
     let node = row.node;
     let node_id = gpui::SharedString::from(format!("tree-node-{}", node.path));
@@ -122,6 +129,7 @@ fn selected_path(nodes: &[FileTreeNode]) -> Option<&str> {
     nodes.iter().find_map(selected_path_in_node)
 }
 
+/// 在节点子树中递归查找当前选中路径，命中即返回相对路径引用。
 fn selected_path_in_node(node: &FileTreeNode) -> Option<&str> {
     if node.is_selected {
         return Some(node.path.as_str());

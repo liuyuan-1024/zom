@@ -17,6 +17,7 @@ pub(crate) fn to_core_keystroke(event: &KeyDownEvent) -> Option<Keystroke> {
     Some(Keystroke::new(key, modifiers))
 }
 
+/// 将 GPUI 按键字符串标准化为协议层 `KeyCode`；仅支持导航键与单字符键。
 fn to_core_key_code(key: &str) -> Option<KeyCode> {
     match key {
         "up" => Some(KeyCode::Up),

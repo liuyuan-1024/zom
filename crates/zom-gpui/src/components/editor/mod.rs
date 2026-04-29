@@ -4,7 +4,7 @@ mod caret;
 pub(crate) mod find_replace_bar;
 mod layout_cache;
 mod selection_paint;
-mod virtual_window;
 mod view;
+mod virtual_window;
 
 pub(crate) use view::EditorView;

@@ -21,6 +21,7 @@ pub(super) fn render_gutter_cell(line_number: Option<usize>, gutter_width_px: f3
         .into_any_element()
 }
 
+/// 渲染文本区单元：文本、选区底色与光标会在同一行内容树里合成。
 pub(super) fn render_text_cell(
     wrapped_line: &str,
     selected_range: Option<Range<usize>>,
@@ -48,6 +49,9 @@ pub(super) fn render_text_cell(
         .into_any_element()
 }
 
+/// 计算某逻辑行上的选区列范围（按半开区间）。
+///
+/// 无选区、行不在选区内、或区间收缩为空时返回 `None`。
 pub(super) fn selected_column_range_for_line(
     selection: Selection,
     line_index: usize,
@@ -80,6 +84,7 @@ pub(super) fn selected_column_range_for_line(
     (from < to).then_some(from..to)
 }
 
+/// 把“整行选区列范围”裁剪到当前软换行片段内。
 pub(super) fn selected_range_in_wrapped_segment(
     selected_columns_in_line: Option<&Range<usize>>,
     segment_start_column: usize,
@@ -91,6 +96,9 @@ pub(super) fn selected_range_in_wrapped_segment(
     (from < to).then_some((from - segment_start_column)..(to - segment_start_column))
 }
 
+/// 计算光标是否落在当前软换行片段内，并返回片段内列号。
+///
+/// 非末片段不允许光标落在 `segment_end_column`，避免双片段重复绘制光标。
 pub(super) fn caret_column_in_wrapped_segment(
     is_cursor_line: bool,
     cursor_column: usize,
@@ -112,6 +120,7 @@ pub(super) fn caret_column_in_wrapped_segment(
     Some(clamped_column - segment_start_column)
 }
 
+/// 渲染软换行片段内部内容，并按需要插入光标元素。
 fn render_wrapped_line_content(
     wrapped_line: &str,
     selected_range: Option<Range<usize>>,
@@ -168,12 +177,20 @@ fn render_wrapped_line_content(
         }
     }
 
-    div().flex().items_center().children(children).into_any_element()
+    div()
+        .flex()
+        .items_center()
+        .children(children)
+        .into_any_element()
 }
 
+/// 渲染连续同状态文本块（选中/未选中）。
 fn render_text_chunk(text: String, is_selected: bool) -> AnyElement {
     if is_selected {
-        div().bg(rgb(color::COLOR_BG_ACTIVE)).child(text).into_any_element()
+        div()
+            .bg(rgb(color::COLOR_BG_ACTIVE))
+            .child(text)
+            .into_any_element()
     } else {
         div().child(text).into_any_element()
     }

@@ -27,6 +27,7 @@ impl AssetSource for ZomAssets {
             .map_err(Into::into)
     }
 
+    /// 执行目标相关步骤；失败时返回错误。
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
         fs::read_dir(self.base.join(path))
             .map(|entries| {

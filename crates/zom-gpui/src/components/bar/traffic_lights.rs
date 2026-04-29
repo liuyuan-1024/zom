@@ -6,6 +6,7 @@ use gpui::{Pixels, Point, point, px};
 use crate::theme::size;
 
 // 圆点视觉直径
+/// `NATIVE_LIGHT_SIZE` 的布局尺寸参数。
 const NATIVE_LIGHT_SIZE: f32 = 12.0;
 // 圆点边缘之间的间距
 const NATIVE_LIGHT_GAP: f32 = 8.0;

@@ -29,8 +29,10 @@ use super::{
     },
 };
 
+/// 编辑器主视图状态，负责光标同步、布局缓存和滚动定位。
 pub(crate) struct EditorView {
     store: Entity<AppStore>,
+    /// 当前活动光标位置，用于后续命令与渲染同步。
     cursor: Position,
     last_cursor_moved_at: Option<Instant>,
     should_scroll_to_cursor: bool,
@@ -51,6 +53,8 @@ struct ViewerRenderSpec<'a> {
 }
 
 impl EditorView {
+    /// 创建编辑器视图并绑定 store 观察器，保持光标与快照同步。
+    /// 当外部光标变化时会刷新本地状态，并触发滚动到光标的后续渲染流程。
     pub(crate) fn new(store: Entity<AppStore>, cx: &mut Context<Self>) -> Self {
         let cursor = store
             .read(cx)
@@ -86,10 +90,12 @@ impl EditorView {
         }
     }
 
+    /// 渲染编辑器并组装对应界面节点。
     fn active_editor_snapshot(&self, cx: &App) -> Option<ActiveEditorSnapshot> {
         self.store.read(cx).select_active_editor_snapshot()
     }
 
+    /// 渲染当前激活编辑器；无活动标签时返回占位内容。
     fn render_active_content(
         &mut self,
         window: &Window,
@@ -157,6 +163,7 @@ impl EditorView {
 }
 
 impl Focusable for EditorView {
+    /// 返回当前组件的焦点句柄，用于键盘焦点路由。
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
@@ -176,6 +183,7 @@ impl Render for EditorView {
     }
 }
 
+/// 按可视窗口切片渲染软换行行集，并在需要时把目标行滚动进视口。
 fn render_viewer_content(spec: ViewerRenderSpec<'_>) -> impl IntoElement {
     let ViewerRenderSpec {
         scroll_handle,

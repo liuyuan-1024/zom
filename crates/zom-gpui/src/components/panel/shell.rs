@@ -41,8 +41,10 @@ impl ParentElement for PanelShell {
 
 impl IntoElement for PanelShell {
     // 带有 .id() 的 div 在 GPUI 中类型为 Stateful<Div>
+    /// 为 `Element` 提供语义化类型别名。
     type Element = Stateful<Div>;
 
+    /// 生成可聚焦的面板外壳，并把业务内容包进统一的裁切容器。
     fn into_element(self) -> Self::Element {
         let mut base = div()
             .id(self.id)
@@ -64,10 +66,14 @@ impl IntoElement for PanelShell {
     }
 }
 
+/// 快速渲染带焦点绑定的面板壳层，供各面板复用统一容器样式。
 pub(crate) fn render_shell(
     id: impl Into<ElementId>,
     focus_handle: &FocusHandle,
     body: impl IntoElement,
 ) -> Stateful<Div> {
-    PanelShell::new(id).track_focus(focus_handle).child(body).into_element()
+    PanelShell::new(id)
+        .track_focus(focus_handle)
+        .child(body)
+        .into_element()
 }

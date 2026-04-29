@@ -108,6 +108,7 @@ fn render_close_button(group_id: &str, index: usize) -> impl IntoElement {
         )
 }
 
+/// 返回标签关闭按钮的图标规格。
 fn close_icon_spec() -> TabIconSpec {
     TabIconSpec {
         icon: AppIcon::Close,

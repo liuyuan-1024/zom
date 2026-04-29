@@ -11,12 +11,15 @@ pub(crate) struct Placeholder {
 }
 
 impl Placeholder {
+    /// 创建占位面板，仅承载一段中心文案。
+    /// 适用于尚未实现具体内容的面板骨架。
     pub fn new(title: &'static str) -> Self {
         Self { title }
     }
 }
 
 impl IntoElement for Placeholder {
+    /// 为 `Element` 提供语义化类型别名。
     type Element = Div;
 
     fn into_element(self) -> Self::Element {
@@ -31,6 +34,7 @@ impl IntoElement for Placeholder {
     }
 }
 
+/// 渲染标题栏并组装对应界面节点。
 pub(crate) fn render_title_only(title: &'static str) -> impl IntoElement {
     Placeholder::new(title)
 }

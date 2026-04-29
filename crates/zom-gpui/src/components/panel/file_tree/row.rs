@@ -9,13 +9,16 @@ use crate::theme::{color, size};
 
 /// 文件树行组件构建器
 pub(super) struct FileTreeRow<'a> {
+    /// 当前行绑定的文件树节点。
     node: &'a FileTreeNode,
+    /// 当前节点层级，用于计算左缩进。
     depth: usize,
+    /// 文件树面板是否拥有焦点（决定是否展示焦点描边）。
     is_panel_focused: bool,
 }
 
 impl<'a> FileTreeRow<'a> {
-    /// 必须传入当前的节点引用
+    /// 以节点引用构造行组件。
     pub fn new(node: &'a FileTreeNode) -> Self {
         Self {
             node,
@@ -30,7 +33,7 @@ impl<'a> FileTreeRow<'a> {
         self
     }
 
-    /// 告知组件当前面板是否获得了逻辑焦点
+    /// 告知组件当前面板是否获得了逻辑焦点。
     pub fn panel_focused(mut self, focused: bool) -> Self {
         self.is_panel_focused = focused;
         self
@@ -38,10 +41,12 @@ impl<'a> FileTreeRow<'a> {
 
     // --- 内部状态判定方法 ---
 
+    /// 判断当前行是否需要展示焦点强调样式。
     fn focus_emphasis_visible(&self) -> bool {
         self.node.is_selected && self.is_panel_focused
     }
 
+    /// 仅在“活动文件”节点上绘制背景高亮，选中态本身不改底色以避免与焦点描边冲突。
     fn row_background_color(&self) -> Option<u32> {
         if self.node.is_active {
             Some(color::COLOR_BG_ACTIVE)
@@ -52,6 +57,7 @@ impl<'a> FileTreeRow<'a> {
 
     // --- 内部渲染部件方法 ---
 
+    /// 渲染节点名文本，统一承担截断与主文字色策略。
     fn render_label(&self) -> impl IntoElement {
         div()
             .flex_1()
@@ -62,6 +68,7 @@ impl<'a> FileTreeRow<'a> {
             .child(self.node.name.clone())
     }
 
+    /// 根据节点类型选择文件/目录图标渲染分支。
     fn render_kind_badge(&self) -> impl IntoElement {
         match self.node.kind {
             FileTreeNodeKind::Directory => self.render_folder_icon().into_any_element(),
@@ -85,6 +92,7 @@ impl<'a> FileTreeRow<'a> {
             )
     }
 
+    /// 渲染文件图标。
     fn render_file_icon(&self) -> impl IntoElement {
         let icon = file_tree_icon(FileTreeNodeKind::File, false);
         div()
@@ -101,6 +109,7 @@ impl<'a> FileTreeRow<'a> {
     }
 }
 
+/// 根据节点类型与展开态选择文件树图标资源。
 fn file_tree_icon(kind: FileTreeNodeKind, is_expanded: bool) -> AppIcon {
     match kind {
         FileTreeNodeKind::Directory => {
@@ -114,10 +123,12 @@ fn file_tree_icon(kind: FileTreeNodeKind, is_expanded: bool) -> AppIcon {
     }
 }
 
-// 核心渲染逻辑：把 FileTreeRow 变成 GPUI 合法的元素
+// 核心渲染逻辑：把 FileTreeRow 转为 GPUI 元素并组合视觉状态。
 impl<'a> IntoElement for FileTreeRow<'a> {
+    /// 为 `Element` 提供语义化类型别名。
     type Element = Div;
 
+    /// 根据选中/激活/焦点状态合成单行样式，保证焦点描边与活动底色可共存。
     fn into_element(self) -> Self::Element {
         let has_focus_emphasis = self.focus_emphasis_visible();
 
@@ -155,13 +166,14 @@ pub(super) fn render(
         .panel_focused(is_panel_focused)
 }
 
-// 更新了基于结构体的单元测试
+// 基于结构体内部规则的单元测试。
 #[cfg(test)]
 mod tests {
     use super::FileTreeRow;
     use crate::theme::color;
     use zom_runtime::state::{FileTreeNode, FileTreeNodeKind};
 
+    /// 构造测试节点，便于组合“选中/活动”状态并验证视觉规则。
     fn node(is_selected: bool, is_active: bool) -> FileTreeNode {
         FileTreeNode {
             name: "lib.rs".to_string(),
@@ -175,12 +187,14 @@ mod tests {
     }
 
     #[test]
+    /// 仅选中不激活时，不应出现活动底色。
     fn selected_node_uses_no_background_even_when_panel_has_focus() {
         let selected = node(true, false);
         assert_eq!(FileTreeRow::new(&selected).row_background_color(), None);
     }
 
     #[test]
+    /// 活动节点即使面板失焦也应保留活动底色。
     fn active_node_stays_highlighted_without_panel_focus() {
         let active = node(true, true);
         assert_eq!(
@@ -190,6 +204,7 @@ mod tests {
     }
 
     #[test]
+    /// 焦点描边只由“选中 + 面板聚焦”共同决定。
     fn focus_emphasis_tracks_selected_focus_state_even_for_active_node() {
         let active_selected = node(true, true);
 

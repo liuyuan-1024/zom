@@ -28,6 +28,9 @@ pub(crate) enum AppIcon {
 }
 
 impl AppIcon {
+    /// 返回图标资源相对路径。
+    ///
+    /// 所有 UI 组件应只通过该枚举取图标，避免散落硬编码路径。
     pub(crate) const fn asset_path(self) -> &'static str {
         match self {
             AppIcon::Keyboard => "icons/keyboard.svg",

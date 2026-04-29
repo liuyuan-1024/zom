@@ -11,8 +11,11 @@ use crate::components::chip::Chip;
 use crate::icon::AppIcon;
 
 struct TitleBarActionIconSpec {
+    /// 图标资源语义。
     icon: AppIcon,
+    /// tooltip 主文案。
     label: &'static str,
+    /// 可选快捷键提示文本。
     shortcut: Option<String>,
 }
 
@@ -47,6 +50,7 @@ fn render_action_button(index: usize, action: &TitleBarAction) -> impl IntoEleme
         .tooltip_hint(spec.label, spec.shortcut)
 }
 
+/// 将标题栏动作映射为图标与提示文案规格。
 fn title_bar_action_icon_spec(action: &TitleBarAction) -> TitleBarActionIconSpec {
     let (icon, label) = match &action.command {
         CommandInvocation::Workspace(WorkspaceAction::FocusOverlay(OverlayTarget::Settings)) => {

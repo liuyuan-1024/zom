@@ -2,11 +2,15 @@
 
 use std::ops::Range;
 
-use gpui::{AnyElement, IntoElement, div, px, prelude::*};
+use gpui::{AnyElement, IntoElement, div, prelude::*, px};
 
+/// `VISUAL_ROW_HEIGHT_PX` 的布局尺寸参数。
 pub(super) const VISUAL_ROW_HEIGHT_PX: f32 = crate::theme::size::FONT_MD;
 pub(super) const VIRTUAL_OVERSCAN_ROWS: usize = 12;
 
+/// 计算当前应渲染的可视行窗口（含 overscan）。
+///
+/// `force_row` 用于强制把目标行纳入窗口，常见于光标跳转后首帧定位。
 pub(super) fn virtual_row_window(
     total_rows: usize,
     scroll_offset_y_px: f32,
@@ -63,6 +67,7 @@ mod tests {
     }
 
     #[test]
+    /// 即使目标行在当前视口外，force_row 也必须被纳入渲染窗口。
     fn force_row_is_included_when_outside_visible_range() {
         let range = virtual_row_window(1000, 0.0, 200.0, 2, Some(300));
         assert!(range.contains(&300));

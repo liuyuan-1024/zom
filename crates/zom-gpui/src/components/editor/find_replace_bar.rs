@@ -18,7 +18,9 @@ pub(crate) enum ActiveField {
 /// 查找替换条视图状态快照。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ViewModel {
+    /// 文本输入内容，用于查找、替换或编辑。
     pub query: String,
+    /// 文本输入内容，用于查找、替换或编辑。
     pub replacement: String,
     pub active_field: ActiveField,
     pub case_sensitive: bool,

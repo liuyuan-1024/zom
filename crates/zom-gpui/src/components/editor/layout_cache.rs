@@ -7,31 +7,49 @@ use zom_text_tokens::{LF_BYTE, LF_CHAR};
 use crate::theme::size;
 
 pub(super) const SOFT_WRAP_MIN_CHARS: usize = 16;
+/// `APPROX_MONO_CHAR_WIDTH_PX` 的布局尺寸参数。
 pub(super) const APPROX_MONO_CHAR_WIDTH_PX: f32 = 8.0;
 pub(super) const GUTTER_MIN_DIGITS: usize = 2;
 
 pub(super) struct ViewerLayoutCache {
+    /// 当前缓存绑定的缓冲区 id。
     pub(super) buffer_id: BufferId,
+    /// 构建缓存时对应的文档版本；版本变化即触发重建。
     pub(super) doc_version: u64,
+    /// 每个软换行片段允许的最大字符数。
     pub(super) wrap_chunk: usize,
+    /// 原始逻辑行数（按 `\n` 切分）。
     pub(super) line_count: usize,
+    /// 每行字符数（按 char 计，不是字节）。
     pub(super) line_char_lens: Vec<usize>,
+    /// 每行被软换行切分后的段数。
     pub(super) line_wrap_counts: Vec<usize>,
+    /// 每行在 `wrapped_rows` 中的起始可视行索引。
     pub(super) line_start_rows: Vec<usize>,
+    /// 展平后的可视行数据（供虚拟列表直接渲染）。
     pub(super) wrapped_rows: Vec<WrappedRow>,
 }
 
 pub(super) struct WrappedRow {
+    /// 稳定渲染 key，避免滚动复用时元素抖动。
     pub(super) row_id: gpui::SharedString,
+    /// 仅首段显示行号；续段为 `None`。
     pub(super) line_number: Option<usize>,
+    /// 所属逻辑行索引。
     pub(super) line_index: usize,
+    /// 所属逻辑行字符总长。
     pub(super) line_char_len: usize,
+    /// 当前片段在逻辑行中的起始列（含）。
     pub(super) segment_start_column: usize,
+    /// 当前片段在逻辑行中的结束列（不含）。
     pub(super) segment_end_column: usize,
+    /// 是否该逻辑行最后一段（影响光标落点判定）。
     pub(super) is_last_segment: bool,
+    /// 当前片段文本内容。
     pub(super) wrapped_line: String,
 }
 
+/// 读取缓存行数；仅当缓存命中文档版本与换行参数时返回。
 pub(super) fn cached_line_count(
     cache: Option<&ViewerLayoutCache>,
     active_editor: &ActiveEditorSnapshot,
@@ -45,6 +63,7 @@ pub(super) fn ensure_viewer_layout_cache<'a>(
     active_editor: &ActiveEditorSnapshot,
     wrap_chunk: usize,
 ) -> &'a ViewerLayoutCache {
+    // `wrap_chunk` 统一最小为 1，避免分段除法与索引逻辑出现 0 宽异常。
     let wrap_chunk = wrap_chunk.max(1);
     let should_rebuild = match cache.as_ref() {
         Some(existing) => !layout_cache_matches(existing, active_editor, wrap_chunk),
@@ -58,6 +77,9 @@ pub(super) fn ensure_viewer_layout_cache<'a>(
         .expect("viewer layout cache should exist after ensure")
 }
 
+/// 统计文本总行数，用于视图布局预估。
+///
+/// 行数定义为“LF 数 + 1”，与编辑器空文档单行语义保持一致。
 pub(super) fn line_count_from_text(text: &str) -> usize {
     text.bytes()
         .filter(|byte| *byte == LF_BYTE)
@@ -72,6 +94,7 @@ pub(super) fn gutter_width_for_line_count(line_count: usize) -> f32 {
     (content_width_px + horizontal_padding_px).max(size::GUTTER_MD)
 }
 
+/// 根据视口宽度与 gutter 宽度估算每行最大字符数，并保证不低于最小软换行阈值。
 pub(super) fn soft_wrap_max_chars(
     scroll_width_px: f32,
     viewport_width_px: f32,
@@ -87,6 +110,7 @@ pub(super) fn soft_wrap_max_chars(
     ((content_width_px / APPROX_MONO_CHAR_WIDTH_PX).floor() as usize).max(SOFT_WRAP_MIN_CHARS)
 }
 
+/// 将逻辑光标映射到软换行后的可视行索引，越界行列会先夹紧到文档范围。
 pub(super) fn cursor_visual_row_index(layout_cache: &ViewerLayoutCache, cursor: Position) -> usize {
     if layout_cache.line_count == 0 {
         return 0;
@@ -117,6 +141,7 @@ pub(super) fn cursor_visual_row_index(layout_cache: &ViewerLayoutCache, cursor: 
         + wrapped_index
 }
 
+/// 判断现有缓存是否仍可复用。
 fn layout_cache_matches(
     cache: &ViewerLayoutCache,
     active_editor: &ActiveEditorSnapshot,
@@ -127,6 +152,7 @@ fn layout_cache_matches(
         && cache.wrap_chunk == wrap_chunk.max(1)
 }
 
+/// 构建完整布局缓存，把逻辑行预展开成可视行列表。
 fn build_viewer_layout_cache(
     active_editor: &ActiveEditorSnapshot,
     wrap_chunk: usize,
@@ -152,7 +178,9 @@ fn build_viewer_layout_cache(
             let segment_end_column = segment_start_column + wrapped_line.chars().count();
             let is_last_segment = wrapped_index + 1 == wrapped_count;
             wrapped_rows.push(WrappedRow {
-                row_id: gpui::SharedString::from(format!("viewer-row-{line_index}-{wrapped_index}")),
+                row_id: gpui::SharedString::from(format!(
+                    "viewer-row-{line_index}-{wrapped_index}"
+                )),
                 line_number: (wrapped_index == 0).then_some(line_index + 1),
                 line_index,
                 line_char_len,
@@ -199,6 +227,7 @@ mod tests {
     }
 
     #[test]
+    /// 行号 gutter 宽度应随位数增长。
     fn gutter_width_grows_for_more_digits() {
         let width_small = gutter_width_for_line_count(9);
         let width_large = gutter_width_for_line_count(1000);

@@ -75,7 +75,6 @@ const RIGHT_PANEL_SPECS: [PanelChipSpec; 3] = [
 ];
 
 /// 渲染底部状态栏。
-/// 渲染底部状态栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     let mut shell = BarShell::new(false);
 
@@ -107,6 +106,7 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     shell
 }
 
+/// 渲染面板并组装对应界面节点。
 fn render_panel_chip(state: &DesktopAppState, spec: PanelChipSpec) -> impl IntoElement {
     let command = panel_command(spec.target);
     let is_active = command_is_active(state, &command);
@@ -118,6 +118,7 @@ fn render_panel_chip(state: &DesktopAppState, spec: PanelChipSpec) -> impl IntoE
         .active(is_active)
 }
 
+/// 统计 Warning/Error 条目并渲染诊断芯片；无诊断时显示通过态图标。
 fn render_diagnostics_chip(state: &DesktopAppState) -> impl IntoElement {
     let count = diagnostic_count(state);
     if count == 0 {
@@ -143,10 +144,12 @@ fn render_value_chip(
         .tooltip_hint(tooltip, Option::<String>::None)
 }
 
+/// 把面板目标映射为对应的聚焦命令。
 fn panel_command(target: FocusTarget) -> CommandInvocation {
     CommandInvocation::from(WorkspaceAction::FocusPanel(target))
 }
 
+/// 统计当前通知列表中的告警与错误数量，供状态栏诊断角标复用。
 fn diagnostic_count(state: &DesktopAppState) -> usize {
     state
         .notifications
