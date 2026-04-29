@@ -1,40 +1,35 @@
-//! 根视图状态编排、焦点调度与拖拽尺寸控制。
+//! 根视图：仅负责窗口级副作用、快捷键入口与全局外层装配。
 
-mod render;
+pub(crate) mod store;
 
 use std::time::Duration;
 
 use gpui::{
-    App, AppContext, Application, Bounds, Context, Entity, KeyDownEvent, MouseMoveEvent,
-    PathPromptOptions, Timer, TitlebarOptions, Window, WindowBounds, WindowOptions, px, size,
+    App, AppContext, Application, Bounds, Context, Entity, InteractiveElement, KeyDownEvent,
+    ParentElement, PathPromptOptions, Styled, Timer, TitlebarOptions, Window, WindowBounds,
+    WindowOptions, px, rgb, size,
 };
-use zom_protocol::{CommandInvocation, EditorInvocation, FocusTarget, WorkspaceAction};
-use zom_runtime::state::{
-    DesktopAppState, DesktopNotificationEvent, DesktopNotificationLevel, DesktopNotificationSource,
-    DesktopUiAction, PanelDock,
+use zom_protocol::{
+    CommandInvocation, EditorInvocation, FindReplaceAction, KeyCode, Modifiers, OverlayTarget,
 };
+use zom_runtime::state::{DesktopAppState, DesktopNotificationLevel, DesktopUiAction};
 
 use crate::{
     assets,
     components::{
-        DebugPanel, FileTreePanel, GitPanel, LanguageServersPanel, NotificationPanel, OutlinePanel,
-        PaneView, ProjectSearchPanel, TerminalPanel, title_bar,
+        WorkspaceView, bar::traffic_lights, notification_toast_overlay, settings_overlay,
+        status_bar, title_bar,
     },
-    theme::size,
+    theme::{color, size},
 };
 
-pub(super) const DEFAULT_BOTTOM_PANEL_HEIGHT: f32 = 240.0;
+use self::store::{AppStore, FindReplaceUiAction, UiAction, UiActionOutput};
+
+/// `TOAST_AUTO_DISMISS_DELAY` 的时间参数。
 const TOAST_AUTO_DISMISS_DELAY: Duration = Duration::from_secs(3);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-/// 当前激活的面板分割线拖拽类型。
-pub(super) enum ActiveDockDrag {
-    Left,
-    Right,
-    Bottom { origin_y: f32, origin_height: f32 },
-}
-
-/// 启动桌面界面。
+/// 启动桌面应用入口：创建窗口、注入 Store，并挂载根视图。
+/// 该流程会同时注册快捷键分发与 UI 副作用处理链路。
 pub fn run() {
     Application::new()
         .with_assets(assets::ZomAssets::new())
@@ -51,7 +46,7 @@ pub fn run() {
                     titlebar: Some(TitlebarOptions {
                         title: Some("Zom".into()),
                         appears_transparent: true,
-                        traffic_light_position: Some(title_bar::traffic_lights::position()),
+                        traffic_light_position: Some(traffic_lights::position()),
                     }),
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     ..Default::default()
@@ -66,133 +61,44 @@ pub fn run() {
         });
 }
 
-/// 根视图，负责拼装最外层界面布局。
 pub(super) struct ZomRootView {
-    /// 用于展示的应用状态。
-    state: DesktopAppState,
-    /// 文件树
-    file_tree_panel: Entity<FileTreePanel>,
-    /// Git 面板
-    git_panel: Entity<GitPanel>,
-    /// 大纲面板
-    outline_panel: Entity<OutlinePanel>,
-    /// 搜索面板
-    project_search_panel: Entity<ProjectSearchPanel>,
-    /// 语言服务器面板
-    language_servers_panel: Entity<LanguageServersPanel>,
-    /// 终端面板
-    terminal_panel: Entity<TerminalPanel>,
-    /// 调试面板
-    debug_panel: Entity<DebugPanel>,
-    /// 通知面板
-    notification_panel: Entity<NotificationPanel>,
-    /// Pane 视图
-    pane_view: Entity<PaneView>,
-    /// 左侧面板列宽度。
-    left_dock_width: f32,
-    /// 右侧面板列宽度。
-    right_dock_width: f32,
-    /// 底部面板高度。
-    bottom_panel_height: f32,
-    /// 当前正在拖拽的停靠分割线。
-    active_dock_drag: Option<ActiveDockDrag>,
-    /// 待安排自动消失计时器的通知 id。
-    pending_toast_auto_clear_id: Option<u64>,
+    store: Entity<AppStore>,
+    workspace_view: Entity<WorkspaceView>,
 }
 
 impl ZomRootView {
-    /// 用应用状态创建根视图。
+    /// 初始化根视图：创建全局 store、挂载工作区视图，并订阅状态变更触发重绘。
     pub(super) fn new(state: DesktopAppState, cx: &mut Context<Self>) -> Self {
-        let file_tree_panel = cx.new(|cx| {
-            FileTreePanel::new(
-                state.file_tree.clone(),
-                state.focused_target == FocusTarget::FileTreePanel,
-                cx,
-            )
-        });
-        let git_panel = cx.new(GitPanel::new);
-        let outline_panel = cx.new(OutlinePanel::new);
-        let project_search_panel = cx.new(ProjectSearchPanel::new);
-        let language_servers_panel = cx.new(LanguageServersPanel::new);
-        let terminal_panel = cx.new(TerminalPanel::new);
-        let debug_panel = cx.new(DebugPanel::new);
-        let notification_panel = cx.new(NotificationPanel::new);
-        let active_editor = state.active_editor_snapshot();
-        let pane_view = cx.new(|cx| PaneView::new(state.pane.clone(), active_editor.clone(), cx));
+        let store = cx.new(|_| AppStore::new(state));
+        let workspace_view = cx.new(|cx| WorkspaceView::new(store.clone(), cx));
+
+        cx.observe(&store, |_this, _, cx| {
+            cx.notify();
+        })
+        .detach();
 
         Self {
-            state,
-            file_tree_panel,
-            git_panel,
-            outline_panel,
-            project_search_panel,
-            language_servers_panel,
-            terminal_panel,
-            debug_panel,
-            notification_panel,
-            pane_view,
-            left_dock_width: size::PANEL_WIDTH,
-            right_dock_width: size::PANEL_WIDTH,
-            bottom_panel_height: DEFAULT_BOTTOM_PANEL_HEIGHT,
-            active_dock_drag: None,
-            pending_toast_auto_clear_id: None,
+            store,
+            workspace_view,
         }
     }
 
-    /// 按应用层焦点目标把键盘焦点下发到对应 GPUI 视图。
-    pub(super) fn apply_focus_target(
+    /// 把 runtime 产出的焦点目标真正应用到各子视图。
+    ///
+    /// 该步骤与状态更新解耦，避免在 runtime 层直接依赖 GPUI 具体焦点 API。
+    fn apply_focus_target(
         &mut self,
-        target: FocusTarget,
+        target: zom_protocol::FocusTarget,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        match target {
-            FocusTarget::FileTreePanel
-                if self.state.is_panel_visible(FocusTarget::FileTreePanel) =>
-            {
-                cx.focus_view(&self.file_tree_panel, window);
-            }
-            FocusTarget::GitPanel if self.state.is_panel_visible(FocusTarget::GitPanel) => {
-                cx.focus_view(&self.git_panel, window);
-            }
-            FocusTarget::OutlinePanel if self.state.is_panel_visible(FocusTarget::OutlinePanel) => {
-                cx.focus_view(&self.outline_panel, window);
-            }
-            FocusTarget::ProjectSearchPanel
-                if self.state.is_panel_visible(FocusTarget::ProjectSearchPanel) =>
-            {
-                cx.focus_view(&self.project_search_panel, window);
-            }
-            FocusTarget::LanguageServersPanel
-                if self
-                    .state
-                    .is_panel_visible(FocusTarget::LanguageServersPanel) =>
-            {
-                cx.focus_view(&self.language_servers_panel, window);
-            }
-            FocusTarget::TerminalPanel
-                if self.state.is_panel_visible(FocusTarget::TerminalPanel) =>
-            {
-                cx.focus_view(&self.terminal_panel, window);
-            }
-            FocusTarget::DebugPanel if self.state.is_panel_visible(FocusTarget::DebugPanel) => {
-                cx.focus_view(&self.debug_panel, window);
-            }
-            FocusTarget::NotificationPanel
-                if self.state.is_panel_visible(FocusTarget::NotificationPanel) =>
-            {
-                self.state.clear_active_toast_notification();
-                cx.focus_view(&self.notification_panel, window);
-            }
-            FocusTarget::Editor => {
-                cx.focus_view(&self.pane_view, window);
-            }
-            _ => {}
-        }
+        self.workspace_view.update(cx, |workspace, cx| {
+            workspace.focus_target(target, window, cx)
+        });
     }
 
-    /// 执行应用层产生的一次性 UI 动作。
-    pub(super) fn apply_ui_action(
+    /// 执行核心层产出的 UI 动作并落到窗口副作用（焦点、剪贴板、窗口行为等）。
+    fn apply_ui_action(
         &mut self,
         action: DesktopUiAction,
         window: &mut Window,
@@ -202,6 +108,12 @@ impl ZomRootView {
             DesktopUiAction::QuitApp => cx.quit(),
             DesktopUiAction::MinimizeWindow => window.minimize_window(),
             DesktopUiAction::OpenProjectPicker => self.open_project_from_title_bar(window, cx),
+            DesktopUiAction::OpenFindReplace => {
+                self.store.update(cx, |store, cx| {
+                    store.dispatch(UiAction::FindReplace(FindReplaceUiAction::OpenOverlay));
+                    cx.notify();
+                });
+            }
             DesktopUiAction::WriteClipboard(text) => {
                 cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
             }
@@ -209,128 +121,53 @@ impl ZomRootView {
                 if let Some(text) = clipboard_text(cx)
                     && !text.is_empty()
                 {
-                    self.state.dispatch_command(CommandInvocation::from(
-                        EditorInvocation::insert_text(text),
-                    ));
-                    self.sync_child_views(cx);
+                    self.store.update(cx, |store, cx| {
+                        store.dispatch(UiAction::DispatchCommand(CommandInvocation::from(
+                            EditorInvocation::insert_text(text),
+                        )));
+                        cx.notify();
+                    });
                 }
             }
         }
     }
 
-    /// 将最新应用状态同步到文件树和窗格视图。
-    pub(super) fn sync_child_views(&mut self, cx: &mut Context<Self>) {
-        let file_tree_state = self.state.file_tree.clone();
-        let file_tree_is_focused = self.state.focused_target == FocusTarget::FileTreePanel;
-        let pane_state = self.state.pane.clone();
-        let active_editor = self.state.active_editor_snapshot();
+    /// 为当前 toast 安排“延迟自动清除”任务。
+    ///
+    /// 清除前会二次核对通知 id，防止新 toast 被旧定时器误删。
+    fn schedule_pending_toast_auto_clear(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let notification_id = self
+            .store
+            .update(cx, |store, _cx| store.take_pending_toast_auto_clear_id());
 
-        self.file_tree_panel.update(cx, |this, cx| {
-            this.set_state(file_tree_state, file_tree_is_focused, cx);
-        });
-        self.pane_view.update(cx, |this, cx| {
-            this.set_state(pane_state, active_editor, cx);
-        });
-        self.sync_notification_panel(cx);
-        cx.notify();
-    }
-
-    /// 同步通知面板内容。
-    pub(super) fn sync_notification_panel(&mut self, cx: &mut Context<Self>) {
-        let notifications = self.state.notifications.clone();
-        let is_logically_focused = self.state.focused_target == FocusTarget::NotificationPanel;
-        let preferred_selected_id = self.state.take_pending_notification_selection_id();
-        self.notification_panel.update(cx, |this, cx| {
-            this.set_state(
-                notifications,
-                is_logically_focused,
-                preferred_selected_id,
-                cx,
-            );
-        });
-    }
-
-    /// 统一写入用户提示：同时刷新悬浮提示与通知侧边栏。
-    pub(super) fn push_user_notification(
-        &mut self,
-        level: DesktopNotificationLevel,
-        message: impl Into<String>,
-        cx: &mut Context<Self>,
-    ) {
-        let message = message.into();
-        let dedupe_key = format!("workspace:{level:?}:{message}");
-        let event =
-            DesktopNotificationEvent::new(level, DesktopNotificationSource::Workspace, message)
-                .is_user_initiated()
-                .with_dedupe_key(dedupe_key);
-        let notification_id = self.state.publish_notification_event(event);
-        self.sync_notification_panel(cx);
-        self.pending_toast_auto_clear_id = self
-            .state
-            .active_toast_notification
-            .as_ref()
-            .map(|notification| notification.id)
-            .or(notification_id);
-        cx.notify();
-    }
-
-    /// 写入调试通知（默认不弹 info toast，保留到通知面板）。
-    pub(super) fn push_debug_notification(
-        &mut self,
-        level: DesktopNotificationLevel,
-        message: impl Into<String>,
-        cx: &mut Context<Self>,
-    ) {
-        let message = message.into();
-        let dedupe_key = format!("debug:{level:?}:{message}");
-        let event = DesktopNotificationEvent::new(level, DesktopNotificationSource::Debug, message)
-            .with_dedupe_key(dedupe_key);
-        self.state.publish_notification_event(event);
-        self.sync_notification_panel(cx);
-        self.pending_toast_auto_clear_id = self
-            .state
-            .active_toast_notification
-            .as_ref()
-            .map(|notification| notification.id);
-        cx.notify();
-    }
-
-    /// 为指定通知安排自动清除悬浮提示（保留侧边栏历史记录）。
-    pub(super) fn schedule_pending_toast_auto_clear(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(notification_id) = self.pending_toast_auto_clear_id.take() else {
+        let Some(notification_id) = notification_id else {
             return;
         };
+
         let this = cx.weak_entity();
         window
             .spawn(cx, async move |cx| {
                 Timer::after(TOAST_AUTO_DISMISS_DELAY).await;
-                this.update(cx, |this, cx| {
-                    let should_clear = this
-                        .state
-                        .active_toast_notification
-                        .as_ref()
-                        .map(|notification| notification.id == notification_id)
-                        .unwrap_or(false);
-                    if should_clear {
-                        this.state.clear_active_toast_notification();
-                        cx.notify();
-                    }
-                })
-                .ok();
+                let _ = this.update(cx, |this, cx| {
+                    this.store.update(cx, |store, cx| {
+                        let should_clear = store
+                            .select_core()
+                            .active_toast_notification
+                            .as_ref()
+                            .map(|notification| notification.id == notification_id)
+                            .unwrap_or(false);
+                        if should_clear {
+                            store.dispatch(UiAction::ClearActiveToast);
+                            cx.notify();
+                        }
+                    });
+                });
             })
             .detach();
     }
 
-    /// 从标题栏打开项目目录
-    pub(super) fn open_project_from_title_bar(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    /// 处理标题栏的打开项目动作并触发项目切换流程。
+    fn open_project_from_title_bar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let picked_paths = cx.prompt_for_paths(PathPromptOptions {
             files: false,
             directories: true,
@@ -342,303 +179,321 @@ impl ZomRootView {
         window
             .spawn(cx, async move |cx| {
                 let Ok(selection_result) = picked_paths.await else {
-                    this.update(cx, |this, cx| {
-                        this.push_user_notification(
-                            DesktopNotificationLevel::Warning,
-                            "Open project folder dialog failed.",
-                            cx,
-                        );
-                    })
-                    .ok();
+                    let _ = this.update(cx, |this, cx| {
+                        this.store.update(cx, |store, cx| {
+                            store.dispatch(UiAction::PushUserNotification {
+                                level: DesktopNotificationLevel::Warning,
+                                message: "Open project folder dialog failed.".to_string(),
+                            });
+                            cx.notify();
+                        });
+                    });
                     return;
                 };
                 let Ok(Some(paths)) = selection_result else {
-                    this.update(cx, |this, cx| {
-                        this.push_user_notification(
-                            DesktopNotificationLevel::Info,
-                            "Open project folder canceled.",
-                            cx,
-                        );
-                    })
-                    .ok();
+                    let _ = this.update(cx, |this, cx| {
+                        this.store.update(cx, |store, cx| {
+                            store.dispatch(UiAction::PushUserNotification {
+                                level: DesktopNotificationLevel::Info,
+                                message: "Open project folder canceled.".to_string(),
+                            });
+                            cx.notify();
+                        });
+                    });
                     return;
                 };
                 let Some(project_root) = paths.into_iter().next() else {
-                    this.update(cx, |this, cx| {
-                        this.push_user_notification(
-                            DesktopNotificationLevel::Warning,
-                            "No project folder selected.",
-                            cx,
-                        );
-                    })
-                    .ok();
+                    let _ = this.update(cx, |this, cx| {
+                        this.store.update(cx, |store, cx| {
+                            store.dispatch(UiAction::PushUserNotification {
+                                level: DesktopNotificationLevel::Warning,
+                                message: "No project folder selected.".to_string(),
+                            });
+                            cx.notify();
+                        });
+                    });
                     return;
                 };
 
-                this.update(cx, |this, cx| {
-                    this.state.switch_project(project_root);
-                    this.state.dispatch_command(CommandInvocation::from(
-                        WorkspaceAction::FocusPanel(FocusTarget::Editor),
-                    ));
-                    this.sync_child_views(cx);
-                    let project_name = this.state.project_name.clone();
-                    this.push_user_notification(
-                        DesktopNotificationLevel::Info,
-                        format!("Opened project: {project_name}"),
-                        cx,
-                    );
-                })
-                .ok();
+                let _ = this.update(cx, |this, cx| {
+                    this.store.update(cx, |store, cx| {
+                        store.dispatch(UiAction::SwitchProject(project_root));
+                        let project_name = store.select_core().project_name.clone();
+                        store.dispatch(UiAction::PushUserNotification {
+                            level: DesktopNotificationLevel::Info,
+                            message: format!("Opened project: {project_name}"),
+                        });
+                        cx.notify();
+                    });
+                });
             })
             .detach();
     }
 
-    /// 归一化左右面板宽度，确保宽度非负且不会越过中心保留区。
-    pub(super) fn normalize_dock_widths(
-        &mut self,
-        workspace_width: f32,
-        is_left_visible: bool,
-        is_right_visible: bool,
-    ) {
-        self.left_dock_width = self.left_dock_width.max(0.0);
-        self.right_dock_width = self.right_dock_width.max(0.0);
-
-        let mut max_left = Self::max_dock_width(workspace_width);
-        let mut max_right = Self::max_dock_width(workspace_width);
-        if is_left_visible && is_right_visible {
-            max_left = (workspace_width - self.right_dock_width - dock_gap()).max(0.0);
-            max_right = (workspace_width - self.left_dock_width - dock_gap()).max(0.0);
+    /// 键盘事件统一入口：先给 overlay 优先处理，再走全局快捷键解析。
+    ///
+    /// 返回 `true` 表示事件已消费，调用方应停止继续传播。
+    fn dispatch_shortcut_keydown(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) -> bool {
+        if self.handle_find_replace_overlay_keydown(event, cx) {
+            return true;
         }
-        self.left_dock_width = self.left_dock_width.min(max_left);
-        self.right_dock_width = self.right_dock_width.min(max_right);
-    }
-
-    /// 归一化底部面板高度，保证高度在合法拖拽区间内。
-    pub(super) fn normalize_bottom_panel_height(&mut self, workspace_height: f32) {
-        self.bottom_panel_height = self
-            .bottom_panel_height
-            .clamp(0.0, Self::max_bottom_panel_height(workspace_height));
-    }
-
-    /// 根据鼠标位置更新左侧面板宽度，并保持与右侧面板不重叠。
-    pub(super) fn update_left_dock_width_from_cursor(
-        &mut self,
-        cursor_x: f32,
-        workspace_width: f32,
-        is_right_visible: bool,
-    ) {
-        let max_left = if is_right_visible {
-            (workspace_width - self.right_dock_width - dock_gap()).max(0.0)
-        } else {
-            Self::max_dock_width(workspace_width)
+        let Some(keystroke) = crate::input::to_core_keystroke(event) else {
+            return false;
         };
-        self.left_dock_width = cursor_x.clamp(0.0, max_left);
-    }
 
-    /// 根据鼠标位置更新右侧面板宽度，并保持与左侧面板不重叠。
-    pub(super) fn update_right_dock_width_from_cursor(
-        &mut self,
-        cursor_x: f32,
-        workspace_width: f32,
-        is_left_visible: bool,
-    ) {
-        let max_right = if is_left_visible {
-            (workspace_width - self.left_dock_width - dock_gap()).max(0.0)
-        } else {
-            Self::max_dock_width(workspace_width)
-        };
-        let raw_width = workspace_width - cursor_x;
-        self.right_dock_width = raw_width.clamp(0.0, max_right);
-    }
-
-    /// 根据窗口可视高度计算工作区高度（剔除上下 bar 占用）。
-    pub(super) fn workspace_height_from_viewport(viewport_height: f32) -> f32 {
-        // root 结构是: title bar + workspace + tool bar
-        (viewport_height - size::BAR_HEIGHT * 2.0).max(0.0)
-    }
-
-    /// 计算单侧面板的最大宽度，始终给边界保留一个可拖拽 gap。
-    fn max_dock_width(workspace_width: f32) -> f32 {
-        (workspace_width - dock_gap()).max(0.0)
-    }
-
-    /// 计算底部面板与上边界之间的最小保留间距。
-    fn bottom_max_gap() -> f32 {
-        dock_gap() + size::GAP_1
-    }
-
-    /// 计算底部面板的最大高度，保证顶部始终留有拖拽与识别空间。
-    fn max_bottom_panel_height(workspace_height: f32) -> f32 {
-        (workspace_height - Self::bottom_max_gap()).max(0.0)
-    }
-
-    /// 计算“触发隐藏面板”时使用的边界命中阈值。
-    fn hide_boundary_threshold_px() -> f32 {
-        splitter_hit_size() * 0.5
-    }
-
-    /// 判断当前拖拽是否到达隐藏边界（左/右贴边或底部收至阈值）。
-    fn reached_hide_boundary(&self, event: &MouseMoveEvent, workspace_width: f32) -> bool {
-        let edge = Self::hide_boundary_threshold_px();
-        match self.active_dock_drag {
-            Some(ActiveDockDrag::Left) => {
-                let cursor_x: f32 = event.position.x.into();
-                cursor_x <= edge
-            }
-            Some(ActiveDockDrag::Right) => {
-                let cursor_x: f32 = event.position.x.into();
-                cursor_x >= (workspace_width - edge)
-            }
-            Some(ActiveDockDrag::Bottom {
-                origin_y,
-                origin_height,
-            }) => {
-                let cursor_y: f32 = event.position.y.into();
-                let delta = cursor_y - origin_y;
-                let next_height = (origin_height - delta).max(0.0);
-                next_height <= edge
-            }
-            None => false,
-        }
-    }
-
-    /// 隐藏当前正在拖拽所属 dock 的可见面板，并清空对应尺寸。
-    fn hide_active_dock_panel(&mut self) {
-        match self.active_dock_drag {
-            Some(ActiveDockDrag::Left) => {
-                self.left_dock_width = 0.0;
-                self.state.hide_visible_panel_in_dock(PanelDock::Left);
-            }
-            Some(ActiveDockDrag::Right) => {
-                self.right_dock_width = 0.0;
-                self.state.hide_visible_panel_in_dock(PanelDock::Right);
-            }
-            Some(ActiveDockDrag::Bottom { .. }) => {
-                self.bottom_panel_height = 0.0;
-                self.state.hide_visible_panel_in_dock(PanelDock::Bottom);
-            }
-            None => {}
-        }
-    }
-
-    /// 处理 dock 分割线拖拽过程，更新尺寸并处理贴边隐藏。
-    pub(super) fn on_drag_mouse_move(
-        &mut self,
-        event: &MouseMoveEvent,
-        workspace_width: f32,
-        workspace_height: f32,
-        cx: &mut Context<Self>,
-    ) {
-        if self.active_dock_drag.is_none() {
-            return;
+        let debug_keys = std::env::var_os("ZOM_DEBUG_KEYS").is_some();
+        if debug_keys {
+            self.store.update(cx, |store, cx| {
+                store.dispatch(UiAction::PushDebugNotification {
+                    level: DesktopNotificationLevel::Info,
+                    message: format!(
+                        "[zom-shortcut] key={:?} focus_before={:?}",
+                        keystroke,
+                        store.select_core().focused_target
+                    ),
+                });
+                cx.notify();
+            });
         }
 
-        if self.reached_hide_boundary(event, workspace_width) {
-            self.hide_active_dock_panel();
-            self.active_dock_drag = None;
-            cx.notify();
-            return;
+        let handled = self.store.update(cx, |store, cx| {
+            let output = store.dispatch(UiAction::DispatchKeystroke(keystroke));
+            let handled = matches!(output, UiActionOutput::Bool(true));
+            if handled {
+                cx.notify();
+            }
+            handled
+        });
+
+        if !handled {
+            if debug_keys {
+                self.store.update(cx, |store, cx| {
+                    store.dispatch(UiAction::PushDebugNotification {
+                        level: DesktopNotificationLevel::Warning,
+                        message: "[zom-shortcut] ignored".to_string(),
+                    });
+                    cx.notify();
+                });
+            }
+            return false;
         }
 
-        // If the mouse button was released outside the app window, GPUI may miss MouseUp.
-        // As soon as we receive a non-dragging move again, end the dock drag state.
-        if !event.dragging() {
-            self.active_dock_drag = None;
-            cx.notify();
-            return;
+        if debug_keys {
+            self.store.update(cx, |store, cx| {
+                store.dispatch(UiAction::PushDebugNotification {
+                    level: DesktopNotificationLevel::Info,
+                    message: format!(
+                        "[zom-shortcut] handled focus_after={:?}",
+                        store.select_core().focused_target
+                    ),
+                });
+                cx.notify();
+            });
         }
 
-        match self.active_dock_drag {
-            Some(ActiveDockDrag::Left) => {
-                let cursor_x: f32 = event.position.x.into();
-                let is_right_visible = self.state.visible_panel_in_dock(PanelDock::Right).is_some();
-                self.update_left_dock_width_from_cursor(
-                    cursor_x,
-                    workspace_width,
-                    is_right_visible,
-                );
-            }
-            Some(ActiveDockDrag::Right) => {
-                let cursor_x: f32 = event.position.x.into();
-                let is_left_visible = self.state.visible_panel_in_dock(PanelDock::Left).is_some();
-                self.update_right_dock_width_from_cursor(
-                    cursor_x,
-                    workspace_width,
-                    is_left_visible,
-                );
-            }
-            Some(ActiveDockDrag::Bottom {
-                origin_y,
-                origin_height,
-            }) => {
-                let cursor_y: f32 = event.position.y.into();
-                let delta = cursor_y - origin_y;
-                let next_height = (origin_height - delta).max(0.0);
-                self.bottom_panel_height =
-                    next_height.min(Self::max_bottom_panel_height(workspace_height));
-            }
-            None => {}
-        }
-        cx.notify();
+        true
     }
 
-    /// 处理快捷键按下事件并委派给应用层命令系统。
-    pub(super) fn dispatch_shortcut_keydown(
+    /// 仅在查找替换浮层激活时拦截按键并更新瞬态状态。
+    ///
+    /// 行为优先级：Tab/Backspace/Alt 选项切换/Enter 提交/字符输入。
+    fn handle_find_replace_overlay_keydown(
         &mut self,
         event: &KeyDownEvent,
         cx: &mut Context<Self>,
     ) -> bool {
-        let Some(keystroke) = crate::input::to_core_keystroke(event) else {
+        if self.store.read(cx).select_active_overlay() != Some(OverlayTarget::FindReplace) {
+            return false;
+        }
+
+        let Some(key) = crate::input::to_core_keystroke(event).map(|key| key.key) else {
             return false;
         };
-        // 仅在调试键位模式开启时触发。
-        // 统一通过通知机制提示用户，并写入通知侧边栏。
-        let debug_keys = std::env::var_os("ZOM_DEBUG_KEYS").is_some();
-        if debug_keys {
-            self.push_debug_notification(
-                DesktopNotificationLevel::Info,
-                format!(
-                    "[zom-shortcut] key={:?} focus_before={:?}",
-                    keystroke, self.state.focused_target
-                ),
-                cx,
-            );
+        let modifiers = Modifiers::new(
+            event.keystroke.modifiers.control,
+            event.keystroke.modifiers.alt,
+            event.keystroke.modifiers.shift,
+            event.keystroke.modifiers.platform,
+        );
+
+        if matches!(key, KeyCode::Tab) {
+            self.store.update(cx, |store, cx| {
+                store.dispatch(UiAction::FindReplace(FindReplaceUiAction::CycleField));
+                cx.notify();
+            });
+            return true;
         }
-        if !self.state.dispatch_keystroke(&keystroke) {
-            if debug_keys {
-                self.push_debug_notification(
-                    DesktopNotificationLevel::Warning,
-                    "[zom-shortcut] ignored",
-                    cx,
-                );
+
+        if matches!(key, KeyCode::Backspace) && modifiers.is_empty() {
+            self.store.update(cx, |store, cx| {
+                store.dispatch(UiAction::FindReplace(FindReplaceUiAction::Backspace));
+                cx.notify();
+            });
+            return true;
+        }
+
+        if modifiers.has_alt
+            && !modifiers.has_ctrl
+            && !modifiers.has_meta
+            && let KeyCode::Char(ch) = key
+        {
+            let matched = match ch {
+                'c' => Some(FindReplaceUiAction::ToggleCase),
+                'w' => Some(FindReplaceUiAction::ToggleWord),
+                'r' => Some(FindReplaceUiAction::ToggleRegex),
+                _ => None,
+            };
+            if let Some(action) = matched {
+                self.store.update(cx, |store, cx| {
+                    store.dispatch(UiAction::FindReplace(action));
+                    cx.notify();
+                });
+                return true;
             }
-            return false;
         }
-        self.sync_child_views(cx);
-        if debug_keys {
-            self.push_debug_notification(
-                DesktopNotificationLevel::Info,
-                format!(
-                    "[zom-shortcut] handled focus_after={:?}",
-                    self.state.focused_target
-                ),
-                cx,
-            );
+
+        if matches!(key, KeyCode::Enter) {
+            let action = if modifiers.has_alt && (modifiers.has_ctrl || modifiers.has_meta) {
+                FindReplaceAction::ReplaceAll
+            } else if modifiers.has_alt {
+                FindReplaceAction::ReplaceNext
+            } else if modifiers.has_shift {
+                FindReplaceAction::FindPrev
+            } else {
+                FindReplaceAction::FindNext
+            };
+            self.store.update(cx, |store, cx| {
+                store.dispatch(UiAction::FindReplace(FindReplaceUiAction::Submit(action)));
+                cx.notify();
+            });
+            return true;
         }
-        true
+
+        if let Some(ch) = typed_char(event, modifiers) {
+            self.store.update(cx, |store, cx| {
+                store.dispatch(UiAction::FindReplace(FindReplaceUiAction::AppendChar(ch)));
+                cx.notify();
+            });
+            return true;
+        }
+
+        false
+    }
+
+    /// 渲染浮层并组装对应界面节点。
+    fn render_settings_overlay(&self) -> gpui::Stateful<gpui::Div> {
+        gpui::div()
+            .id("settings-overlay-layer")
+            .absolute()
+            .top(px(0.0))
+            .left(px(0.0))
+            .w_full()
+            .h_full()
+            .child(
+                gpui::div()
+                    .id("settings-overlay-mask")
+                    .absolute()
+                    .top(px(0.0))
+                    .left(px(0.0))
+                    .w_full()
+                    .h_full()
+                    .bg(rgb(color::COLOR_BG_APP))
+                    .opacity(0.72),
+            )
+            .child(
+                gpui::div()
+                    .id("settings-overlay-center")
+                    .absolute()
+                    .top(px(0.0))
+                    .left(px(0.0))
+                    .w_full()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        gpui::div()
+                            .id("settings-overlay-card-container")
+                            .child(settings_overlay::panel()),
+                    ),
+            )
     }
 }
 
-/// 返回布局层统一使用的 dock 最小间隔。
-pub(super) fn dock_gap() -> f32 {
-    size::GAP_1
+impl gpui::Render for ZomRootView {
+    /// 根节点渲染入口：先消费待执行 UI 动作，再按当前 overlay/toast 状态装配整页视图。
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl gpui::IntoElement {
+        if let Some(action) = self
+            .store
+            .update(cx, |store, _cx| store.take_pending_ui_action())
+        {
+            self.apply_ui_action(action, window, cx);
+        }
+
+        self.schedule_pending_toast_auto_clear(window, cx);
+
+        if let Some(target) = self
+            .store
+            .update(cx, |store, _cx| store.take_pending_focus_target())
+        {
+            self.apply_focus_target(target, window, cx);
+        }
+
+        let state = self.store.read(cx).select_root_chrome_state();
+        let active_overlay = state.active_overlay;
+        let toast = state.active_toast_notification.clone();
+
+        let mut root = gpui::div()
+            .relative()
+            .size_full()
+            .flex()
+            .flex_col()
+            .capture_key_down(cx.listener(|this, event, _window, cx| {
+                if this.dispatch_shortcut_keydown(event, cx) {
+                    cx.stop_propagation();
+                    cx.notify();
+                }
+            }))
+            .on_key_down(cx.listener(|this, event, _window, cx| {
+                if this.dispatch_shortcut_keydown(event, cx) {
+                    cx.stop_propagation();
+                    cx.notify();
+                }
+            }))
+            .bg(rgb(color::COLOR_BG_APP))
+            .text_color(rgb(color::COLOR_FG_PRIMARY))
+            .child(title_bar::render(&state))
+            .child(self.workspace_view.clone())
+            .child(status_bar::render(&state));
+
+        if active_overlay == Some(OverlayTarget::Settings) {
+            root = root.child(self.render_settings_overlay());
+        }
+
+        if let Some(notification) = toast.as_ref() {
+            root = root.child(notification_toast_overlay::layer(notification));
+        }
+
+        root
+    }
 }
 
-/// 返回分割线的可命中热区尺寸。
-pub(super) fn splitter_hit_size() -> f32 {
-    size::GAP_1
-}
-
+/// 从系统剪贴板读取纯文本；无文本或读取失败时返回 `None`。
 fn clipboard_text(cx: &mut Context<ZomRootView>) -> Option<String> {
     cx.read_from_clipboard()?.text()
+}
+
+/// 从键盘事件中提取可直接插入的字符；带 Ctrl/Meta/Alt 的组合键不参与文本输入。
+fn typed_char(event: &KeyDownEvent, modifiers: Modifiers) -> Option<char> {
+    if modifiers.has_ctrl || modifiers.has_meta || modifiers.has_alt {
+        return None;
+    }
+    let key = event.keystroke.key.as_str();
+    if key == "space" {
+        return Some(' ');
+    }
+    if key.chars().count() == 1 {
+        return key.chars().next();
+    }
+    None
 }
