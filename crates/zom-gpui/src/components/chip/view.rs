@@ -46,21 +46,9 @@ impl Chip {
         self
     }
 
-    /// 按需覆盖默认图标大小
-    pub fn icon_size(mut self, size: f32) -> Self {
-        self.icon_size = size;
-        self
-    }
-
     /// 显式添加文字标签
     pub fn label(mut self, label: impl IntoElement) -> Self {
         self.label = Some(label.into_any_element());
-        self
-    }
-
-    /// 按需覆盖默认文字大小
-    pub fn label_size(mut self, size: f32) -> Self {
-        self.label_size = size;
         self
     }
 

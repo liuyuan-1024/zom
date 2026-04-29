@@ -58,6 +58,12 @@ pub const SPECS: &[CommandKindSpec] = &[
     ),
     // 右侧 dock。
     CommandKindSpec::new(
+        CommandKind::WorkspaceFocusPanel(FocusTarget::NotificationPanel),
+        "workspace.focus_panel.notification",
+        "聚焦通知面板",
+        "显示并聚焦通知面板",
+    ),
+    CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::ShortcutPanel),
         "workspace.focus_panel.shortcut",
         "聚焦快捷键面板",

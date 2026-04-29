@@ -161,6 +161,9 @@ fn workspace_focus_command_from_kind_id(id: &str) -> Option<CommandInvocation> {
         "workspace.focus_panel.debug" => Some(CommandInvocation::from(
             WorkspaceAction::FocusPanel(FocusTarget::DebugPanel),
         )),
+        "workspace.focus_panel.notification" => Some(CommandInvocation::from(
+            WorkspaceAction::FocusPanel(FocusTarget::NotificationPanel),
+        )),
         "workspace.focus_panel.shortcut" => Some(CommandInvocation::from(
             WorkspaceAction::FocusPanel(FocusTarget::ShortcutPanel),
         )),
@@ -499,6 +502,12 @@ const DEFAULT_SHORTCUT_SPECS: &[DefaultShortcutSpec] = &[
         CommandKindId("workspace.focus_panel.debug"),
         ShortcutScope::Global,
         primary_shift_char('d'),
+        80,
+    ),
+    DefaultShortcutSpec::new(
+        CommandKindId("workspace.focus_panel.notification"),
+        ShortcutScope::Global,
+        primary_shift_char('n'),
         80,
     ),
     DefaultShortcutSpec::new(

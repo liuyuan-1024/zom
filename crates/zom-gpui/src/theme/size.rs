@@ -23,8 +23,6 @@ pub(crate) const FONT_CHIP: f32 = 12.0;
 
 // --- 图标尺寸 (Icon Sizes) ---
 // 逻辑：统一不同场景的图标物理大小，不再根据“它是哪个组件”来命名
-/// 次要图标 (如红绿灯、文件树辅助图标、Tab 的关闭叉号)。
-pub(crate) const ICON_SM: f32 = 12.0;
 /// 核心图标 (如顶栏、工具栏、文件树主体图标)。
 pub(crate) const ICON_MD: f32 = 16.0;
 

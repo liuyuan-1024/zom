@@ -1238,6 +1238,8 @@ fn notification_command_mark_all_read_clears_unread_counter() {
         .with_dedupe_key("error.second"),
     );
 
+    state.mark_all_notifications_read();
+
     assert_eq!(state.unread_notification_count, 0);
     assert!(
         state
