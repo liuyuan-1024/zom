@@ -4,5 +4,4 @@
 mod tooltip;
 mod view;
 
-pub(crate) use tooltip::TooltipSpec;
 pub(crate) use view::{Chip, ChipStyle};

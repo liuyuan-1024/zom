@@ -5,7 +5,7 @@ use gpui::{
     AnyElement, Div, ElementId, Stateful, StatefulInteractiveElement, div, prelude::*, px, rgb, svg,
 };
 
-use super::{TooltipSpec, tooltip::tooltip_view};
+use super::{tooltip::TooltipSpec, tooltip::tooltip_view};
 use crate::{
     icon::AppIcon,
     theme::{color, size},
