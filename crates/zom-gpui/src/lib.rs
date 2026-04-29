@@ -3,6 +3,7 @@
 
 mod assets;
 mod components;
+mod icon;
 mod input;
 mod root_view;
 mod theme;
