@@ -1,6 +1,6 @@
 //! 底部状态栏视图渲染。
 
-use gpui::prelude::*;
+use gpui::{div, prelude::*, px, rgb};
 use zom_input::shortcut_hint;
 use zom_protocol::{CommandInvocation, FocusTarget, WorkspaceAction};
 use zom_runtime::{
@@ -11,6 +11,7 @@ use zom_runtime::{
 use super::bar_shell::BarShell;
 use crate::components::chip::Chip;
 use crate::icon::AppIcon;
+use crate::theme::{color, size};
 
 #[derive(Debug, Clone, Copy)]
 struct PanelChipSpec {
@@ -20,7 +21,7 @@ struct PanelChipSpec {
     label: &'static str,
 }
 
-const LEFT_PANEL_SPECS: [PanelChipSpec; 5] = [
+const LEFT_PANEL_MAIN_GROUP: [PanelChipSpec; 2] = [
     PanelChipSpec {
         id: "status-panel-file-tree",
         target: FocusTarget::FileTreePanel,
@@ -33,6 +34,9 @@ const LEFT_PANEL_SPECS: [PanelChipSpec; 5] = [
         icon: AppIcon::GitBranchAlt,
         label: "Git",
     },
+];
+
+const LEFT_PANEL_AUX_GROUP: [PanelChipSpec; 3] = [
     PanelChipSpec {
         id: "status-panel-outline",
         target: FocusTarget::OutlinePanel,
@@ -53,7 +57,9 @@ const LEFT_PANEL_SPECS: [PanelChipSpec; 5] = [
     },
 ];
 
-const RIGHT_PANEL_SPECS: [PanelChipSpec; 3] = [
+const LEFT_PANEL_GROUPS: [&[PanelChipSpec]; 2] = [&LEFT_PANEL_MAIN_GROUP, &LEFT_PANEL_AUX_GROUP];
+
+const RIGHT_PANEL_MAIN_GROUP: [PanelChipSpec; 2] = [
     PanelChipSpec {
         id: "status-panel-terminal",
         target: FocusTarget::TerminalPanel,
@@ -66,6 +72,9 @@ const RIGHT_PANEL_SPECS: [PanelChipSpec; 3] = [
         icon: AppIcon::Debug,
         label: "调试",
     },
+];
+
+const RIGHT_PANEL_AUX_GROUP: [PanelChipSpec; 1] = [
     PanelChipSpec {
         id: "status-panel-shortcut",
         target: FocusTarget::ShortcutPanel,
@@ -74,13 +83,22 @@ const RIGHT_PANEL_SPECS: [PanelChipSpec; 3] = [
     },
 ];
 
+const RIGHT_PANEL_GROUPS: [&[PanelChipSpec]; 2] =
+    [&RIGHT_PANEL_MAIN_GROUP, &RIGHT_PANEL_AUX_GROUP];
+
 /// 渲染底部状态栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
     let mut shell = BarShell::new(false);
 
-    // 装配左侧区域
-    for spec in LEFT_PANEL_SPECS {
-        shell = shell.left(render_panel_chip(state, spec));
+    // 装配左侧分组区域
+    for (group_index, group) in LEFT_PANEL_GROUPS.iter().enumerate() {
+        if group_index > 0 {
+            shell = shell.left(render_group_divider());
+        }
+
+        for spec in group.iter().copied() {
+            shell = shell.left(render_panel_chip(state, spec));
+        }
     }
 
     // 光标位置
@@ -97,9 +115,15 @@ pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {
         shell = shell.right(render_value_chip("status-language", language, "当前语言"));
     }
 
-    // 终端、Debug、快捷键面板
-    for spec in RIGHT_PANEL_SPECS {
-        shell = shell.right(render_panel_chip(state, spec));
+    // 右侧分组区域（如：终端/调试 与 快捷键）
+    for (group_index, group) in RIGHT_PANEL_GROUPS.iter().enumerate() {
+        if group_index > 0 {
+            shell = shell.right(render_group_divider());
+        }
+
+        for spec in group.iter().copied() {
+            shell = shell.right(render_panel_chip(state, spec));
+        }
     }
 
     shell
@@ -125,6 +149,14 @@ fn render_value_chip(
     Chip::new(id)
         .label(value.into())
         .tooltip_hint(tooltip, Option::<String>::None)
+}
+
+/// 渲染同侧不同组之间的分隔线。
+fn render_group_divider() -> impl IntoElement {
+    div()
+        .w(px(1.0))
+        .h(px(size::ICON_MD))
+        .bg(rgb(color::COLOR_BORDER))
 }
 
 /// 把面板目标映射为对应的聚焦命令。
