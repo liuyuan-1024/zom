@@ -127,7 +127,7 @@ impl WorkspaceView {
         }
     }
 
-    /// 隐藏当前正在拖拽的 dock，并同步通知核心状态机。
+    /// 隐藏当前正在拖拽的 dock，并同步 core 状态机。
     fn hide_active_dock_panel(&mut self, cx: &mut Context<Self>) {
         match self.active_dock_drag {
             Some(ActiveDockDrag::Left) => {

@@ -14,8 +14,7 @@ use zom_protocol::{
 use zom_text_tokens::LineEnding;
 
 use super::{
-    DesktopAppState, DesktopNotificationEvent, DesktopNotificationKind, DesktopNotificationLevel,
-    DesktopNotificationSource, DesktopUiAction,
+    DesktopAppState, DesktopToastEvent, DesktopToastLevel, DesktopUiAction,
 };
 use crate::state::{FileTreeNodeKind, PanelDock};
 
@@ -815,11 +814,12 @@ fn opening_file_restores_unsaved_draft_content() {
             .text,
         "xdisk"
     );
-    assert!(
+    assert_eq!(
         second_state
-            .notifications
-            .iter()
-            .any(|item| item.message.contains("已恢复未保存草稿 main.rs"))
+            .active_toast
+            .as_ref()
+            .map(|item| item.message.as_str()),
+        Some("已恢复未保存草稿 main.rs")
     );
 
     remove_temp_workspace(workspace);
@@ -927,13 +927,13 @@ fn focus_panel_replaces_existing_bottom_dock_panel() {
 fn right_and_bottom_docks_can_stay_visible_together() {
     let mut state = DesktopAppState::from_current_workspace();
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
-        FocusTarget::NotificationPanel,
+        FocusTarget::ShortcutPanel,
     )));
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::TerminalPanel,
     )));
 
-    assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
+    assert!(state.is_panel_visible(FocusTarget::ShortcutPanel));
     assert!(state.is_panel_visible(FocusTarget::TerminalPanel));
 }
 
@@ -942,7 +942,7 @@ fn right_and_bottom_docks_can_stay_visible_together() {
 fn close_focused_bottom_panel_keeps_right_panel_visible() {
     let mut state = DesktopAppState::from_current_workspace();
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
-        FocusTarget::NotificationPanel,
+        FocusTarget::ShortcutPanel,
     )));
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
         FocusTarget::TerminalPanel,
@@ -951,7 +951,7 @@ fn close_focused_bottom_panel_keeps_right_panel_visible() {
     state.dispatch_command(CommandInvocation::from(WorkspaceAction::CloseFocused));
 
     assert!(!state.is_panel_visible(FocusTarget::TerminalPanel));
-    assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
+    assert!(state.is_panel_visible(FocusTarget::ShortcutPanel));
     assert_eq!(state.focused_target, FocusTarget::Editor);
 }
 
@@ -973,28 +973,28 @@ fn hide_visible_panel_in_dock_hides_target_and_falls_back_to_editor() {
 }
 
 #[test]
-/// 计算快捷键焦点通知面板结果。
-fn keyboard_shortcut_can_focus_and_close_notification_panel() {
+/// 计算快捷键焦点快捷键面板结果。
+fn keyboard_shortcut_can_focus_and_close_shortcut_panel() {
     let mut state = DesktopAppState::from_current_workspace();
-    let focus_notification = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
-        FocusTarget::NotificationPanel,
+    let focus_shortcut = shortcut_for(CommandInvocation::from(WorkspaceAction::FocusPanel(
+        FocusTarget::ShortcutPanel,
     )));
 
-    let handled_focus = state.dispatch_keystroke(&focus_notification);
+    let handled_focus = state.dispatch_keystroke(&focus_shortcut);
 
     assert!(handled_focus);
-    assert!(state.is_panel_visible(FocusTarget::NotificationPanel));
-    assert_eq!(state.focused_target, FocusTarget::NotificationPanel);
+    assert!(state.is_panel_visible(FocusTarget::ShortcutPanel));
+    assert_eq!(state.focused_target, FocusTarget::ShortcutPanel);
     assert_eq!(
         state.take_pending_focus_target(),
-        Some(FocusTarget::NotificationPanel)
+        Some(FocusTarget::ShortcutPanel)
     );
 
     let close = shortcut_for(CommandInvocation::from(WorkspaceAction::CloseFocused));
     let handled_close = state.dispatch_keystroke(&close);
 
     assert!(handled_close);
-    assert!(!state.is_panel_visible(FocusTarget::NotificationPanel));
+    assert!(!state.is_panel_visible(FocusTarget::ShortcutPanel));
     assert_eq!(state.focused_target, FocusTarget::Editor);
     assert_eq!(state.take_pending_focus_target(), Some(FocusTarget::Editor));
 }
@@ -1098,370 +1098,98 @@ fn keyboard_shortcut_can_focus_settings_overlay() {
 }
 
 #[test]
-/// 写入通知提示历史并同步相关状态。
-fn push_notification_sets_active_toast_and_persists_history() {
+/// 连续写入 toast 事件后应刷新当前 toast 并分配递增 id。
+fn publish_toast_event_sets_active_toast() {
     let mut state = DesktopAppState::from_current_workspace();
 
-    let first_id = state.push_notification(DesktopNotificationLevel::Info, "first");
-    let second_id = state.push_notification(DesktopNotificationLevel::Warning, "second");
+    let first_id = state
+        .publish_toast_event(
+            DesktopToastEvent::new(DesktopToastLevel::Info, "first").is_user_initiated(),
+        )
+        .expect("first toast should be shown");
+    let second_id = state
+        .publish_toast_event(DesktopToastEvent::new(DesktopToastLevel::Warning, "second"))
+        .expect("warning toast should be shown");
 
     assert_eq!(first_id, 1);
     assert_eq!(second_id, 2);
-    assert_eq!(state.notifications.len(), 2);
-    assert_eq!(state.notifications[0].message, "first");
-    assert_eq!(state.notifications[1].message, "second");
-    assert_eq!(
-        state.notifications[1].level,
-        DesktopNotificationLevel::Warning
-    );
     assert_eq!(
         state
-            .active_toast_notification
+            .active_toast
             .as_ref()
-            .map(|notification| notification.message.as_str()),
+            .map(|toast| toast.message.as_str()),
         Some("second")
     );
-    assert_eq!(state.unread_notification_count, 2);
+    assert_eq!(
+        state.active_toast.as_ref().map(|toast| toast.level),
+        Some(DesktopToastLevel::Warning)
+    );
 }
 
 #[test]
 fn info_event_without_user_initiated_does_not_trigger_toast() {
     let mut state = DesktopAppState::from_current_workspace();
 
-    state.publish_notification_event(DesktopNotificationEvent::new(
-        DesktopNotificationLevel::Info,
-        DesktopNotificationSource::Workspace,
+    state.publish_toast_event(DesktopToastEvent::new(
+        DesktopToastLevel::Info,
         "background refreshed",
     ));
 
-    assert_eq!(state.notifications.len(), 1);
-    assert!(state.active_toast_notification.is_none());
+    assert!(state.active_toast.is_none());
 }
 
 #[test]
 fn info_event_with_user_initiated_triggers_toast() {
     let mut state = DesktopAppState::from_current_workspace();
 
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Info,
-            DesktopNotificationSource::Workspace,
-            "opened project",
-        )
-        .is_user_initiated(),
+    state.publish_toast_event(
+        DesktopToastEvent::new(DesktopToastLevel::Info, "opened project").is_user_initiated(),
     );
 
-    assert_eq!(state.notifications.len(), 1);
     assert_eq!(
         state
-            .active_toast_notification
+            .active_toast
             .as_ref()
-            .map(|notification| notification.message.as_str()),
+            .map(|toast| toast.message.as_str()),
         Some("opened project")
     );
 }
 
 #[test]
-fn dedupe_event_aggregates_count_and_avoids_second_toast() {
+fn repeated_toast_events_generate_new_ids() {
     let mut state = DesktopAppState::from_current_workspace();
 
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Warning,
-            DesktopNotificationSource::Workspace,
-            "indexing slow",
-        )
-        .with_dedupe_key("workspace.indexing.slow"),
+    state.publish_toast_event(
+        DesktopToastEvent::new(DesktopToastLevel::Warning, "indexing slow"),
     );
     let first_toast_id = state
-        .active_toast_notification
+        .active_toast
         .as_ref()
-        .map(|notification| notification.id);
-    state.clear_active_toast_notification();
+        .map(|toast| toast.id);
+    state.clear_active_toast();
 
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Warning,
-            DesktopNotificationSource::Workspace,
-            "indexing slow",
-        )
-        .with_dedupe_key("workspace.indexing.slow"),
+    state.publish_toast_event(
+        DesktopToastEvent::new(DesktopToastLevel::Warning, "indexing slow"),
     );
 
-    assert_eq!(state.notifications.len(), 1);
-    assert_eq!(state.notifications[0].occurrence_count, 2);
-    assert_eq!(state.active_toast_notification, None);
-    assert_eq!(first_toast_id, Some(state.notifications[0].id));
-}
-
-#[test]
-/// 计算状态栏结果。
-fn progress_event_updates_status_bar_only() {
-    let mut state = DesktopAppState::from_current_workspace();
-    let mut event = DesktopNotificationEvent::new(
-        DesktopNotificationLevel::Info,
-        DesktopNotificationSource::System,
-        "indexing 12%",
-    );
-    event.kind = DesktopNotificationKind::Progress;
-
-    state.publish_notification_event(event);
-
-    assert!(state.notifications.is_empty());
-    assert!(state.active_toast_notification.is_none());
-    assert_eq!(
-        state
-            .active_status_notification
-            .as_ref()
-            .map(|notification| notification.message.as_str()),
-        Some("indexing 12%")
+    assert_ne!(
+        first_toast_id,
+        state.active_toast.as_ref().map(|toast| toast.id)
     );
 }
 
 #[test]
-fn notification_command_mark_all_read_clears_unread_counter() {
+/// 清空当前 toast 命令应立即移除展示中的提示。
+fn clear_active_toast_clears_current_toast() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Warning,
-            DesktopNotificationSource::Workspace,
-            "first warning",
-        )
-        .with_dedupe_key("warn.first"),
+    state.publish_toast_event(
+        DesktopToastEvent::new(DesktopToastLevel::Error, "fatal issue"),
     );
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Error,
-            DesktopNotificationSource::Workspace,
-            "second error",
-        )
-        .with_dedupe_key("error.second"),
-    );
+    assert!(state.active_toast.is_some());
 
-    state.mark_all_notifications_read();
+    state.clear_active_toast();
 
-    assert_eq!(state.unread_notification_count, 0);
-    assert!(
-        state
-            .notifications
-            .iter()
-            .all(|notification| notification.is_read)
-    );
-}
-
-#[test]
-fn notification_command_mark_selected_read_marks_only_one_item() {
-    let mut state = DesktopAppState::from_current_workspace();
-    let first_id = state
-        .publish_notification_event(
-            DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Warning,
-                DesktopNotificationSource::Workspace,
-                "first",
-            )
-            .with_dedupe_key("mark-selected.first"),
-        )
-        .expect("first id");
-    let second_id = state
-        .publish_notification_event(
-            DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Warning,
-                DesktopNotificationSource::Workspace,
-                "second",
-            )
-            .with_dedupe_key("mark-selected.second"),
-        )
-        .expect("second id");
-    state.selected_notification_id = Some(first_id);
-    state.unread_notification_count = 2;
-
-    state.mark_selected_notification_read();
-
-    assert_eq!(state.unread_notification_count, 1);
-    let first = state
-        .notifications
-        .iter()
-        .find(|item| item.id == first_id)
-        .expect("first notification");
-    let second = state
-        .notifications
-        .iter()
-        .find(|item| item.id == second_id)
-        .expect("second notification");
-    assert!(first.is_read);
-    assert!(!second.is_read);
-}
-
-#[test]
-fn notification_command_clear_read_keeps_only_unread_items() {
-    let mut state = DesktopAppState::from_current_workspace();
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Warning,
-            DesktopNotificationSource::Workspace,
-            "keep me unread",
-        )
-        .with_dedupe_key("warn.unread"),
-    );
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Info,
-            DesktopNotificationSource::Workspace,
-            "will be read",
-        )
-        .with_dedupe_key("info.read"),
-    );
-    state.notifications[1].is_read = true;
-    state.unread_notification_count = 1;
-
-    state.clear_read_notifications();
-
-    assert_eq!(state.notifications.len(), 1);
-    assert_eq!(state.notifications[0].message, "keep me unread");
-    assert_eq!(state.unread_notification_count, 1);
-}
-
-#[test]
-/// 计算通知面板结果。
-fn focusing_notification_panel_does_not_auto_mark_all_read() {
-    let mut state = DesktopAppState::from_current_workspace();
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Info,
-            DesktopNotificationSource::Workspace,
-            "keep unread on focus",
-        )
-        .with_dedupe_key("focus.keep-unread"),
-    );
-    assert_eq!(state.unread_notification_count, 1);
-
-    state.dispatch_command(CommandInvocation::from(WorkspaceAction::FocusPanel(
-        FocusTarget::NotificationPanel,
-    )));
-
-    assert_eq!(state.unread_notification_count, 1);
-    assert!(
-        state
-            .notifications
-            .iter()
-            .any(|notification| !notification.is_read)
-    );
-}
-
-#[test]
-/// 计算命令历史状态栏结果。
-fn notification_command_clear_all_empties_history_and_status() {
-    let mut state = DesktopAppState::from_current_workspace();
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Error,
-            DesktopNotificationSource::Workspace,
-            "fatal issue",
-        )
-        .with_dedupe_key("error.fatal"),
-    );
-    assert!(!state.notifications.is_empty());
-    assert!(state.active_status_notification.is_some());
-
-    state.clear_notifications();
-
-    assert!(state.notifications.is_empty());
-    assert!(state.active_status_notification.is_none());
-    assert!(state.active_toast_notification.is_none());
-    assert_eq!(state.unread_notification_count, 0);
-}
-
-#[test]
-/// 计算通知焦点选区结果。
-fn focus_unread_error_notification_sets_focus_and_selection_target() {
-    let mut state = DesktopAppState::from_current_workspace();
-    state.publish_notification_event(
-        DesktopNotificationEvent::new(
-            DesktopNotificationLevel::Info,
-            DesktopNotificationSource::Workspace,
-            "normal info",
-        )
-        .with_dedupe_key("info.1"),
-    );
-    let error_id = state
-        .publish_notification_event(
-            DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Error,
-                DesktopNotificationSource::Workspace,
-                "critical build error",
-            )
-            .with_dedupe_key("error.critical"),
-        )
-        .expect("error notification should be persisted");
-
-    state.focus_unread_error_notification();
-
-    assert_eq!(state.focused_target, FocusTarget::NotificationPanel);
-    assert_eq!(
-        state.take_pending_focus_target(),
-        Some(FocusTarget::NotificationPanel)
-    );
-    assert_eq!(
-        state.take_pending_notification_selection_id(),
-        Some(error_id)
-    );
-}
-
-#[test]
-fn notification_selection_commands_move_between_rows() {
-    let mut state = DesktopAppState::from_current_workspace();
-    let newest_id = state
-        .publish_notification_event(
-            DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Info,
-                DesktopNotificationSource::Workspace,
-                "newest",
-            )
-            .with_dedupe_key("n.newest"),
-        )
-        .expect("newest id");
-    let middle_id = state
-        .publish_notification_event(
-            DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Info,
-                DesktopNotificationSource::Workspace,
-                "middle",
-            )
-            .with_dedupe_key("n.middle"),
-        )
-        .expect("middle id");
-    let oldest_id = state
-        .publish_notification_event(
-            DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Info,
-                DesktopNotificationSource::Workspace,
-                "oldest",
-            )
-            .with_dedupe_key("n.oldest"),
-        )
-        .expect("oldest id");
-
-    // 面板显示顺序为 newest -> middle -> oldest，默认从首行开始。
-    state.select_next_notification();
-    assert_eq!(
-        state.take_pending_notification_selection_id(),
-        Some(middle_id)
-    );
-    state.select_next_notification();
-    assert_eq!(
-        state.take_pending_notification_selection_id(),
-        Some(newest_id)
-    );
-    state.select_prev_notification();
-    assert_eq!(
-        state.take_pending_notification_selection_id(),
-        Some(middle_id)
-    );
-    state.select_prev_notification();
-    assert_eq!(
-        state.take_pending_notification_selection_id(),
-        Some(oldest_id)
-    );
+    assert!(state.active_toast.is_none());
 }
 
 #[test]

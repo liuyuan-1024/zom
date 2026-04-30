@@ -12,10 +12,8 @@ pub(crate) enum AppIcon {
     ListTree,
     Search,
     BoltOutlined,
-    Check,
     Terminal,
     Debug,
-    Notification,
     Keyboard,
 
     // 关闭
@@ -53,10 +51,8 @@ impl AppIcon {
             AppIcon::ListTree => "icons/status_bar/list_tree.svg",
             AppIcon::Search => "icons/status_bar/search.svg",
             AppIcon::BoltOutlined => "icons/status_bar/bolt_outlined.svg",
-            AppIcon::Check => "icons/status_bar/check.svg",
             AppIcon::Terminal => "icons/status_bar/terminal.svg",
             AppIcon::Debug => "icons/status_bar/debug.svg",
-            AppIcon::Notification => "icons/status_bar/notification.svg",
             AppIcon::Keyboard => "icons/status_bar/keyboard.svg",
 
             // 关闭

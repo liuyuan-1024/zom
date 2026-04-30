@@ -90,7 +90,7 @@ impl WorkspaceView {
         ));
 
         if let Some(target) = right_target {
-            workspace_row = workspace_row.child(self.render_right_dock(target, right_width, cx));
+            workspace_row = workspace_row.child(self.render_right_dock(target, right_width));
         }
 
         if left_target.is_some() {
@@ -196,10 +196,9 @@ impl WorkspaceView {
 
     /// 渲染停靠区并组装对应界面节点。
     fn render_right_dock(
-        &mut self,
+        &self,
         target: FocusTarget,
         right_width: f32,
-        cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let mut right_dock = div()
             .id("workspace-right-dock")
@@ -212,9 +211,6 @@ impl WorkspaceView {
             .overflow_hidden();
 
         right_dock = match target {
-            FocusTarget::NotificationPanel => {
-                right_dock.child(self.render_notification_panel_with_toolbar(cx))
-            }
             FocusTarget::ShortcutPanel => right_dock.child(self.shortcut_panel.clone()),
             _ => right_dock,
         };

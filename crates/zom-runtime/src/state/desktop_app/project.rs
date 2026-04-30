@@ -13,9 +13,7 @@ use crate::{
     workspace_paths,
 };
 
-use super::{
-    DesktopAppState, DesktopNotificationEvent, DesktopNotificationLevel, DesktopNotificationSource,
-};
+use super::{DesktopAppState, DesktopToastEvent, DesktopToastLevel};
 
 impl DesktopAppState {
     /// 切换当前工作区项目，并重建文件树。
@@ -126,35 +124,26 @@ impl DesktopAppState {
                 if let Err(error) =
                     draft_store::remove_draft(&self.project_root, &active_tab.relative_path)
                 {
-                    self.publish_notification_event(
-                        DesktopNotificationEvent::new(
-                            DesktopNotificationLevel::Warning,
-                            DesktopNotificationSource::System,
+                    self.publish_toast_event(
+                        DesktopToastEvent::new(
+                            DesktopToastLevel::Warning,
                             format!("草稿清理失败 {} ({error})", active_tab.relative_path),
-                        )
-                        .with_dedupe_key(format!(
-                            "workspace:draft:clear:error:{}",
-                            active_tab.relative_path
-                        )),
+                        ),
                     );
                 }
-                DesktopNotificationEvent::new(
-                    DesktopNotificationLevel::Info,
-                    DesktopNotificationSource::Workspace,
+                DesktopToastEvent::new(
+                    DesktopToastLevel::Info,
                     format!("已保存 {}", active_tab.relative_path),
                 )
                 .is_user_initiated()
-                .with_dedupe_key(format!("workspace:save:{}", active_tab.relative_path))
             }
-            Err(error) => DesktopNotificationEvent::new(
-                DesktopNotificationLevel::Error,
-                DesktopNotificationSource::Workspace,
+            Err(error) => DesktopToastEvent::new(
+                DesktopToastLevel::Error,
                 format!("保存失败 {} ({error})", active_tab.relative_path),
             )
-            .is_user_initiated()
-            .with_dedupe_key(format!("workspace:save:error:{}", active_tab.relative_path)),
+            .is_user_initiated(),
         };
-        self.publish_notification_event(event);
+        self.publish_toast_event(event);
     }
 
     /// 将指定缓冲区的当前文本持久化为草稿文件。
@@ -174,18 +163,16 @@ impl DesktopAppState {
         if let Err(error) =
             draft_store::store_draft(&self.project_root, &relative_path, &state.text())
         {
-            self.publish_notification_event(
-                DesktopNotificationEvent::new(
-                    DesktopNotificationLevel::Warning,
-                    DesktopNotificationSource::System,
+            self.publish_toast_event(
+                DesktopToastEvent::new(
+                    DesktopToastLevel::Warning,
                     format!("草稿自动保存失败 {} ({error})", relative_path),
-                )
-                .with_dedupe_key(format!("workspace:draft:write:error:{}", relative_path)),
+                ),
             );
         }
     }
 
-    /// 若存在未保存草稿且内容与当前文本不同，则恢复草稿并通知用户。
+    /// 若存在未保存草稿且内容与当前文本不同，则恢复草稿并给出 toast 提示。
     ///
     /// 通过文本对比避免“文件已保存但残留旧草稿”时误覆盖磁盘最新内容。
     fn restore_editor_draft_if_exists(
@@ -196,24 +183,21 @@ impl DesktopAppState {
         match draft_store::load_draft(&self.project_root, relative_path) {
             Ok(Some(draft_text)) if draft_text != editor_state.text() => {
                 *editor_state = EditorState::from_text(draft_text);
-                self.publish_notification_event(
-                    DesktopNotificationEvent::new(
-                        DesktopNotificationLevel::Info,
-                        DesktopNotificationSource::Workspace,
+                self.publish_toast_event(
+                    DesktopToastEvent::new(
+                        DesktopToastLevel::Info,
                         format!("已恢复未保存草稿 {}", relative_path),
                     )
-                    .with_dedupe_key(format!("workspace:draft:restore:{}", relative_path)),
+                    .is_user_initiated(),
                 );
             }
             Ok(_) => {}
             Err(error) => {
-                self.publish_notification_event(
-                    DesktopNotificationEvent::new(
-                        DesktopNotificationLevel::Warning,
-                        DesktopNotificationSource::System,
+                self.publish_toast_event(
+                    DesktopToastEvent::new(
+                        DesktopToastLevel::Warning,
                         format!("草稿读取失败 {} ({error})", relative_path),
-                    )
-                    .with_dedupe_key(format!("workspace:draft:read:error:{}", relative_path)),
+                    ),
                 );
             }
         }

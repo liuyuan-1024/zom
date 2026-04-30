@@ -17,7 +17,7 @@ use crate::{
 impl DesktopAppState {
     /// 基于当前工作区构造应用初始状态。
     ///
-    /// 该函数集中定义“冷启动默认布局”：标题栏、工具栏、面板显隐、焦点与通知计数。
+    /// 该函数集中定义“冷启动默认布局”：标题栏、工具栏、面板显隐与焦点。
     /// 后续恢复会话或项目切换都应在此约定之上做增量覆盖。
     pub fn from_current_workspace() -> Self {
         let workspace_root =
@@ -51,15 +51,10 @@ impl DesktopAppState {
             focused_target: FocusTarget::Editor,
             visible_panels: default_visible_panels(),
             active_overlay: None,
-            notifications: Vec::new(),
-            active_toast_notification: None,
-            active_status_notification: None,
-            unread_notification_count: 0,
-            selected_notification_id: None,
-            pending_notification_selection_id: None,
+            active_toast: None,
             pending_focus_target: Some(FocusTarget::Editor),
             pending_ui_action: None,
-            next_notification_id: 1,
+            next_toast_id: 1,
         }
     }
 }

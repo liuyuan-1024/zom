@@ -1,16 +1,16 @@
-//! 通知悬浮提示渲染。
+//! Toast 悬浮提示渲染。
 
 use gpui::{Div, InteractiveElement, ParentElement, Stateful, Styled, div, px, rgb};
-use zom_runtime::state::{DesktopNotification, DesktopNotificationLevel};
+use zom_runtime::state::{DesktopToast, DesktopToastLevel};
 
 use crate::theme::{color, size};
 
-/// 渲染通知悬浮提示层。
-pub(crate) fn layer(notification: &DesktopNotification) -> Stateful<Div> {
-    let (border_color, background_color) = level_tone(notification.level);
+/// 渲染 toast 悬浮提示层。
+pub(crate) fn layer(toast: &DesktopToast) -> Stateful<Div> {
+    let (border_color, background_color) = level_tone(toast.level);
 
     div()
-        .id("notification-toast-layer")
+        .id("toast-layer")
         .absolute()
         .top(px(size::BAR_HEIGHT + size::GAP_2))
         .left(px(0.0))
@@ -19,7 +19,7 @@ pub(crate) fn layer(notification: &DesktopNotification) -> Stateful<Div> {
         .child(
             div().w_full().flex().child(div().flex_1()).child(
                 div()
-                    .id("notification-toast-card")
+                    .id("toast-card")
                     .w(px(360.0))
                     .flex()
                     .flex_col()
@@ -33,17 +33,17 @@ pub(crate) fn layer(notification: &DesktopNotification) -> Stateful<Div> {
                         div()
                             .text_sm()
                             .text_color(rgb(color::COLOR_FG_PRIMARY))
-                            .child(notification.message.clone()),
+                            .child(toast.message.clone()),
                     ),
             ),
         )
 }
 
-/// 把通知级别映射为 toast 的边框色与背景色。
-fn level_tone(level: DesktopNotificationLevel) -> (u32, u32) {
+/// 把toast级别映射为 toast 的边框色与背景色。
+fn level_tone(level: DesktopToastLevel) -> (u32, u32) {
     match level {
-        DesktopNotificationLevel::Info => (color::COLOR_FG_MUTED, color::COLOR_BG_PANEL),
-        DesktopNotificationLevel::Warning => (0xD29922, 0x2A230F),
-        DesktopNotificationLevel::Error => (0xF85149, 0x32191D),
+        DesktopToastLevel::Info => (color::COLOR_FG_MUTED, color::COLOR_BG_PANEL),
+        DesktopToastLevel::Warning => (0xD29922, 0x2A230F),
+        DesktopToastLevel::Error => (0xF85149, 0x32191D),
     }
 }

@@ -12,13 +12,13 @@ use gpui::{
 use zom_protocol::{
     CommandInvocation, EditorInvocation, FindReplaceAction, KeyCode, Modifiers, OverlayTarget,
 };
-use zom_runtime::state::{DesktopAppState, DesktopNotificationLevel, DesktopUiAction};
+use zom_runtime::state::{DesktopAppState, DesktopToastLevel, DesktopUiAction};
 
 use crate::{
     assets,
     components::{
-        WorkspaceView, bar::traffic_lights, notification_toast_overlay, settings_overlay,
-        status_bar, title_bar,
+        WorkspaceView, bar::traffic_lights, settings_overlay, status_bar, title_bar,
+        toast_overlay,
     },
     theme::{color, size},
 };
@@ -134,13 +134,13 @@ impl ZomRootView {
 
     /// 为当前 toast 安排“延迟自动清除”任务。
     ///
-    /// 清除前会二次核对通知 id，防止新 toast 被旧定时器误删。
+    /// 清除前会二次核对toast id，防止新 toast 被旧定时器误删。
     fn schedule_pending_toast_auto_clear(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let notification_id = self
+        let toast_id = self
             .store
             .update(cx, |store, _cx| store.take_pending_toast_auto_clear_id());
 
-        let Some(notification_id) = notification_id else {
+        let Some(toast_id) = toast_id else {
             return;
         };
 
@@ -152,9 +152,9 @@ impl ZomRootView {
                     this.store.update(cx, |store, cx| {
                         let should_clear = store
                             .select_core()
-                            .active_toast_notification
+                            .active_toast
                             .as_ref()
-                            .map(|notification| notification.id == notification_id)
+                            .map(|toast| toast.id == toast_id)
                             .unwrap_or(false);
                         if should_clear {
                             store.dispatch(UiAction::ClearActiveToast);
@@ -181,8 +181,8 @@ impl ZomRootView {
                 let Ok(selection_result) = picked_paths.await else {
                     let _ = this.update(cx, |this, cx| {
                         this.store.update(cx, |store, cx| {
-                            store.dispatch(UiAction::PushUserNotification {
-                                level: DesktopNotificationLevel::Warning,
+                            store.dispatch(UiAction::PushUserToast {
+                                level: DesktopToastLevel::Warning,
                                 message: "Open project folder dialog failed.".to_string(),
                             });
                             cx.notify();
@@ -193,8 +193,8 @@ impl ZomRootView {
                 let Ok(Some(paths)) = selection_result else {
                     let _ = this.update(cx, |this, cx| {
                         this.store.update(cx, |store, cx| {
-                            store.dispatch(UiAction::PushUserNotification {
-                                level: DesktopNotificationLevel::Info,
+                            store.dispatch(UiAction::PushUserToast {
+                                level: DesktopToastLevel::Info,
                                 message: "Open project folder canceled.".to_string(),
                             });
                             cx.notify();
@@ -205,8 +205,8 @@ impl ZomRootView {
                 let Some(project_root) = paths.into_iter().next() else {
                     let _ = this.update(cx, |this, cx| {
                         this.store.update(cx, |store, cx| {
-                            store.dispatch(UiAction::PushUserNotification {
-                                level: DesktopNotificationLevel::Warning,
+                            store.dispatch(UiAction::PushUserToast {
+                                level: DesktopToastLevel::Warning,
                                 message: "No project folder selected.".to_string(),
                             });
                             cx.notify();
@@ -219,8 +219,8 @@ impl ZomRootView {
                     this.store.update(cx, |store, cx| {
                         store.dispatch(UiAction::SwitchProject(project_root));
                         let project_name = store.select_core().project_name.clone();
-                        store.dispatch(UiAction::PushUserNotification {
-                            level: DesktopNotificationLevel::Info,
+                        store.dispatch(UiAction::PushUserToast {
+                            level: DesktopToastLevel::Info,
                             message: format!("Opened project: {project_name}"),
                         });
                         cx.notify();
@@ -244,8 +244,8 @@ impl ZomRootView {
         let debug_keys = std::env::var_os("ZOM_DEBUG_KEYS").is_some();
         if debug_keys {
             self.store.update(cx, |store, cx| {
-                store.dispatch(UiAction::PushDebugNotification {
-                    level: DesktopNotificationLevel::Info,
+                store.dispatch(UiAction::PushDebugToast {
+                    level: DesktopToastLevel::Info,
                     message: format!(
                         "[zom-shortcut] key={:?} focus_before={:?}",
                         keystroke,
@@ -268,8 +268,8 @@ impl ZomRootView {
         if !handled {
             if debug_keys {
                 self.store.update(cx, |store, cx| {
-                    store.dispatch(UiAction::PushDebugNotification {
-                        level: DesktopNotificationLevel::Warning,
+                    store.dispatch(UiAction::PushDebugToast {
+                        level: DesktopToastLevel::Warning,
                         message: "[zom-shortcut] ignored".to_string(),
                     });
                     cx.notify();
@@ -280,8 +280,8 @@ impl ZomRootView {
 
         if debug_keys {
             self.store.update(cx, |store, cx| {
-                store.dispatch(UiAction::PushDebugNotification {
-                    level: DesktopNotificationLevel::Info,
+                store.dispatch(UiAction::PushDebugToast {
+                    level: DesktopToastLevel::Info,
                     message: format!(
                         "[zom-shortcut] handled focus_after={:?}",
                         store.select_core().focused_target
@@ -441,7 +441,7 @@ impl gpui::Render for ZomRootView {
 
         let state = self.store.read(cx).select_root_chrome_state();
         let active_overlay = state.active_overlay;
-        let toast = state.active_toast_notification.clone();
+        let toast = state.active_toast.clone();
 
         let mut root = gpui::div()
             .relative()
@@ -470,8 +470,8 @@ impl gpui::Render for ZomRootView {
             root = root.child(self.render_settings_overlay());
         }
 
-        if let Some(notification) = toast.as_ref() {
-            root = root.child(notification_toast_overlay::layer(notification));
+        if let Some(toast) = toast.as_ref() {
+            root = root.child(toast_overlay::layer(toast));
         }
 
         root

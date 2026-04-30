@@ -5,5 +5,5 @@ mod status;
 mod text;
 
 pub use command::{command_dock, command_is_active, panel_target_for_command};
-pub use status::{cursor_text, notification_status_text};
+pub use status::cursor_text;
 pub use text::wrap_visual_line;

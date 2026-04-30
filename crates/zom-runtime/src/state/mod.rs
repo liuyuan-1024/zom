@@ -4,8 +4,8 @@ mod desktop_app;
 mod title_bar;
 mod tool_bar;
 pub use desktop_app::{
-    ActiveEditorSnapshot, DesktopAppState, DesktopNotification, DesktopNotificationEvent,
-    DesktopNotificationKind, DesktopNotificationLevel, DesktopNotificationSource, DesktopUiAction,
+    ActiveEditorSnapshot, DesktopAppState, DesktopToast, DesktopToastEvent, DesktopToastLevel,
+    DesktopUiAction,
 };
 pub use title_bar::{TitleBarAction, TitleBarState};
 pub use tool_bar::{ToolBarEntry, ToolBarState};

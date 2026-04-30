@@ -47,15 +47,13 @@ pub enum FocusTarget {
     TerminalPanel,
     /// Debug 面板
     DebugPanel,
-    /// 通知面板
-    NotificationPanel,
     /// 快捷键面板
     ShortcutPanel,
 }
 
 impl FocusTarget {
     /// 所有焦点目标目录（用于遍历与静态校验）。
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 12] = [
         Self::Editor,
         Self::Palette,
         Self::SettingsOverlay,
@@ -67,14 +65,13 @@ impl FocusTarget {
         Self::LanguageServersPanel,
         Self::TerminalPanel,
         Self::DebugPanel,
-        Self::NotificationPanel,
         Self::ShortcutPanel,
     ];
 
     /// 所有受工作台显隐策略管理的面板目标。
     ///
     /// 这些目标可被统一的“显示/隐藏/恢复布局”策略接管。
-    pub const VISIBILITY_MANAGED_PANELS: [Self; 9] = [
+    pub const VISIBILITY_MANAGED_PANELS: [Self; 8] = [
         Self::FileTreePanel,
         Self::GitPanel,
         Self::OutlinePanel,
@@ -82,7 +79,6 @@ impl FocusTarget {
         Self::LanguageServersPanel,
         Self::TerminalPanel,
         Self::DebugPanel,
-        Self::NotificationPanel,
         Self::ShortcutPanel,
     ];
 
@@ -96,7 +92,7 @@ impl FocusTarget {
     ];
 
     /// 右侧停靠区可挂载面板目标。
-    pub const RIGHT_DOCK_PANELS: [Self; 2] = [Self::NotificationPanel, Self::ShortcutPanel];
+    pub const RIGHT_DOCK_PANELS: [Self; 1] = [Self::ShortcutPanel];
 
     /// 底部停靠区可挂载面板目标。
     pub const BOTTOM_DOCK_PANELS: [Self; 2] = [Self::TerminalPanel, Self::DebugPanel];
@@ -112,7 +108,6 @@ impl FocusTarget {
                 | Self::LanguageServersPanel
                 | Self::TerminalPanel
                 | Self::DebugPanel
-                | Self::NotificationPanel
                 | Self::ShortcutPanel
         )
     }
@@ -137,7 +132,7 @@ impl FocusTarget {
             | Self::OutlinePanel
             | Self::ProjectSearchPanel
             | Self::LanguageServersPanel => Some(PanelDock::Left),
-            Self::NotificationPanel | Self::ShortcutPanel => Some(PanelDock::Right),
+            Self::ShortcutPanel => Some(PanelDock::Right),
             Self::TerminalPanel | Self::DebugPanel => Some(PanelDock::Bottom),
             _ => None,
         }
@@ -155,7 +150,6 @@ impl FocusTarget {
             | Self::LanguageServersPanel => Some(ToolBarSide::Left),
             Self::TerminalPanel
             | Self::DebugPanel
-            | Self::NotificationPanel
             | Self::ShortcutPanel => {
                 Some(ToolBarSide::Right)
             }
@@ -220,10 +214,7 @@ mod tests {
     #[test]
     /// 计算停靠区结果。
     fn panel_dock_mapping_matches_catalog() {
-        assert_eq!(
-            panel_dock(FocusTarget::NotificationPanel),
-            Some(PanelDock::Right)
-        );
+        assert_eq!(panel_dock(FocusTarget::ShortcutPanel), Some(PanelDock::Right));
         assert_eq!(
             panel_dock(FocusTarget::TerminalPanel),
             Some(PanelDock::Bottom)
@@ -250,7 +241,7 @@ mod tests {
             Some(ToolBarSide::Left)
         );
         assert_eq!(
-            FocusTarget::NotificationPanel.tool_bar_side(),
+            FocusTarget::ShortcutPanel.tool_bar_side(),
             Some(ToolBarSide::Right)
         );
         assert_eq!(FocusTarget::Editor.tool_bar_side(), None);

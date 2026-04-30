@@ -5,10 +5,10 @@ use zom_protocol::FocusTarget;
 
 use crate::{
     components::{
-        DebugPanel, FileTreePanel, GitPanel, LanguageServersPanel, NotificationPanel, OutlinePanel,
-        PaneView, ProjectSearchPanel, ShortcutPanel, TerminalPanel,
+        DebugPanel, FileTreePanel, GitPanel, LanguageServersPanel, OutlinePanel, PaneView,
+        ProjectSearchPanel, ShortcutPanel, TerminalPanel,
     },
-    root_view::store::{AppStore, UiAction},
+    root_view::store::AppStore,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -29,7 +29,6 @@ pub(crate) struct WorkspaceView {
     pub(super) language_servers_panel: Entity<LanguageServersPanel>,
     pub(super) terminal_panel: Entity<TerminalPanel>,
     pub(super) debug_panel: Entity<DebugPanel>,
-    pub(super) notification_panel: Entity<NotificationPanel>,
     pub(super) shortcut_panel: Entity<ShortcutPanel>,
     pub(super) pane_view: Entity<PaneView>,
     pub(super) left_dock_width: f32,
@@ -54,7 +53,6 @@ impl WorkspaceView {
         let language_servers_panel = cx.new(LanguageServersPanel::new);
         let terminal_panel = cx.new(TerminalPanel::new);
         let debug_panel = cx.new(DebugPanel::new);
-        let notification_panel = cx.new(|cx| NotificationPanel::new(store.clone(), cx));
         let shortcut_panel = cx.new(ShortcutPanel::new);
         let pane_view = cx.new(|cx| PaneView::new(store.clone(), cx));
 
@@ -67,7 +65,6 @@ impl WorkspaceView {
             language_servers_panel,
             terminal_panel,
             debug_panel,
-            notification_panel,
             shortcut_panel,
             pane_view,
             left_dock_width: crate::theme::size::PANEL_WIDTH,
@@ -99,13 +96,6 @@ impl WorkspaceView {
             }
             FocusTarget::TerminalPanel if is_visible => cx.focus_view(&self.terminal_panel, window),
             FocusTarget::DebugPanel if is_visible => cx.focus_view(&self.debug_panel, window),
-            FocusTarget::NotificationPanel if is_visible => {
-                self.store.update(cx, |store, cx| {
-                    store.dispatch(UiAction::ClearActiveToast);
-                    cx.notify();
-                });
-                cx.focus_view(&self.notification_panel, window);
-            }
             FocusTarget::ShortcutPanel if is_visible => cx.focus_view(&self.shortcut_panel, window),
             FocusTarget::Editor => {
                 self.pane_view

@@ -22,8 +22,8 @@ pub const SPECS: &[CommandKindSpec] = &[
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::GitPanel),
         "workspace.focus_panel.git",
-        "聚焦 Git 面板",
-        "显示并聚焦 Git 面板",
+        "聚焦版本控制面板",
+        "显示并聚焦版本控制面板",
     ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::OutlinePanel),
@@ -57,12 +57,6 @@ pub const SPECS: &[CommandKindSpec] = &[
         "显示并聚焦调试面板",
     ),
     // 右侧 dock。
-    CommandKindSpec::new(
-        CommandKind::WorkspaceFocusPanel(FocusTarget::NotificationPanel),
-        "workspace.focus_panel.notification",
-        "聚焦通知面板",
-        "显示并聚焦通知面板",
-    ),
     CommandKindSpec::new(
         CommandKind::WorkspaceFocusPanel(FocusTarget::ShortcutPanel),
         "workspace.focus_panel.shortcut",

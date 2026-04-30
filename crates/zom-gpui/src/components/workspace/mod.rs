@@ -2,7 +2,6 @@
 
 mod dock_sizing;
 mod render_find_replace;
-mod render_notification;
 mod render_workspace;
 mod splitters;
 mod view;

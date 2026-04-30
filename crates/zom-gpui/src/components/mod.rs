@@ -9,12 +9,10 @@ pub(crate) mod panel;
 pub(crate) mod workspace;
 
 pub(crate) use bar::{status_bar, title_bar};
-pub(crate) use overlay::{
-    notification_toast as notification_toast_overlay, settings as settings_overlay,
-};
+pub(crate) use overlay::{settings as settings_overlay, toast as toast_overlay};
 pub(crate) use pane::PaneView;
 pub(crate) use panel::{
-    DebugPanel, FileTreePanel, GitPanel, LanguageServersPanel, NotificationPanel, OutlinePanel,
-    ProjectSearchPanel, ShortcutPanel, TerminalPanel,
+    DebugPanel, FileTreePanel, GitPanel, LanguageServersPanel, OutlinePanel, ProjectSearchPanel,
+    ShortcutPanel, TerminalPanel,
 };
 pub(crate) use workspace::WorkspaceView;

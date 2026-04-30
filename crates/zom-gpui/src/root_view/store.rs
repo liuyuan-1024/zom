@@ -7,9 +7,8 @@ use zom_protocol::{
     Keystroke, OverlayTarget, WorkspaceAction,
 };
 use zom_runtime::state::{
-    ActiveEditorSnapshot, DesktopAppState, DesktopNotification, DesktopNotificationEvent,
-    DesktopNotificationLevel, DesktopNotificationSource, DesktopUiAction, FileTreeState, PaneState,
-    PanelDock,
+    ActiveEditorSnapshot, DesktopAppState, DesktopToastEvent, DesktopToastLevel,
+    DesktopUiAction, FileTreeState, PaneState, PanelDock,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,12 +84,12 @@ pub(crate) enum UiAction {
     HidePanelInDock(PanelDock),
     ClearActiveToast,
     SwitchProject(PathBuf),
-    PushUserNotification {
-        level: DesktopNotificationLevel,
+    PushUserToast {
+        level: DesktopToastLevel,
         message: String,
     },
-    PushDebugNotification {
-        level: DesktopNotificationLevel,
+    PushDebugToast {
+        level: DesktopToastLevel,
         message: String,
     },
 }
@@ -139,7 +138,7 @@ impl AppStore {
                 UiActionOutput::Bool(self.core.app.hide_visible_panel_in_dock(dock))
             }
             UiAction::ClearActiveToast => {
-                self.core.app.clear_active_toast_notification();
+                self.core.app.clear_active_toast();
                 UiActionOutput::None
             }
             UiAction::SwitchProject(project_root) => {
@@ -149,12 +148,12 @@ impl AppStore {
                 ));
                 UiActionOutput::None
             }
-            UiAction::PushUserNotification { level, message } => {
-                self.push_user_notification(level, message);
+            UiAction::PushUserToast { level, message } => {
+                self.push_user_toast(level, message);
                 UiActionOutput::None
             }
-            UiAction::PushDebugNotification { level, message } => {
-                self.push_debug_notification(level, message);
+            UiAction::PushDebugToast { level, message } => {
+                self.push_debug_toast(level, message);
                 UiActionOutput::None
             }
         }
@@ -184,12 +183,6 @@ impl AppStore {
     /// 返回活动编辑器快照；无活动标签时返回 `None`。
     pub(crate) fn select_active_editor_snapshot(&self) -> Option<ActiveEditorSnapshot> {
         self.core.app.active_editor_snapshot()
-    }
-
-    /// 返回通知快照副本，避免 UI 遍历时持有内部可变借用。
-    /// 列表顺序与核心状态保持一致。
-    pub(crate) fn select_notifications(&self) -> Vec<DesktopNotification> {
-        self.core.app.notifications.clone()
     }
 
     /// 查询某面板当前是否可见（用于按钮高亮与布局分支）。
@@ -226,11 +219,6 @@ impl AppStore {
     /// 取出 `take_pending_ui_action` 结果，并清理内部暂存状态。
     pub(crate) fn take_pending_ui_action(&mut self) -> Option<DesktopUiAction> {
         self.core.app.take_pending_ui_action()
-    }
-
-    /// 取出 `take_pending_notification_selection_id` 结果，并清理内部暂存状态。
-    pub(crate) fn take_pending_notification_selection_id(&mut self) -> Option<u64> {
-        self.core.app.take_pending_notification_selection_id()
     }
 
     /// 取出 `take_pending_toast_auto_clear_id` 结果，并清理内部暂存状态。
@@ -292,47 +280,30 @@ impl AppStore {
         }
     }
 
-    /// 追加“用户触发”的通知，并记录待自动清除的 toast id。
+    /// 追加“用户触发”的toast，并记录待自动清除的 toast id。
     ///
-    /// 用户通知会打上 `is_user_initiated`，以便 runtime 决定是否弹 toast。
-    fn push_user_notification(
+    /// 用户toast会打上 `is_user_initiated`，以便 runtime 决定是否弹 toast。
+    fn push_user_toast(
         &mut self,
-        level: DesktopNotificationLevel,
+        level: DesktopToastLevel,
         message: impl Into<String>,
     ) {
         let message = message.into();
-        let dedupe_key = format!("workspace:{level:?}:{message}");
-        let event =
-            DesktopNotificationEvent::new(level, DesktopNotificationSource::Workspace, message)
-                .is_user_initiated()
-                .with_dedupe_key(dedupe_key);
-        let notification_id = self.core.app.publish_notification_event(event);
-        self.ui.pending_toast_auto_clear_id = self
-            .core
-            .app
-            .active_toast_notification
-            .as_ref()
-            .map(|notification| notification.id)
-            .or(notification_id);
+        let event = DesktopToastEvent::new(level, message).is_user_initiated();
+        let toast_id = self.core.app.publish_toast_event(event);
+        self.ui.pending_toast_auto_clear_id = toast_id;
     }
 
-    /// 追加调试通知（通常不自动弹窗），用于快捷键链路诊断。
-    fn push_debug_notification(
+    /// 追加调试toast（通常不自动弹窗），用于快捷键链路诊断。
+    fn push_debug_toast(
         &mut self,
-        level: DesktopNotificationLevel,
+        level: DesktopToastLevel,
         message: impl Into<String>,
     ) {
         let message = message.into();
-        let dedupe_key = format!("debug:{level:?}:{message}");
-        let event = DesktopNotificationEvent::new(level, DesktopNotificationSource::Debug, message)
-            .with_dedupe_key(dedupe_key);
-        self.core.app.publish_notification_event(event);
-        self.ui.pending_toast_auto_clear_id = self
-            .core
-            .app
-            .active_toast_notification
-            .as_ref()
-            .map(|notification| notification.id);
+        let event = DesktopToastEvent::new(level, message);
+        let toast_id = self.core.app.publish_toast_event(event);
+        self.ui.pending_toast_auto_clear_id = toast_id;
     }
 }
 
@@ -340,7 +311,7 @@ impl AppStore {
 mod tests {
     use super::{AppStore, FindReplaceField, FindReplaceUiAction, UiAction, UiActionOutput};
     use zom_protocol::FocusTarget;
-    use zom_runtime::state::{DesktopAppState, DesktopNotificationLevel, PanelDock};
+    use zom_runtime::state::{DesktopAppState, DesktopToastLevel, PanelDock};
 
     fn make_store() -> AppStore {
         AppStore::new(DesktopAppState::from_current_workspace())
@@ -383,15 +354,15 @@ mod tests {
     }
 
     #[test]
-    /// 用户通知应触发 toast 自动清理标记。
-    fn push_user_notification_sets_toast_pending_marker() {
+    /// 用户toast应触发 toast 自动清理标记。
+    fn push_user_toast_sets_toast_pending_marker() {
         let mut store = make_store();
-        store.dispatch(UiAction::PushUserNotification {
-            level: DesktopNotificationLevel::Info,
+        store.dispatch(UiAction::PushUserToast {
+            level: DesktopToastLevel::Info,
             message: "hello".to_string(),
         });
 
-        assert!(!store.select_notifications().is_empty());
+        assert!(store.select_core().active_toast.is_some());
         assert!(store.take_pending_toast_auto_clear_id().is_some());
     }
 
