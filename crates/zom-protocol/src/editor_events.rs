@@ -104,6 +104,9 @@ pub enum ViewportInvalidationReason {
     DocumentChanged,
     SelectionChanged,
     LayoutChanged,
+    ViewportScrolled,
+    ViewportResized,
+    WrapWidthChanged,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

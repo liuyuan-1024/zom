@@ -10,7 +10,8 @@ pub use features::editing::{
         TransactionSpec, apply_transaction,
     },
 };
-pub use features::runtime_bridge::dispatch_runtime_request;
+pub use features::runtime_bridge::{dispatch_runtime_request, dispatch_viewport_update};
+pub use features::viewport::{ViewportModel, ViewportMutation, ViewportUpdate};
 pub use viewer_layout::wrap_visual_line;
 pub use zom_protocol::{
     DocumentVersion, EditorToRuntimeEvent, LineRange, RuntimeErrorCode, RuntimeRequestId,

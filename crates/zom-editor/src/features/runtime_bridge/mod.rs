@@ -10,6 +10,7 @@ use crate::features::editing::{
         TransactionSpec, apply_transaction,
     },
 };
+use crate::features::viewport::{ViewportModel, ViewportUpdate};
 
 pub fn dispatch_runtime_request(
     state: &mut EditorState,
@@ -62,6 +63,18 @@ pub fn dispatch_runtime_request(
             },
         ),
     }
+}
+
+pub fn dispatch_viewport_update(
+    state: &EditorState,
+    model: &mut ViewportModel,
+    update: ViewportUpdate,
+) -> Option<EditorToRuntimeEvent> {
+    model.apply(
+        protocol_version(state.version()),
+        state.buffer().line_count(),
+        update,
+    )
 }
 
 fn apply_runtime_transaction(
@@ -237,14 +250,15 @@ fn shift_offset(offset: usize, delta: isize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use zom_protocol::{Position, Selection};
+    use zom_protocol::{Position, Selection, ViewportState};
 
     use crate::features::editing::state::{DocVersion, EditorState};
 
     use super::{
         EditorToRuntimeEvent, RuntimeErrorCode, RuntimeRequestId, RuntimeResponse,
-        RuntimeToEditorRequest, dispatch_runtime_request,
+        RuntimeToEditorRequest, dispatch_runtime_request, dispatch_viewport_update,
     };
+    use crate::features::viewport::{ViewportModel, ViewportMutation, ViewportUpdate};
     use zom_protocol::{DocumentVersion, LineRange, TextDelta, ViewportInvalidationReason};
 
     #[test]
@@ -381,6 +395,64 @@ mod tests {
                 dirty_lines: vec![LineRange::new(10, 20)],
                 viewport: None,
                 reason: ViewportInvalidationReason::LayoutChanged,
+            }
+        );
+    }
+
+    #[test]
+    fn dispatch_viewport_update_emits_event_for_scroll_resize_and_wrap() {
+        let state = EditorState::from_text("a\nb\nc\nd\ne");
+        let mut model = ViewportModel::new();
+
+        let first = dispatch_viewport_update(
+            &state,
+            &mut model,
+            ViewportUpdate::new(ViewportState::new(0, 2), 120, ViewportMutation::Scroll),
+        )
+        .expect("first viewport update should emit event");
+        assert_eq!(
+            first,
+            EditorToRuntimeEvent::ViewportInvalidated {
+                version: DocumentVersion::zero(),
+                dirty_lines: vec![LineRange::new(0, 2)],
+                viewport: Some(ViewportState::new(0, 2)),
+                reason: ViewportInvalidationReason::ViewportScrolled,
+            }
+        );
+
+        let resized = dispatch_viewport_update(
+            &state,
+            &mut model,
+            ViewportUpdate::new(ViewportState::new(0, 3), 120, ViewportMutation::Resize),
+        )
+        .expect("resize should emit event");
+        assert_eq!(
+            resized,
+            EditorToRuntimeEvent::ViewportInvalidated {
+                version: DocumentVersion::zero(),
+                dirty_lines: vec![LineRange::new(0, 3)],
+                viewport: Some(ViewportState::new(0, 3)),
+                reason: ViewportInvalidationReason::ViewportResized,
+            }
+        );
+
+        let wrap_changed = dispatch_viewport_update(
+            &state,
+            &mut model,
+            ViewportUpdate::new(
+                ViewportState::new(0, 3),
+                90,
+                ViewportMutation::WrapWidthChanged,
+            ),
+        )
+        .expect("wrap width change should emit event");
+        assert_eq!(
+            wrap_changed,
+            EditorToRuntimeEvent::ViewportInvalidated {
+                version: DocumentVersion::zero(),
+                dirty_lines: vec![LineRange::new(0, 3)],
+                viewport: Some(ViewportState::new(0, 3)),
+                reason: ViewportInvalidationReason::WrapWidthChanged,
             }
         );
     }
