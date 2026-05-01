@@ -5,7 +5,7 @@ mod title_bar;
 mod tool_bar;
 pub use desktop_app::{
     ActiveEditorSnapshot, DesktopAppState, DesktopToast, DesktopToastEvent, DesktopToastLevel,
-    DesktopUiAction,
+    DesktopUiAction, EditorViewportMutation, EditorViewportUpdate,
 };
 pub use title_bar::{TitleBarAction, TitleBarState};
 pub use tool_bar::{ToolBarEntry, ToolBarState};

@@ -3,8 +3,13 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-use zom_editor::EditorState;
-use zom_protocol::{BufferId, FocusTarget, OverlayTarget, Selection};
+use zom_editor::{
+    EditorState, ViewportModel as EditorViewportModel, ViewportMutation, ViewportUpdate,
+};
+use zom_protocol::{
+    BufferId, DocumentVersion, EditorToRuntimeEvent, FocusTarget, LineRange, OverlayTarget,
+    Selection, ViewportInvalidationReason, ViewportState,
+};
 
 use crate::state::{
     FileTreeState, PaneState, PanelDock, TitleBarState, ToolBarState, dock_targets,
@@ -103,6 +108,37 @@ pub struct ActiveEditorSnapshot {
     pub text: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorViewportMutation {
+    Scroll,
+    Resize,
+    WrapWidthChanged,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EditorViewportUpdate {
+    pub first_visible_line: u32,
+    pub visible_line_count: u32,
+    pub wrap_column: u32,
+    pub mutation: EditorViewportMutation,
+}
+
+impl EditorViewportUpdate {
+    pub fn new(
+        first_visible_line: u32,
+        visible_line_count: u32,
+        wrap_column: u32,
+        mutation: EditorViewportMutation,
+    ) -> Self {
+        Self {
+            first_visible_line,
+            visible_line_count: visible_line_count.max(1),
+            wrap_column: wrap_column.max(1),
+            mutation,
+        }
+    }
+}
+
 /// 桌面端根界面使用的应用状态。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DesktopAppState {
@@ -120,6 +156,10 @@ pub struct DesktopAppState {
     pub(crate) editor_states: HashMap<BufferId, EditorState>,
     /// 活跃标签页对应的编辑历史仓库（key = buffer id）。
     pub(crate) editor_histories: HashMap<BufferId, history::EditorHistory>,
+    /// 每个 buffer 的视口状态模型（用于产生 ViewportInvalidated 事件）。
+    pub(crate) viewport_models: HashMap<BufferId, EditorViewportModel>,
+    /// 待上层消费的编辑器事件（当前包含 viewport invalidation）。
+    pub(crate) pending_editor_events: Vec<EditorToRuntimeEvent>,
     /// 当前聚焦目标。
     pub focused_target: FocusTarget,
     /// 当前可见的工作台面板集合。
@@ -186,6 +226,11 @@ impl DesktopAppState {
         self.pending_ui_action.take()
     }
 
+    /// 消费本帧累计的编辑器事件。
+    pub fn take_pending_editor_events(&mut self) -> Vec<EditorToRuntimeEvent> {
+        std::mem::take(&mut self.pending_editor_events)
+    }
+
     /// 返回当前激活编辑器的只读快照（用于渲染层）。
     ///
     /// 若标签页索引损坏或状态缺失，返回 `None` 让上层回退空态展示。
@@ -224,11 +269,140 @@ impl DesktopAppState {
     pub(super) fn remove_editor_state(&mut self, buffer_id: BufferId) {
         self.editor_states.remove(&buffer_id);
         self.editor_histories.remove(&buffer_id);
+        self.viewport_models.remove(&buffer_id);
     }
 
     /// 清理编辑器并同步相关状态。
     pub(super) fn clear_editor_states(&mut self) {
         self.editor_states.clear();
         self.editor_histories.clear();
+        self.viewport_models.clear();
+        self.pending_editor_events.clear();
     }
+
+    /// 根据当前活动编辑器状态更新视口，并在变化时生成协议事件。
+    pub fn dispatch_active_editor_viewport_update(&mut self, update: EditorViewportUpdate) -> bool {
+        let Some(buffer_id) = self.active_buffer_id() else {
+            return false;
+        };
+        let Some(editor_state) = self.editor_states.get(&buffer_id) else {
+            return false;
+        };
+
+        let version = DocumentVersion::from(editor_state.version().get());
+        let line_count = editor_state.line_count();
+        let update = ViewportUpdate::new(
+            ViewportState::new(update.first_visible_line, update.visible_line_count),
+            update.wrap_column,
+            match update.mutation {
+                EditorViewportMutation::Scroll => ViewportMutation::Scroll,
+                EditorViewportMutation::Resize => ViewportMutation::Resize,
+                EditorViewportMutation::WrapWidthChanged => ViewportMutation::WrapWidthChanged,
+            },
+        );
+
+        let model = self
+            .viewport_models
+            .entry(buffer_id)
+            .or_insert_with(EditorViewportModel::new);
+        let event = model.apply(version, line_count, update);
+        if let Some(event) = event {
+            self.pending_editor_events.push(event);
+            return true;
+        }
+        false
+    }
+
+    pub(super) fn emit_editor_events_from_state_change(
+        &mut self,
+        previous: &EditorState,
+        next: &EditorState,
+    ) {
+        if previous.text() != next.text() {
+            let dirty_lines = collect_dirty_lines_for_text_change(previous.text(), next.text());
+            self.pending_editor_events
+                .push(EditorToRuntimeEvent::ViewportInvalidated {
+                    version: DocumentVersion::from(next.version().get()),
+                    dirty_lines,
+                    viewport: None,
+                    reason: ViewportInvalidationReason::DocumentChanged,
+                });
+            return;
+        }
+
+        if previous.selection() != next.selection() {
+            self.pending_editor_events
+                .push(EditorToRuntimeEvent::ViewportInvalidated {
+                    version: DocumentVersion::from(next.version().get()),
+                    dirty_lines: collect_dirty_lines_for_selection(
+                        previous.selection(),
+                        next.selection(),
+                    ),
+                    viewport: None,
+                    reason: ViewportInvalidationReason::SelectionChanged,
+                });
+        }
+    }
+}
+
+fn collect_dirty_lines_for_selection(previous: Selection, next: Selection) -> Vec<LineRange> {
+    let ranges = vec![
+        LineRange::new(
+            previous.anchor().line,
+            previous.anchor().line.saturating_add(1),
+        ),
+        LineRange::new(
+            previous.active().line,
+            previous.active().line.saturating_add(1),
+        ),
+        LineRange::new(next.anchor().line, next.anchor().line.saturating_add(1)),
+        LineRange::new(next.active().line, next.active().line.saturating_add(1)),
+    ];
+    merge_line_ranges(ranges)
+}
+
+fn collect_dirty_lines_for_text_change(previous_text: String, next_text: String) -> Vec<LineRange> {
+    let previous_lines = previous_text.split('\n').collect::<Vec<_>>();
+    let next_lines = next_text.split('\n').collect::<Vec<_>>();
+
+    let mut common_prefix = 0usize;
+    while common_prefix < previous_lines.len()
+        && common_prefix < next_lines.len()
+        && previous_lines[common_prefix] == next_lines[common_prefix]
+    {
+        common_prefix += 1;
+    }
+
+    let mut common_suffix = 0usize;
+    while common_suffix < previous_lines.len().saturating_sub(common_prefix)
+        && common_suffix < next_lines.len().saturating_sub(common_prefix)
+        && previous_lines[previous_lines.len() - 1 - common_suffix]
+            == next_lines[next_lines.len() - 1 - common_suffix]
+    {
+        common_suffix += 1;
+    }
+
+    let previous_end = previous_lines.len().saturating_sub(common_suffix);
+    let next_end = next_lines.len().saturating_sub(common_suffix);
+    let start = u32::try_from(common_prefix).unwrap_or(u32::MAX);
+    let end = u32::try_from(previous_end.max(next_end)).unwrap_or(u32::MAX);
+    vec![LineRange::new(start, end.max(start.saturating_add(1)))]
+}
+
+fn merge_line_ranges(mut ranges: Vec<LineRange>) -> Vec<LineRange> {
+    if ranges.is_empty() {
+        return ranges;
+    }
+    ranges.sort_by_key(|range| (range.start_line, range.end_line_exclusive));
+    let mut merged: Vec<LineRange> = Vec::with_capacity(ranges.len());
+    for range in ranges {
+        if let Some(last) = merged.last_mut()
+            && range.start_line <= last.end_line_exclusive
+        {
+            last.end_line_exclusive = last.end_line_exclusive.max(range.end_line_exclusive);
+            continue;
+        }
+        merged.push(range);
+    }
+    merged
 }

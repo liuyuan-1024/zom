@@ -48,6 +48,8 @@ impl DesktopAppState {
             },
             editor_states: HashMap::new(),
             editor_histories: HashMap::new(),
+            viewport_models: HashMap::new(),
+            pending_editor_events: Vec::new(),
             focused_target: FocusTarget::Editor,
             visible_panels: default_visible_panels(),
             active_overlay: None,

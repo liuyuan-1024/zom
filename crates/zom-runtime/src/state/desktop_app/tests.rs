@@ -7,13 +7,17 @@ use std::{
 };
 
 use zom_protocol::{
-    CommandInvocation, EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest,
-    FocusTarget, KeyCode, Keystroke, Modifiers, OverlayTarget, Position,
+    CommandInvocation, EditorAction, EditorInvocation, EditorToRuntimeEvent, FindReplaceAction,
+    FindReplaceRequest, FocusTarget, KeyCode, Keystroke, Modifiers, OverlayTarget, Position,
+    ViewportInvalidationReason, ViewportState,
     command::{FileTreeAction, TabAction, WorkspaceAction},
 };
 use zom_text_tokens::LineEnding;
 
-use super::{DesktopAppState, DesktopToastEvent, DesktopToastLevel, DesktopUiAction};
+use super::{
+    DesktopAppState, DesktopToastEvent, DesktopToastLevel, DesktopUiAction, EditorViewportMutation,
+    EditorViewportUpdate,
+};
 use crate::state::{FileTreeNodeKind, PanelDock};
 
 /// 为测试场景构造快捷键命令触发输入，统一使用全局作用域解析路径。
@@ -292,6 +296,32 @@ fn editor_command_updates_active_tab_buffer_and_cursor() {
         "ab"
     );
     assert_eq!(state.tool_bar.cursor, Position::new(0, 1));
+}
+
+#[test]
+fn editor_command_emits_document_dirty_lines_event() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("aa\nbb\ncc"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+    state.tool_bar.cursor = Position::new(1, 1);
+
+    state.dispatch_command(CommandInvocation::from(EditorInvocation::insert_text("X")));
+
+    assert_eq!(
+        state.take_pending_editor_events(),
+        vec![EditorToRuntimeEvent::ViewportInvalidated {
+            version: zom_protocol::DocumentVersion::from(1),
+            dirty_lines: vec![zom_protocol::LineRange::new(1, 2)],
+            viewport: None,
+            reason: ViewportInvalidationReason::DocumentChanged,
+        }]
+    );
 }
 
 #[test]
@@ -1290,6 +1320,62 @@ fn open_file_failure_keeps_existing_editor_state() {
     assert_eq!(state.tool_bar.language, before_language);
 
     remove_temp_workspace(workspace);
+}
+
+#[test]
+fn viewport_update_emits_protocol_event_for_active_editor() {
+    let mut state = DesktopAppState::from_current_workspace();
+    set_tabs(
+        &mut state,
+        vec![(
+            runtime_test_tab_state("demo.rs", zom_protocol::BufferId::new(1), LineEnding::Lf),
+            zom_editor::EditorState::from_text("a\nb\nc\nd"),
+        )],
+    );
+    state.pane.active_tab_index = Some(0);
+
+    let emitted = state.dispatch_active_editor_viewport_update(EditorViewportUpdate::new(
+        0,
+        2,
+        120,
+        EditorViewportMutation::Scroll,
+    ));
+    assert!(emitted);
+    assert_eq!(
+        state.take_pending_editor_events(),
+        vec![EditorToRuntimeEvent::ViewportInvalidated {
+            version: zom_protocol::DocumentVersion::zero(),
+            dirty_lines: vec![zom_protocol::LineRange::new(0, 2)],
+            viewport: Some(ViewportState::new(0, 2)),
+            reason: ViewportInvalidationReason::ViewportScrolled,
+        }]
+    );
+
+    let emitted = state.dispatch_active_editor_viewport_update(EditorViewportUpdate::new(
+        0,
+        2,
+        120,
+        EditorViewportMutation::Scroll,
+    ));
+    assert!(!emitted);
+    assert!(state.take_pending_editor_events().is_empty());
+
+    let emitted = state.dispatch_active_editor_viewport_update(EditorViewportUpdate::new(
+        0,
+        2,
+        80,
+        EditorViewportMutation::WrapWidthChanged,
+    ));
+    assert!(emitted);
+    assert_eq!(
+        state.take_pending_editor_events(),
+        vec![EditorToRuntimeEvent::ViewportInvalidated {
+            version: zom_protocol::DocumentVersion::zero(),
+            dirty_lines: vec![zom_protocol::LineRange::new(0, 2)],
+            viewport: Some(ViewportState::new(0, 2)),
+            reason: ViewportInvalidationReason::WrapWidthChanged,
+        }]
+    );
 }
 
 /// 创建工作区并完成初始化。

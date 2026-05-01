@@ -65,6 +65,10 @@ impl EditorState {
         self.buffer.is_empty()
     }
 
+    pub fn line_count(&self) -> u32 {
+        self.buffer.line_count()
+    }
+
     pub fn selection(&self) -> Selection {
         self.selection
     }

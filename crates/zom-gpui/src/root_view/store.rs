@@ -3,12 +3,12 @@
 use std::path::PathBuf;
 
 use zom_protocol::{
-    CommandInvocation, EditorInvocation, FindReplaceAction, FindReplaceRequest, FocusTarget,
-    Keystroke, OverlayTarget, WorkspaceAction,
+    CommandInvocation, EditorInvocation, EditorToRuntimeEvent, FindReplaceAction,
+    FindReplaceRequest, FocusTarget, Keystroke, OverlayTarget, WorkspaceAction,
 };
 use zom_runtime::state::{
     ActiveEditorSnapshot, DesktopAppState, DesktopToastEvent, DesktopToastLevel, DesktopUiAction,
-    FileTreeState, PaneState, PanelDock,
+    EditorViewportUpdate, FileTreeState, PaneState, PanelDock,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +60,7 @@ pub(crate) struct CoreState {
 pub(crate) struct UiEphemeralState {
     pub(crate) find_replace: FindReplaceOverlayState,
     pub(crate) pending_toast_auto_clear_id: Option<u64>,
+    pub(crate) pending_editor_event: Option<EditorToRuntimeEvent>,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +81,7 @@ pub(crate) enum FindReplaceUiAction {
 pub(crate) enum UiAction {
     DispatchCommand(CommandInvocation),
     DispatchKeystroke(Keystroke),
+    DispatchViewportUpdate(EditorViewportUpdate),
     FindReplace(FindReplaceUiAction),
     HidePanelInDock(PanelDock),
     ClearActiveToast,
@@ -125,10 +127,18 @@ impl AppStore {
         match action {
             UiAction::DispatchCommand(command) => {
                 self.core.app.dispatch_command(command);
+                self.sync_pending_editor_event();
                 UiActionOutput::None
             }
             UiAction::DispatchKeystroke(keystroke) => {
-                UiActionOutput::Bool(self.core.app.dispatch_keystroke(&keystroke))
+                let handled = self.core.app.dispatch_keystroke(&keystroke);
+                self.sync_pending_editor_event();
+                UiActionOutput::Bool(handled)
+            }
+            UiAction::DispatchViewportUpdate(update) => {
+                let emitted = self.core.app.dispatch_active_editor_viewport_update(update);
+                self.sync_pending_editor_event();
+                UiActionOutput::Bool(emitted)
             }
             UiAction::FindReplace(action) => {
                 self.dispatch_find_replace_action(action);
@@ -204,6 +214,11 @@ impl AppStore {
     /// 查询查找替换瞬态状态（不持久化到 runtime）。
     pub(crate) fn select_find_replace_overlay(&self) -> &FindReplaceOverlayState {
         &self.ui.find_replace
+    }
+
+    /// 取出待消费的编辑器事件（若存在）。
+    pub(crate) fn take_pending_editor_event(&mut self) -> Option<EditorToRuntimeEvent> {
+        self.ui.pending_editor_event.take()
     }
 
     /// 查询指定停靠区当前可见面板（若有）。
@@ -297,13 +312,21 @@ impl AppStore {
         let toast_id = self.core.app.publish_toast_event(event);
         self.ui.pending_toast_auto_clear_id = toast_id;
     }
+
+    fn sync_pending_editor_event(&mut self) {
+        let events = self.core.app.take_pending_editor_events();
+        self.ui.pending_editor_event = events.last().cloned();
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{AppStore, FindReplaceField, FindReplaceUiAction, UiAction, UiActionOutput};
-    use zom_protocol::FocusTarget;
-    use zom_runtime::state::{DesktopAppState, DesktopToastLevel, PanelDock};
+    use zom_protocol::{EditorToRuntimeEvent, FocusTarget};
+    use zom_runtime::state::{
+        DesktopAppState, DesktopToastLevel, EditorViewportMutation, EditorViewportUpdate,
+        FileTreeNodeKind, PanelDock,
+    };
 
     fn make_store() -> AppStore {
         AppStore::new(DesktopAppState::from_current_workspace())
@@ -364,5 +387,32 @@ mod tests {
         let mut store = make_store();
         let output = store.dispatch(UiAction::HidePanelInDock(PanelDock::Left));
         assert!(matches!(output, UiActionOutput::Bool(_)));
+    }
+
+    #[test]
+    fn viewport_update_action_emits_runtime_event_snapshot() {
+        let project_root = std::env::temp_dir().join("zom-gpui-store-viewport-project");
+        std::fs::create_dir_all(&project_root).expect("create temp project root");
+        std::fs::write(project_root.join("main.rs"), "a\nb\nc\n").expect("write main.rs");
+        let mut state = DesktopAppState::from_current_workspace();
+        state.switch_project(project_root.clone());
+        state.activate_file_tree_node("main.rs", FileTreeNodeKind::File);
+        assert!(state.active_editor_snapshot().is_some());
+
+        let mut store = AppStore::new(state);
+
+        let output = store.dispatch(UiAction::DispatchViewportUpdate(EditorViewportUpdate::new(
+            0,
+            2,
+            80,
+            EditorViewportMutation::Scroll,
+        )));
+        assert!(matches!(output, UiActionOutput::Bool(true)));
+        assert!(matches!(
+            store.take_pending_editor_event(),
+            Some(EditorToRuntimeEvent::ViewportInvalidated { .. })
+        ));
+
+        let _ = std::fs::remove_dir_all(project_root);
     }
 }

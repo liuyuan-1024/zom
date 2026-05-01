@@ -1,6 +1,6 @@
 //! 文本布局缓存与行映射。
 
-use zom_protocol::{BufferId, Position};
+use zom_protocol::{BufferId, LineRange, Position};
 use zom_runtime::{projection::wrap_visual_line, state::ActiveEditorSnapshot};
 use zom_text_tokens::{LF_BYTE, LF_CHAR};
 
@@ -75,6 +75,32 @@ pub(super) fn ensure_viewer_layout_cache<'a>(
     cache
         .as_ref()
         .expect("viewer layout cache should exist after ensure")
+}
+
+pub(super) fn apply_dirty_line_invalidation(
+    cache: &mut Option<ViewerLayoutCache>,
+    active_editor: &ActiveEditorSnapshot,
+    wrap_chunk: usize,
+    dirty_lines: &[LineRange],
+) {
+    if dirty_lines.is_empty() {
+        return;
+    }
+    let wrap_chunk = wrap_chunk.max(1);
+    let Some(cache_ref) = cache.as_mut() else {
+        return;
+    };
+    if cache_ref.buffer_id != active_editor.buffer_id || cache_ref.wrap_chunk != wrap_chunk {
+        *cache = None;
+        return;
+    }
+
+    let dirty_start = dirty_lines
+        .iter()
+        .map(|range| usize::try_from(range.start_line).unwrap_or(usize::MAX))
+        .min()
+        .unwrap_or(0);
+    rebuild_cache_tail(cache_ref, active_editor, wrap_chunk, dirty_start);
 }
 
 /// 统计文本总行数，用于视图布局预估。
@@ -204,13 +230,75 @@ fn build_viewer_layout_cache(
     }
 }
 
+fn rebuild_cache_tail(
+    cache: &mut ViewerLayoutCache,
+    active_editor: &ActiveEditorSnapshot,
+    wrap_chunk: usize,
+    dirty_start_line: usize,
+) {
+    let wrap_chunk = wrap_chunk.max(1);
+    let buffer_lines = split_lines_for_viewer(&active_editor.text);
+    let line_count = buffer_lines.len();
+    let start_line = dirty_start_line.min(line_count);
+
+    cache.buffer_id = active_editor.buffer_id;
+    cache.doc_version = active_editor.doc_version;
+    cache.wrap_chunk = wrap_chunk;
+    cache.line_count = line_count;
+
+    cache.line_char_lens.truncate(start_line);
+    cache.line_wrap_counts.truncate(start_line);
+    cache.line_start_rows.truncate(start_line);
+
+    let start_row = if start_line == 0 {
+        0
+    } else {
+        let previous_line = start_line - 1;
+        cache.line_start_rows[previous_line] + cache.line_wrap_counts[previous_line]
+    };
+    cache.wrapped_rows.truncate(start_row);
+
+    for (line_index, line) in buffer_lines.iter().enumerate().skip(start_line) {
+        cache.line_start_rows.push(cache.wrapped_rows.len());
+        let line_char_len = line.chars().count();
+        cache.line_char_lens.push(line_char_len);
+        let wrapped_lines = wrap_visual_line(line, wrap_chunk);
+        let wrapped_count = wrapped_lines.len().max(1);
+        cache.line_wrap_counts.push(wrapped_count);
+
+        for (wrapped_index, wrapped_line) in wrapped_lines.into_iter().enumerate() {
+            let segment_start_column = wrapped_index * wrap_chunk;
+            let segment_end_column = segment_start_column + wrapped_line.chars().count();
+            let is_last_segment = wrapped_index + 1 == wrapped_count;
+            cache.wrapped_rows.push(WrappedRow {
+                row_id: gpui::SharedString::from(format!(
+                    "viewer-row-{line_index}-{wrapped_index}"
+                )),
+                line_number: (wrapped_index == 0).then_some(line_index + 1),
+                line_index,
+                line_char_len,
+                segment_start_column,
+                segment_end_column,
+                is_last_segment,
+                wrapped_line,
+            });
+        }
+    }
+}
+
 fn split_lines_for_viewer(text: &str) -> Vec<String> {
     text.split(LF_CHAR).map(|line| line.to_string()).collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{gutter_width_for_line_count, line_count_from_text, soft_wrap_max_chars};
+    use zom_protocol::BufferId;
+    use zom_runtime::state::ActiveEditorSnapshot;
+
+    use super::{
+        apply_dirty_line_invalidation, build_viewer_layout_cache, gutter_width_for_line_count,
+        line_count_from_text, soft_wrap_max_chars,
+    };
 
     #[test]
     fn line_count_handles_trailing_newline() {
@@ -232,5 +320,75 @@ mod tests {
         let width_small = gutter_width_for_line_count(9);
         let width_large = gutter_width_for_line_count(1000);
         assert!(width_large > width_small);
+    }
+
+    #[test]
+    fn dirty_line_invalidation_rebuilds_tail_and_keeps_prefix_rows() {
+        let before = ActiveEditorSnapshot {
+            buffer_id: BufferId::new(1),
+            doc_version: 1,
+            selection: zom_protocol::Selection::caret(zom_protocol::Position::zero()),
+            text: "aa\nbb\ncc".to_string(),
+        };
+        let after = ActiveEditorSnapshot {
+            buffer_id: BufferId::new(1),
+            doc_version: 2,
+            selection: zom_protocol::Selection::caret(zom_protocol::Position::zero()),
+            text: "aa\nbX\ncc".to_string(),
+        };
+        let mut cache = Some(build_viewer_layout_cache(&before, 16));
+        let prefix_row_before = cache
+            .as_ref()
+            .expect("cache should exist")
+            .wrapped_rows
+            .first()
+            .expect("first row")
+            .wrapped_line
+            .clone();
+
+        apply_dirty_line_invalidation(
+            &mut cache,
+            &after,
+            16,
+            &[zom_protocol::LineRange::new(1, 2)],
+        );
+
+        let cache = cache.expect("cache should exist after invalidation");
+        assert_eq!(cache.doc_version, 2);
+        assert_eq!(cache.line_count, 3);
+        assert_eq!(cache.wrapped_rows[0].wrapped_line, prefix_row_before);
+        assert_eq!(cache.wrapped_rows[1].wrapped_line, "bX");
+    }
+
+    #[test]
+    fn dirty_line_invalidation_handles_line_count_shift() {
+        let before = ActiveEditorSnapshot {
+            buffer_id: BufferId::new(1),
+            doc_version: 1,
+            selection: zom_protocol::Selection::caret(zom_protocol::Position::zero()),
+            text: "a\nb\nc".to_string(),
+        };
+        let after = ActiveEditorSnapshot {
+            buffer_id: BufferId::new(1),
+            doc_version: 2,
+            selection: zom_protocol::Selection::caret(zom_protocol::Position::zero()),
+            text: "a\nx\ny\nb\nc".to_string(),
+        };
+        let mut cache = Some(build_viewer_layout_cache(&before, 16));
+
+        apply_dirty_line_invalidation(
+            &mut cache,
+            &after,
+            16,
+            &[zom_protocol::LineRange::new(1, 4)],
+        );
+
+        let cache = cache.expect("cache should exist after invalidation");
+        assert_eq!(cache.line_count, 5);
+        assert_eq!(cache.wrapped_rows[0].wrapped_line, "a");
+        assert_eq!(cache.wrapped_rows[1].wrapped_line, "x");
+        assert_eq!(cache.wrapped_rows[2].wrapped_line, "y");
+        assert_eq!(cache.wrapped_rows[3].wrapped_line, "b");
+        assert_eq!(cache.wrapped_rows[4].wrapped_line, "c");
     }
 }

@@ -64,6 +64,7 @@ impl DesktopAppState {
         if should_persist_draft {
             self.persist_editor_draft(active_buffer_id, &next_state);
         }
+        self.emit_editor_events_from_state_change(&current_state, &next_state);
         self.replace_editor_state(active_buffer_id, next_state);
         self.sync_tool_bar_with_active_tab();
     }

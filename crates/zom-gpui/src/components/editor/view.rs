@@ -6,19 +6,20 @@ use gpui::{
     App, Context, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement,
     Render, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
-use zom_protocol::{Position, Selection};
-use zom_runtime::state::ActiveEditorSnapshot;
+use zom_protocol::{EditorToRuntimeEvent, Position, Selection, ViewportInvalidationReason};
+use zom_runtime::state::{ActiveEditorSnapshot, EditorViewportMutation, EditorViewportUpdate};
 
 use crate::{
-    root_view::store::AppStore,
+    root_view::store::{AppStore, UiAction},
     theme::{color, size},
 };
 
 use super::{
     caret::CARET_BLINK_PAUSE_AFTER_MOVE_MS,
     layout_cache::{
-        ViewerLayoutCache, cached_line_count, cursor_visual_row_index, ensure_viewer_layout_cache,
-        gutter_width_for_line_count, line_count_from_text, soft_wrap_max_chars,
+        ViewerLayoutCache, apply_dirty_line_invalidation, cached_line_count,
+        cursor_visual_row_index, ensure_viewer_layout_cache, gutter_width_for_line_count,
+        line_count_from_text, soft_wrap_max_chars,
     },
     selection_paint::{
         caret_column_in_wrapped_segment, render_gutter_cell, render_text_cell,
@@ -37,8 +38,17 @@ pub(crate) struct EditorView {
     last_cursor_moved_at: Option<Instant>,
     should_scroll_to_cursor: bool,
     viewer_layout_cache: Option<ViewerLayoutCache>,
+    last_viewport_metrics: Option<ViewportRenderMetrics>,
     focus_handle: FocusHandle,
     scroll_handle: ScrollHandle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ViewportRenderMetrics {
+    first_visible_line: u32,
+    visible_line_count: u32,
+    wrap_chunk: usize,
+    viewport_height_px: u32,
 }
 
 struct ViewerRenderSpec<'a> {
@@ -85,6 +95,7 @@ impl EditorView {
             last_cursor_moved_at: None,
             should_scroll_to_cursor: true,
             viewer_layout_cache: None,
+            last_viewport_metrics: None,
             focus_handle: cx.focus_handle(),
             scroll_handle: ScrollHandle::new(),
         }
@@ -119,6 +130,17 @@ impl EditorView {
         let gutter_width_px = gutter_width_for_line_count(line_count);
         let wrap_chunk =
             soft_wrap_max_chars(scroll_width_px, viewport_width_px, gutter_width_px).max(1);
+        let pending_event = self
+            .store
+            .update(cx, |store, _cx| store.take_pending_editor_event());
+        if let Some(event) = pending_event.as_ref() {
+            apply_editor_event_to_layout_cache(
+                &mut self.viewer_layout_cache,
+                &active_editor,
+                wrap_chunk,
+                event,
+            );
+        }
         let mut scroll_to_row = None;
 
         if self.should_scroll_to_cursor {
@@ -136,6 +158,25 @@ impl EditorView {
 
         let layout_cache =
             ensure_viewer_layout_cache(&mut self.viewer_layout_cache, &active_editor, wrap_chunk);
+        if let Some(next_metrics) = viewport_metrics_from_scroll(&self.scroll_handle, layout_cache)
+        {
+            if let Some(mutation) =
+                resolve_viewport_mutation(self.last_viewport_metrics, next_metrics)
+            {
+                let viewport_update = EditorViewportUpdate::new(
+                    next_metrics.first_visible_line,
+                    next_metrics.visible_line_count,
+                    u32::try_from(wrap_chunk).unwrap_or(u32::MAX),
+                    mutation,
+                );
+                self.store.update(cx, |store, _cx| {
+                    store.dispatch(UiAction::DispatchViewportUpdate(viewport_update));
+                });
+            }
+            self.last_viewport_metrics = Some(next_metrics);
+        } else {
+            self.last_viewport_metrics = None;
+        }
         let selection = active_editor.selection;
         let scroll_handle = self.scroll_handle.clone();
         let is_editor_focused = self.focus_handle.is_focused(window);
@@ -281,4 +322,90 @@ fn render_viewer_content(spec: ViewerRenderSpec<'_>) -> impl IntoElement {
         .overflow_scroll()
         .track_scroll(scroll_handle)
         .children(children)
+}
+
+fn viewport_metrics_from_scroll(
+    scroll_handle: &ScrollHandle,
+    layout_cache: &ViewerLayoutCache,
+) -> Option<ViewportRenderMetrics> {
+    let total_rows = layout_cache.wrapped_rows.len();
+    if total_rows == 0 {
+        return None;
+    }
+
+    let scroll_offset_y_px = (-f32::from(scroll_handle.offset().y)).max(0.0);
+    let viewport_height_px =
+        f32::from(scroll_handle.bounds().size.height).max(VISUAL_ROW_HEIGHT_PX);
+    let visible_range = virtual_row_window(
+        total_rows,
+        scroll_offset_y_px,
+        viewport_height_px,
+        VIRTUAL_OVERSCAN_ROWS,
+        None,
+    );
+    if visible_range.is_empty() {
+        return None;
+    }
+
+    let first_line = layout_cache.wrapped_rows[visible_range.start].line_index;
+    let last_line = layout_cache.wrapped_rows[visible_range.end - 1].line_index;
+    let visible_line_count = last_line.saturating_sub(first_line).saturating_add(1);
+    Some(ViewportRenderMetrics {
+        first_visible_line: u32::try_from(first_line).unwrap_or(u32::MAX),
+        visible_line_count: u32::try_from(visible_line_count).unwrap_or(u32::MAX),
+        wrap_chunk: layout_cache.wrap_chunk,
+        viewport_height_px: viewport_height_px.round() as u32,
+    })
+}
+
+fn resolve_viewport_mutation(
+    previous: Option<ViewportRenderMetrics>,
+    current: ViewportRenderMetrics,
+) -> Option<EditorViewportMutation> {
+    let Some(previous) = previous else {
+        return Some(EditorViewportMutation::Scroll);
+    };
+
+    if previous.wrap_chunk != current.wrap_chunk {
+        return Some(EditorViewportMutation::WrapWidthChanged);
+    }
+    if previous.viewport_height_px != current.viewport_height_px
+        || previous.visible_line_count != current.visible_line_count
+    {
+        return Some(EditorViewportMutation::Resize);
+    }
+    if previous.first_visible_line != current.first_visible_line {
+        return Some(EditorViewportMutation::Scroll);
+    }
+    None
+}
+
+fn apply_editor_event_to_layout_cache(
+    cache: &mut Option<ViewerLayoutCache>,
+    active_editor: &ActiveEditorSnapshot,
+    wrap_chunk: usize,
+    event: &EditorToRuntimeEvent,
+) {
+    match event {
+        EditorToRuntimeEvent::Snapshot { .. } => {
+            *cache = None;
+        }
+        EditorToRuntimeEvent::Delta { dirty_lines, .. } => {
+            apply_dirty_line_invalidation(cache, active_editor, wrap_chunk, dirty_lines);
+        }
+        EditorToRuntimeEvent::SelectionChanged { .. } => {}
+        EditorToRuntimeEvent::ViewportInvalidated {
+            dirty_lines,
+            reason,
+            ..
+        } => {
+            if matches!(
+                reason,
+                ViewportInvalidationReason::DocumentChanged
+                    | ViewportInvalidationReason::LayoutChanged
+            ) {
+                apply_dirty_line_invalidation(cache, active_editor, wrap_chunk, dirty_lines);
+            }
+        }
+    }
 }
