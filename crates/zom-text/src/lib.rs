@@ -7,7 +7,7 @@ use std::{fmt, ops::Range};
 use line_index::LineIndex;
 use ropey::Rope;
 use zom_protocol::Position;
-use zom_text_tokens::{LineEnding, CR_BYTE, CR_CHAR, LF_BYTE, LF_CHAR};
+use zom_text_tokens::{CR_BYTE, CR_CHAR, LF_BYTE, LF_CHAR, LineEnding};
 
 /// 轻量文本缓冲区，提供基础插入/删除与位置映射能力。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -297,11 +297,7 @@ fn line_len(text: &str, target_line: u32) -> u32 {
         }
     }
 
-    if line == target_line {
-        column
-    } else {
-        0
-    }
+    if line == target_line { column } else { 0 }
 }
 
 /// 按编辑器视角拆分文本行，并保留空行。
@@ -366,8 +362,8 @@ pub fn detect_line_ending(text: &str) -> LineEnding {
 #[cfg(test)]
 mod tests {
     use super::{
-        detect_line_ending, offset_to_position, position_to_offset, split_lines, TextBuffer,
-        TextBufferError,
+        TextBuffer, TextBufferError, detect_line_ending, offset_to_position, position_to_offset,
+        split_lines,
     };
     use zom_protocol::Position;
 

@@ -131,5 +131,4 @@ pub enum CommandKind {
     WorkspaceTabActivatePrev,
     /// 激活下一个标签页。
     WorkspaceTabActivateNext,
-
 }

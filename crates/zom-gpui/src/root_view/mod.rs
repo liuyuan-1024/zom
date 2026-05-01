@@ -17,8 +17,7 @@ use zom_runtime::state::{DesktopAppState, DesktopToastLevel, DesktopUiAction};
 use crate::{
     assets,
     components::{
-        WorkspaceView, bar::traffic_lights, settings_overlay, status_bar, title_bar,
-        toast_overlay,
+        WorkspaceView, bar::traffic_lights, settings_overlay, status_bar, title_bar, toast_overlay,
     },
     theme::{color, size},
 };

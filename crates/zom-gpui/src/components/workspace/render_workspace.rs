@@ -195,11 +195,7 @@ impl WorkspaceView {
     }
 
     /// 渲染停靠区并组装对应界面节点。
-    fn render_right_dock(
-        &self,
-        target: FocusTarget,
-        right_width: f32,
-    ) -> Stateful<Div> {
+    fn render_right_dock(&self, target: FocusTarget, right_width: f32) -> Stateful<Div> {
         let mut right_dock = div()
             .id("workspace-right-dock")
             .w(px(right_width))

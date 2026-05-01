@@ -74,17 +74,14 @@ const RIGHT_PANEL_MAIN_GROUP: [PanelChipSpec; 2] = [
     },
 ];
 
-const RIGHT_PANEL_AUX_GROUP: [PanelChipSpec; 1] = [
-    PanelChipSpec {
-        id: "status-panel-shortcut",
-        target: FocusTarget::ShortcutPanel,
-        icon: AppIcon::Keyboard,
-        label: "快捷键",
-    },
-];
+const RIGHT_PANEL_AUX_GROUP: [PanelChipSpec; 1] = [PanelChipSpec {
+    id: "status-panel-shortcut",
+    target: FocusTarget::ShortcutPanel,
+    icon: AppIcon::Keyboard,
+    label: "快捷键",
+}];
 
-const RIGHT_PANEL_GROUPS: [&[PanelChipSpec]; 2] =
-    [&RIGHT_PANEL_MAIN_GROUP, &RIGHT_PANEL_AUX_GROUP];
+const RIGHT_PANEL_GROUPS: [&[PanelChipSpec]; 2] = [&RIGHT_PANEL_MAIN_GROUP, &RIGHT_PANEL_AUX_GROUP];
 
 /// 渲染底部状态栏。
 pub(crate) fn render(state: &DesktopAppState) -> impl IntoElement {

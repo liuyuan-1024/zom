@@ -124,12 +124,10 @@ impl DesktopAppState {
                 if let Err(error) =
                     draft_store::remove_draft(&self.project_root, &active_tab.relative_path)
                 {
-                    self.publish_toast_event(
-                        DesktopToastEvent::new(
-                            DesktopToastLevel::Warning,
-                            format!("草稿清理失败 {} ({error})", active_tab.relative_path),
-                        ),
-                    );
+                    self.publish_toast_event(DesktopToastEvent::new(
+                        DesktopToastLevel::Warning,
+                        format!("草稿清理失败 {} ({error})", active_tab.relative_path),
+                    ));
                 }
                 DesktopToastEvent::new(
                     DesktopToastLevel::Info,
@@ -163,12 +161,10 @@ impl DesktopAppState {
         if let Err(error) =
             draft_store::store_draft(&self.project_root, &relative_path, &state.text())
         {
-            self.publish_toast_event(
-                DesktopToastEvent::new(
-                    DesktopToastLevel::Warning,
-                    format!("草稿自动保存失败 {} ({error})", relative_path),
-                ),
-            );
+            self.publish_toast_event(DesktopToastEvent::new(
+                DesktopToastLevel::Warning,
+                format!("草稿自动保存失败 {} ({error})", relative_path),
+            ));
         }
     }
 
@@ -193,12 +189,10 @@ impl DesktopAppState {
             }
             Ok(_) => {}
             Err(error) => {
-                self.publish_toast_event(
-                    DesktopToastEvent::new(
-                        DesktopToastLevel::Warning,
-                        format!("草稿读取失败 {} ({error})", relative_path),
-                    ),
-                );
+                self.publish_toast_event(DesktopToastEvent::new(
+                    DesktopToastLevel::Warning,
+                    format!("草稿读取失败 {} ({error})", relative_path),
+                ));
             }
         }
     }

@@ -1,4 +1,3 @@
-
 use regex::RegexBuilder;
 use zom_protocol::{
     EditorAction, EditorInvocation, FindReplaceAction, FindReplaceRequest, Position, Selection,
@@ -1245,11 +1244,8 @@ mod tests {
 
         for case in cases {
             let state = state_with_selection(case.text, Selection::caret(case.cursor));
-            let result = apply_editor_invocation(
-                &state,
-                case.cursor,
-                &EditorInvocation::from(case.action),
-            );
+            let result =
+                apply_editor_invocation(&state, case.cursor, &EditorInvocation::from(case.action));
 
             assert_eq!(result.state.text(), case.expected_text, "{}", case.name);
             assert_eq!(result.cursor, case.expected_cursor, "{}", case.name);

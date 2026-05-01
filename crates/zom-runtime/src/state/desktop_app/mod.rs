@@ -14,9 +14,9 @@ mod command;
 mod editor_command;
 mod focus;
 mod history;
-mod toast;
 mod project;
 mod tabs;
+mod toast;
 
 #[cfg(test)]
 mod tests;
@@ -62,10 +62,7 @@ pub struct DesktopToastEvent {
 
 impl DesktopToastEvent {
     /// 创建一条常规 toast 事件。
-    pub fn new(
-        level: DesktopToastLevel,
-        message: impl Into<String>,
-    ) -> Self {
+    pub fn new(level: DesktopToastLevel, message: impl Into<String>) -> Self {
         Self {
             level,
             message: message.into(),

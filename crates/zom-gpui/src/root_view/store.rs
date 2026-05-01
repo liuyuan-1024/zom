@@ -7,8 +7,8 @@ use zom_protocol::{
     Keystroke, OverlayTarget, WorkspaceAction,
 };
 use zom_runtime::state::{
-    ActiveEditorSnapshot, DesktopAppState, DesktopToastEvent, DesktopToastLevel,
-    DesktopUiAction, FileTreeState, PaneState, PanelDock,
+    ActiveEditorSnapshot, DesktopAppState, DesktopToastEvent, DesktopToastLevel, DesktopUiAction,
+    FileTreeState, PaneState, PanelDock,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -283,11 +283,7 @@ impl AppStore {
     /// 追加“用户触发”的toast，并记录待自动清除的 toast id。
     ///
     /// 用户toast会打上 `is_user_initiated`，以便 runtime 决定是否弹 toast。
-    fn push_user_toast(
-        &mut self,
-        level: DesktopToastLevel,
-        message: impl Into<String>,
-    ) {
+    fn push_user_toast(&mut self, level: DesktopToastLevel, message: impl Into<String>) {
         let message = message.into();
         let event = DesktopToastEvent::new(level, message).is_user_initiated();
         let toast_id = self.core.app.publish_toast_event(event);
@@ -295,11 +291,7 @@ impl AppStore {
     }
 
     /// 追加调试toast（通常不自动弹窗），用于快捷键链路诊断。
-    fn push_debug_toast(
-        &mut self,
-        level: DesktopToastLevel,
-        message: impl Into<String>,
-    ) {
+    fn push_debug_toast(&mut self, level: DesktopToastLevel, message: impl Into<String>) {
         let message = message.into();
         let event = DesktopToastEvent::new(level, message);
         let toast_id = self.core.app.publish_toast_event(event);

@@ -5,6 +5,8 @@
 pub mod command;
 /// 通用方向与坐标轴定义。
 pub mod direction;
+/// 编辑器事件与 runtime 交互契约。
+pub mod editor_events;
 /// 焦点目标定义。
 pub mod focus;
 /// 强类型 ID 定义。
@@ -22,11 +24,16 @@ pub mod selection;
 pub use command::{
     CommandInvocation, CommandKind, CommandKindId, CommandKindSpec, CommandMeta, EditorAction,
     EditorInvocation, FileTreeAction, FindReplaceAction, FindReplaceRequest, TabAction,
-    WorkspaceAction, command_kind, command_kind_id, command_kind_spec,
-    command_kind_spec_by_id, command_kind_spec_by_kind, command_kind_specs, command_meta,
+    WorkspaceAction, command_kind, command_kind_id, command_kind_spec, command_kind_spec_by_id,
+    command_kind_spec_by_kind, command_kind_specs, command_meta,
 };
 /// 统一导出方向类型。
 pub use direction::{Axis, Direction};
+/// 统一导出编辑器事件契约。
+pub use editor_events::{
+    DocumentVersion, EditorToRuntimeEvent, LineRange, RuntimeErrorCode, RuntimeRequestId,
+    RuntimeResponse, RuntimeToEditorRequest, TextDelta, ViewportInvalidationReason, ViewportState,
+};
 /// 统一导出焦点、面板停靠位与悬浮层目标。
 pub use focus::{FocusTarget, OverlayTarget, PanelDock, ToolBarSide, dock_targets, panel_dock};
 /// 统一导出强类型 ID。

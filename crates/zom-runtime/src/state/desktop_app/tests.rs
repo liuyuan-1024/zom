@@ -13,9 +13,7 @@ use zom_protocol::{
 };
 use zom_text_tokens::LineEnding;
 
-use super::{
-    DesktopAppState, DesktopToastEvent, DesktopToastLevel, DesktopUiAction,
-};
+use super::{DesktopAppState, DesktopToastEvent, DesktopToastLevel, DesktopUiAction};
 use crate::state::{FileTreeNodeKind, PanelDock};
 
 /// 为测试场景构造快捷键命令触发输入，统一使用全局作用域解析路径。
@@ -1159,18 +1157,17 @@ fn info_event_with_user_initiated_triggers_toast() {
 fn repeated_toast_events_generate_new_ids() {
     let mut state = DesktopAppState::from_current_workspace();
 
-    state.publish_toast_event(
-        DesktopToastEvent::new(DesktopToastLevel::Warning, "indexing slow"),
-    );
-    let first_toast_id = state
-        .active_toast
-        .as_ref()
-        .map(|toast| toast.id);
+    state.publish_toast_event(DesktopToastEvent::new(
+        DesktopToastLevel::Warning,
+        "indexing slow",
+    ));
+    let first_toast_id = state.active_toast.as_ref().map(|toast| toast.id);
     state.clear_active_toast();
 
-    state.publish_toast_event(
-        DesktopToastEvent::new(DesktopToastLevel::Warning, "indexing slow"),
-    );
+    state.publish_toast_event(DesktopToastEvent::new(
+        DesktopToastLevel::Warning,
+        "indexing slow",
+    ));
 
     assert_ne!(
         first_toast_id,
@@ -1182,9 +1179,10 @@ fn repeated_toast_events_generate_new_ids() {
 /// 清空当前 toast 命令应立即移除展示中的提示。
 fn clear_active_toast_clears_current_toast() {
     let mut state = DesktopAppState::from_current_workspace();
-    state.publish_toast_event(
-        DesktopToastEvent::new(DesktopToastLevel::Error, "fatal issue"),
-    );
+    state.publish_toast_event(DesktopToastEvent::new(
+        DesktopToastLevel::Error,
+        "fatal issue",
+    ));
     assert!(state.active_toast.is_some());
 
     state.clear_active_toast();

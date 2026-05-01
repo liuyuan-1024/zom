@@ -148,9 +148,7 @@ impl FocusTarget {
             | Self::OutlinePanel
             | Self::ProjectSearchPanel
             | Self::LanguageServersPanel => Some(ToolBarSide::Left),
-            Self::TerminalPanel
-            | Self::DebugPanel
-            | Self::ShortcutPanel => {
+            Self::TerminalPanel | Self::DebugPanel | Self::ShortcutPanel => {
                 Some(ToolBarSide::Right)
             }
             _ => None,
@@ -214,7 +212,10 @@ mod tests {
     #[test]
     /// 计算停靠区结果。
     fn panel_dock_mapping_matches_catalog() {
-        assert_eq!(panel_dock(FocusTarget::ShortcutPanel), Some(PanelDock::Right));
+        assert_eq!(
+            panel_dock(FocusTarget::ShortcutPanel),
+            Some(PanelDock::Right)
+        );
         assert_eq!(
             panel_dock(FocusTarget::TerminalPanel),
             Some(PanelDock::Bottom)

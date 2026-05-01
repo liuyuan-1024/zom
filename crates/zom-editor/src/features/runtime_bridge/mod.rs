@@ -1,5 +1,7 @@
-
-use zom_protocol::Selection;
+use zom_protocol::{
+    DocumentVersion, EditorToRuntimeEvent, LineRange, RuntimeErrorCode, RuntimeRequestId,
+    RuntimeResponse, RuntimeToEditorRequest, Selection, TextDelta,
+};
 
 use crate::features::editing::{
     state::{DocVersion, EditorState},
@@ -9,74 +11,6 @@ use crate::features::editing::{
     },
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RuntimeRequestId(String);
-
-impl RuntimeRequestId {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<&str> for RuntimeRequestId {
-    fn from(value: &str) -> Self {
-        Self::new(value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EditorToRuntimeEvent {
-    Snapshot {
-        state: EditorState,
-    },
-    Delta {
-        version: DocVersion,
-        changes: Vec<TextChange>,
-        selection: Selection,
-    },
-    SelectionChanged {
-        version: DocVersion,
-        selection: Selection,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RuntimeToEditorRequest {
-    RequestSnapshot,
-    ApplyEdits {
-        request_id: RuntimeRequestId,
-        expected_version: DocVersion,
-        changes: Vec<TextChange>,
-        selection: Option<Selection>,
-    },
-    SetSelection {
-        request_id: RuntimeRequestId,
-        expected_version: Option<DocVersion>,
-        selection: Selection,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RuntimeResponse {
-    Snapshot(EditorToRuntimeEvent),
-    Ack {
-        request_id: RuntimeRequestId,
-        version: DocVersion,
-        event: Option<EditorToRuntimeEvent>,
-    },
-    Error {
-        request_id: RuntimeRequestId,
-        code: RuntimeErrorCode,
-        current_version: DocVersion,
-    },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RuntimeErrorCode {
-    VersionMismatch,
-    InvalidRequest,
-}
-
 pub fn dispatch_runtime_request(
     state: &mut EditorState,
     request: RuntimeToEditorRequest,
@@ -84,7 +18,9 @@ pub fn dispatch_runtime_request(
     match request {
         RuntimeToEditorRequest::RequestSnapshot => {
             RuntimeResponse::Snapshot(EditorToRuntimeEvent::Snapshot {
-                state: state.clone(),
+                version: protocol_version(state.version()),
+                text: state.text(),
+                selection: state.selection(),
             })
         }
         RuntimeToEditorRequest::ApplyEdits {
@@ -92,16 +28,25 @@ pub fn dispatch_runtime_request(
             expected_version,
             changes,
             selection,
-        } => apply_runtime_transaction(
-            state,
-            request_id,
-            TransactionSpec {
-                changes,
-                selection,
-                expected_version: Some(expected_version),
-                meta: TransactionMeta::from_source(TransactionSource::Runtime),
-            },
-        ),
+        } => {
+            let Some(changes) = protocol_changes_to_editor(changes) else {
+                return RuntimeResponse::Error {
+                    request_id,
+                    code: RuntimeErrorCode::InvalidRequest,
+                    current_version: protocol_version(state.version()),
+                };
+            };
+            apply_runtime_transaction(
+                state,
+                request_id,
+                TransactionSpec {
+                    changes,
+                    selection,
+                    expected_version: Some(editor_version(expected_version)),
+                    meta: TransactionMeta::from_source(TransactionSource::Runtime),
+                },
+            )
+        }
         RuntimeToEditorRequest::SetSelection {
             request_id,
             expected_version,
@@ -112,7 +57,7 @@ pub fn dispatch_runtime_request(
             TransactionSpec {
                 changes: Vec::new(),
                 selection: Some(selection),
-                expected_version,
+                expected_version: expected_version.map(editor_version),
                 meta: TransactionMeta::from_source(TransactionSource::Runtime),
             },
         ),
@@ -127,62 +72,180 @@ fn apply_runtime_transaction(
     // 编辑域错误在桥接层被压缩为协议错误码，避免向 runtime 泄露内部细节。
     match apply_transaction(state, spec) {
         Ok(result) => {
-            let event = event_from_transaction(&result);
+            let event = event_from_transaction(state, &result);
             *state = result.state;
             RuntimeResponse::Ack {
                 request_id,
-                version: state.version(),
+                version: protocol_version(state.version()),
                 event,
             }
         }
         Err(ApplyError::VersionMismatch { current_version }) => RuntimeResponse::Error {
             request_id,
             code: RuntimeErrorCode::VersionMismatch,
-            current_version,
+            current_version: protocol_version(current_version),
         },
         Err(ApplyError::OverlappingChanges { .. } | ApplyError::InvalidChangeRange { .. }) => {
             RuntimeResponse::Error {
                 request_id,
                 code: RuntimeErrorCode::InvalidRequest,
-                current_version: state.version(),
+                current_version: protocol_version(state.version()),
             }
         }
     }
 }
 
-fn event_from_transaction(result: &TransactionResult) -> Option<EditorToRuntimeEvent> {
+fn event_from_transaction(
+    previous_state: &EditorState,
+    result: &TransactionResult,
+) -> Option<EditorToRuntimeEvent> {
     // 同时发生文本与选区变更时优先发 Delta，避免重复事件。
     if result.is_document_changed {
+        let dirty_lines =
+            collect_dirty_lines_for_changes(previous_state, &result.state, &result.applied_changes);
         return Some(EditorToRuntimeEvent::Delta {
-            version: result.state.version(),
-            changes: result.applied_changes.clone(),
+            version: protocol_version(result.state.version()),
+            changes: editor_changes_to_protocol(&result.applied_changes),
             selection: result.state.selection(),
+            dirty_lines,
         });
     }
 
     if result.is_selection_changed {
+        let dirty_lines =
+            collect_dirty_lines_for_selection(previous_state.selection(), result.state.selection());
         return Some(EditorToRuntimeEvent::SelectionChanged {
-            version: result.state.version(),
+            version: protocol_version(result.state.version()),
             selection: result.state.selection(),
+            dirty_lines,
         });
     }
 
     None
 }
 
+fn protocol_changes_to_editor(changes: Vec<TextDelta>) -> Option<Vec<TextChange>> {
+    changes
+        .into_iter()
+        .map(|change| {
+            let from = usize::try_from(change.from).ok()?;
+            let to = usize::try_from(change.to).ok()?;
+            Some(TextChange::new(from, to, change.insert))
+        })
+        .collect()
+}
+
+fn editor_changes_to_protocol(changes: &[TextChange]) -> Vec<TextDelta> {
+    changes
+        .iter()
+        .map(|change| {
+            TextDelta::new(
+                u64::try_from(change.from).expect("usize should fit into u64"),
+                u64::try_from(change.to).expect("usize should fit into u64"),
+                change.insert.clone(),
+            )
+        })
+        .collect()
+}
+
+fn protocol_version(version: DocVersion) -> DocumentVersion {
+    DocumentVersion::from(version.get())
+}
+
+fn editor_version(version: DocumentVersion) -> DocVersion {
+    DocVersion::from(version.get())
+}
+
+fn collect_dirty_lines_for_changes(
+    previous_state: &EditorState,
+    next_state: &EditorState,
+    changes: &[TextChange],
+) -> Vec<LineRange> {
+    let ranges = changes
+        .iter()
+        .map(|change| {
+            let start_line = previous_state.offset_to_position(change.from).line;
+            let end_line_before = previous_state.offset_to_position(change.to).line;
+            let mapped_end = map_offset(change.to, changes).min(next_state.len());
+            let end_line_after = next_state.offset_to_position(mapped_end).line;
+            let end_line_exclusive = end_line_before.max(end_line_after).saturating_add(1);
+            LineRange::new(start_line, end_line_exclusive)
+        })
+        .collect();
+    merge_line_ranges(ranges)
+}
+
+fn collect_dirty_lines_for_selection(previous: Selection, next: Selection) -> Vec<LineRange> {
+    let ranges = vec![
+        LineRange::new(
+            previous.anchor().line,
+            previous.anchor().line.saturating_add(1),
+        ),
+        LineRange::new(
+            previous.active().line,
+            previous.active().line.saturating_add(1),
+        ),
+        LineRange::new(next.anchor().line, next.anchor().line.saturating_add(1)),
+        LineRange::new(next.active().line, next.active().line.saturating_add(1)),
+    ];
+    merge_line_ranges(ranges)
+}
+
+fn merge_line_ranges(mut ranges: Vec<LineRange>) -> Vec<LineRange> {
+    if ranges.is_empty() {
+        return ranges;
+    }
+    ranges.sort_by_key(|range| (range.start_line, range.end_line_exclusive));
+    let mut merged: Vec<LineRange> = Vec::with_capacity(ranges.len());
+    for range in ranges {
+        if let Some(last) = merged.last_mut()
+            && range.start_line <= last.end_line_exclusive
+        {
+            last.end_line_exclusive = last.end_line_exclusive.max(range.end_line_exclusive);
+            continue;
+        }
+        merged.push(range);
+    }
+    merged
+}
+
+fn map_offset(offset: usize, changes: &[TextChange]) -> usize {
+    let mut mapped = offset;
+    for change in changes {
+        let removed = change.to - change.from;
+        let added = change.insert.len();
+        if mapped < change.from {
+            continue;
+        }
+        if mapped >= change.to {
+            let delta = added as isize - removed as isize;
+            mapped = shift_offset(mapped, delta);
+            continue;
+        }
+        mapped = change.from + added;
+    }
+    mapped
+}
+
+fn shift_offset(offset: usize, delta: isize) -> usize {
+    if delta >= 0 {
+        offset + delta as usize
+    } else {
+        offset.saturating_sub(delta.unsigned_abs())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use zom_protocol::{Position, Selection};
 
-    use crate::features::editing::{
-        state::{DocVersion, EditorState},
-        transaction::TextChange,
-    };
+    use crate::features::editing::state::{DocVersion, EditorState};
 
     use super::{
         EditorToRuntimeEvent, RuntimeErrorCode, RuntimeRequestId, RuntimeResponse,
         RuntimeToEditorRequest, dispatch_runtime_request,
     };
+    use zom_protocol::{DocumentVersion, LineRange, TextDelta, ViewportInvalidationReason};
 
     #[test]
     fn request_snapshot_returns_full_state() {
@@ -192,7 +255,11 @@ mod tests {
 
         assert_eq!(
             response,
-            RuntimeResponse::Snapshot(EditorToRuntimeEvent::Snapshot { state })
+            RuntimeResponse::Snapshot(EditorToRuntimeEvent::Snapshot {
+                version: DocumentVersion::zero(),
+                text: "abc".to_string(),
+                selection: Selection::caret(Position::zero()),
+            })
         );
     }
 
@@ -203,8 +270,8 @@ mod tests {
             &mut state,
             RuntimeToEditorRequest::ApplyEdits {
                 request_id: RuntimeRequestId::new("req-1"),
-                expected_version: DocVersion::zero(),
-                changes: vec![TextChange::new(1, 1, "X")],
+                expected_version: DocumentVersion::zero(),
+                changes: vec![TextDelta::new(1, 1, "X")],
                 selection: Some(Selection::caret(Position::new(0, 2))),
             },
         );
@@ -215,11 +282,12 @@ mod tests {
             response,
             RuntimeResponse::Ack {
                 request_id: RuntimeRequestId::new("req-1"),
-                version: DocVersion::from(1),
+                version: DocumentVersion::from(1),
                 event: Some(EditorToRuntimeEvent::Delta {
-                    version: DocVersion::from(1),
-                    changes: vec![TextChange::new(1, 1, "X")],
+                    version: DocumentVersion::from(1),
+                    changes: vec![TextDelta::new(1, 1, "X")],
                     selection: Selection::caret(Position::new(0, 2)),
+                    dirty_lines: vec![LineRange::new(0, 1)],
                 }),
             }
         );
@@ -232,8 +300,8 @@ mod tests {
             &mut state,
             RuntimeToEditorRequest::ApplyEdits {
                 request_id: RuntimeRequestId::new("req-2"),
-                expected_version: DocVersion::from(9),
-                changes: vec![TextChange::new(1, 1, "X")],
+                expected_version: DocumentVersion::from(9),
+                changes: vec![TextDelta::new(1, 1, "X")],
                 selection: None,
             },
         );
@@ -243,7 +311,76 @@ mod tests {
             RuntimeResponse::Error {
                 request_id: RuntimeRequestId::new("req-2"),
                 code: RuntimeErrorCode::VersionMismatch,
-                current_version: DocVersion::zero(),
+                current_version: DocumentVersion::zero(),
+            }
+        );
+    }
+
+    #[test]
+    fn set_selection_emits_dirty_lines_for_old_and_new_caret_rows() {
+        let mut state = EditorState::from_text("a\nb\nc");
+        let response = dispatch_runtime_request(
+            &mut state,
+            RuntimeToEditorRequest::SetSelection {
+                request_id: RuntimeRequestId::new("req-3"),
+                expected_version: Some(DocumentVersion::zero()),
+                selection: Selection::caret(Position::new(2, 1)),
+            },
+        );
+
+        assert_eq!(
+            response,
+            RuntimeResponse::Ack {
+                request_id: RuntimeRequestId::new("req-3"),
+                version: DocumentVersion::from(1),
+                event: Some(EditorToRuntimeEvent::SelectionChanged {
+                    version: DocumentVersion::from(1),
+                    selection: Selection::caret(Position::new(2, 1)),
+                    dirty_lines: vec![LineRange::new(0, 1), LineRange::new(2, 3)],
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn invalid_u64_offsets_are_rejected_as_invalid_request() {
+        let mut state = EditorState::from_text("ab");
+        let response = dispatch_runtime_request(
+            &mut state,
+            RuntimeToEditorRequest::ApplyEdits {
+                request_id: RuntimeRequestId::new("req-4"),
+                expected_version: DocumentVersion::zero(),
+                changes: vec![TextDelta::new(u64::MAX, u64::MAX, "X")],
+                selection: None,
+            },
+        );
+
+        assert_eq!(
+            response,
+            RuntimeResponse::Error {
+                request_id: RuntimeRequestId::new("req-4"),
+                code: RuntimeErrorCode::InvalidRequest,
+                current_version: DocumentVersion::zero(),
+            }
+        );
+    }
+
+    #[test]
+    fn viewport_invalidated_contract_variant_is_constructible() {
+        let event = EditorToRuntimeEvent::ViewportInvalidated {
+            version: DocumentVersion::from(7),
+            dirty_lines: vec![LineRange::new(10, 20)],
+            viewport: None,
+            reason: ViewportInvalidationReason::LayoutChanged,
+        };
+
+        assert_eq!(
+            event,
+            EditorToRuntimeEvent::ViewportInvalidated {
+                version: DocumentVersion::from(7),
+                dirty_lines: vec![LineRange::new(10, 20)],
+                viewport: None,
+                reason: ViewportInvalidationReason::LayoutChanged,
             }
         );
     }

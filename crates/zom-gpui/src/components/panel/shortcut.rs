@@ -1,11 +1,12 @@
 //! 快捷键面板视图。
 
 use gpui::{
-    App, Context, FocusHandle, Focusable, InteractiveElement, ParentElement, Render, Styled,
-    StatefulInteractiveElement, Window, div, px, rgb,
+    App, Context, FocusHandle, Focusable, InteractiveElement, ParentElement, Render,
+    StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
 use zom_input::{
-    ShortcutScope, default_shortcut_registry, format_keystroke_for_display, format_scope_for_display,
+    ShortcutScope, default_shortcut_registry, format_keystroke_for_display,
+    format_scope_for_display,
 };
 use zom_protocol::FocusTarget;
 

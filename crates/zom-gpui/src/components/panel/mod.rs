@@ -7,8 +7,8 @@ mod language_servers;
 mod outline;
 mod placeholder;
 mod project_search;
-mod shortcut;
 mod shell;
+mod shortcut;
 mod terminal;
 
 pub(crate) use debug::DebugPanel;

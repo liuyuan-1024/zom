@@ -1,4 +1,3 @@
-
 use zom_protocol::Selection;
 use zom_text::{TextBuffer, TextBufferError};
 
@@ -94,9 +93,7 @@ pub struct TransactionResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApplyError {
     /// 请求携带的 `expected_version` 已过期。
-    VersionMismatch {
-        current_version: DocVersion,
-    },
+    VersionMismatch { current_version: DocVersion },
     /// 按原始坐标排序后，两个变更区间发生重叠。
     OverlappingChanges {
         previous_to: Offset,
