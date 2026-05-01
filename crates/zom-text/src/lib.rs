@@ -1,10 +1,13 @@
 //! zom-text 的文本缓冲区抽象与基础操作。
 
+mod line_index;
+
 use std::{fmt, ops::Range};
 
+use line_index::LineIndex;
 use ropey::Rope;
 use zom_protocol::Position;
-use zom_text_tokens::{CR_BYTE, CR_CHAR, LF_BYTE, LF_CHAR, LineEnding};
+use zom_text_tokens::{LineEnding, CR_BYTE, CR_CHAR, LF_BYTE, LF_CHAR};
 
 /// 轻量文本缓冲区，提供基础插入/删除与位置映射能力。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -23,9 +26,7 @@ pub enum TextBufferError {
         len: usize,
     },
     /// 偏移不在 UTF-8 字符边界，无法安全切片/替换。
-    NotCharBoundary {
-        offset: usize,
-    },
+    NotCharBoundary { offset: usize },
 }
 
 impl TextBuffer {
@@ -89,80 +90,33 @@ impl TextBuffer {
     ///
     /// 列语义按“可视列”计算：`\r` 不计列宽，`\n` 终止当前行。
     pub fn position_to_offset(&self, position: Position) -> usize {
-        let target = self.clamp_position(position);
-        let line_index = target.line as usize;
-        let line_start_char = self.rope.line_to_char(line_index);
-        let line = self.rope.line(line_index);
-
-        let mut visual_column = 0u32;
-        let mut relative_char_index = 0usize;
-        for ch in line.chars() {
-            if ch == LF_CHAR || visual_column == target.column {
-                break;
-            }
-            if ch != CR_CHAR {
-                visual_column = visual_column.saturating_add(1);
-            }
-            relative_char_index += 1;
-        }
-
-        self.rope
-            .char_to_byte(line_start_char + relative_char_index)
+        LineIndex::new(&self.rope).position_to_offset(position)
     }
 
     /// 将字节偏移映射到行列坐标，越界时返回 `None`。
     ///
     /// 仅当偏移不超过文本末尾才可映射；列统计同样忽略 `\r`。
     pub fn offset_to_position(&self, offset: usize) -> Option<Position> {
-        if offset > self.rope.len_bytes() {
-            return None;
-        }
-        let char_index = self.rope.byte_to_char(offset);
-        let line_index = self.rope.char_to_line(char_index);
-        let line_start_char = self.rope.line_to_char(line_index);
-        let mut column = 0u32;
-        for ch in self.rope.slice(line_start_char..char_index).chars() {
-            if ch != CR_CHAR {
-                column = column.saturating_add(1);
-            }
-        }
-        Some(Position::new(
-            u32::try_from(line_index).unwrap_or(u32::MAX),
-            column,
-        ))
+        LineIndex::new(&self.rope).offset_to_position(offset)
     }
 
     /// 文档总行数（最少为 1）。
     ///
     /// 与大多数编辑器一致，空文本视为单行空行。
     pub fn line_count(&self) -> u32 {
-        u32::try_from(self.rope.len_lines()).unwrap_or(u32::MAX)
+        LineIndex::new(&self.rope).line_count()
     }
 
     /// 指定行的可视列宽（忽略 `\r`，不计入换行符）。
     pub fn line_len(&self, line: u32) -> u32 {
-        let line_index = line as usize;
-        if line_index >= self.rope.len_lines() {
-            return 0;
-        }
-        let mut column = 0u32;
-        for ch in self.rope.line(line_index).chars() {
-            match ch {
-                LF_CHAR => break,
-                CR_CHAR => {}
-                _ => column = column.saturating_add(1),
-            }
-        }
-        column
+        LineIndex::new(&self.rope).line_len(line)
     }
 
     /// 将位置夹紧到当前文档范围。
     ///
     /// 先夹行再夹列，避免把列夹到错误行宽。
     pub fn clamp_position(&self, position: Position) -> Position {
-        let line = position.line.min(self.line_count().saturating_sub(1));
-        let column = position.column.min(self.line_len(line));
-        Position::new(line, column)
+        LineIndex::new(&self.rope).clamp_position(position)
     }
 
     /// 返回指定字节偏移对应“前一个字符”的起始偏移。
@@ -343,7 +297,11 @@ fn line_len(text: &str, target_line: u32) -> u32 {
         }
     }
 
-    if line == target_line { column } else { 0 }
+    if line == target_line {
+        column
+    } else {
+        0
+    }
 }
 
 /// 按编辑器视角拆分文本行，并保留空行。
@@ -408,8 +366,8 @@ pub fn detect_line_ending(text: &str) -> LineEnding {
 #[cfg(test)]
 mod tests {
     use super::{
-        TextBuffer, TextBufferError, detect_line_ending, offset_to_position, position_to_offset,
-        split_lines,
+        detect_line_ending, offset_to_position, position_to_offset, split_lines, TextBuffer,
+        TextBufferError,
     };
     use zom_protocol::Position;
 

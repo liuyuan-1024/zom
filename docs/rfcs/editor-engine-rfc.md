@@ -1,115 +1,124 @@
-# Zom IDE 编辑引擎 RFC（v0.1）
+# Zom IDE 编辑引擎 RFC（v0.2）
 
 - 状态：Draft
 - 作者：Zom Team
-- 日期：2026-05-01
+- 日期：2026-05-02
 
 ## 1. 背景
 
-Zom IDE 进入编辑引擎建设阶段。当前优先目标是先建立“稳定、可扩展、可测试”的编辑内核（Editor Core），为后续语法高亮、LSP、重构、调试等能力提供统一基础。
+Zom 编辑引擎已具备可运行主链路，但“能力在正确层实现”与“可持续演进接口”仍需收口。本文在 v0.1 基础上补齐现状核实、缺口列表与两周执行计划，作为 M0~M5 的落地基线。
 
-## 2. 目标（Phase 1）
+## 2. 范围与目标（Phase 1）
 
-本阶段仅交付最小可用编辑引擎（MVP）：
-
-1. 支持单文件文本编辑（UTF-8）。
-2. 支持插入、删除、替换、粘贴等基础编辑动作。
-3. 支持撤销/重做（Undo/Redo）。
-4. 支持单光标与多光标（基础行为）。
-5. 支持可视区模型（Viewport）和增量渲染信号。
-6. 在 10MB 纯文本文件上保持可接受交互性能。
+1. 支持单文件 UTF-8 文本编辑。
+2. 支持插入、删除、替换、查找替换、撤销、重做。
+3. 支持单光标稳定行为。
+4. 建立 Viewport/Delta 事件协议，避免整文档刷新耦合。
+5. 在 1MB~10MB 文档下保持稳定交互性能并可回归。
 
 ## 3. 非目标（Phase 1 不做）
 
-1. 不实现协作编辑（CRDT/OT）。
-2. 不实现重构、调试、代码导航等高级 IDE 能力。
-3. 不把语言服务逻辑耦合到编辑内核。
-4. 不实现完整插件系统（仅预留事件接口）。
+1. 协作编辑（CRDT/OT）。
+2. 重构、调试、代码导航等高级 IDE 能力。
+3. 语言服务逻辑与编辑内核耦合。
+4. 完整插件系统。
+5. 多光标编辑（`SelectionSet` 接入与跨选区事务语义）。
 
-## 4. 核心设计
+## 4. 核心设计约束
 
 ### 4.1 数据结构
 
-采用 **Rope** 作为文本缓冲核心结构，辅以行索引（Line Index）。
+采用 **Rope** 作为文本缓冲核心结构（当前实现：`ropey`）。
 
-- 选择理由：
-1. 对高频插入/删除友好，适合 IDE 交互。
-2. 撤销/重做实现自然（基于操作命令）。
-3. 对大文件可避免频繁整体拷贝。
-4. 便于后续做增量渲染与分段读取，降低大文本拼接成本。
+实现约束：
+1. 内部定位单位统一为 UTF-8 字节 offset。
+2. 所有编辑入口都必须通过字符边界校验。
+3. 文本归一化策略：编辑内核使用 LF 表示，文件 I/O 侧负责 LF/CRLF 还原。
 
-- 实现约束（MVP）：
-1. 统一使用 UTF-8 字节 offset 作为内部定位单位。
-2. 叶子节点按固定上限分块（如 1-4KB），避免极端碎片化。
-3. `LineIndex` 与 `Rope` 同步增量更新；先保证正确性，再做批量优化。
+### 4.2 分层职责（强约束）
 
-### 4.2 引擎模块
+1. `zom-protocol`：语义与稳定契约。
+2. `zom-text`：文本存储与位置映射。
+3. `zom-editor`：编辑行为、事务、历史策略（Undo/Redo）。
+4. `zom-runtime`：命令编排与外部副作用（剪贴板、项目/保存、UI action）。
+5. `zom-gpui`：渲染与交互绑定。
 
-1. `TextBuffer`：维护文本内容与 Rope。
-2. `LineIndex`：维护 offset <-> (line, column) 映射。
-3. `SelectionModel`：维护光标与选区（含多光标集合）。
-4. `CommandStack`：统一封装编辑命令与 Undo/Redo。
-5. `ViewportModel`：维护可视窗口状态与脏区更新。
-6. `EditorEvents`：对 UI 和语言服务发出增量事件。
+### 4.3 编辑命令模型
 
-### 4.3 命令模型
+所有文本变更收敛到事务：
+1. `insert(offset, text)`
+2. `delete(range)`
+3. `replace(range, text)`
 
-所有编辑行为统一收敛为命令：
+撤销/重做由 `zom-editor` 的历史栈能力驱动，`zom-runtime` 仅按 buffer 分发调用。
 
-- `insert(offset, text)`
-- `delete(range)`
-- `replace(range, text)`
+### 4.4 LineIndex 既定方案（Phase 1 定稿）
 
-Undo/Redo 基于命令逆操作实现，保证行为可回放、可测试。
+1. `LineIndex` 在 `zom-text` 作为独立模块实现（与 `TextBuffer` 解耦为“组合关系”）。
+2. `TextBuffer` 的位置映射相关 API（`position_to_offset` / `offset_to_position` / `line_count` / `line_len` / `clamp_position`）统一委托 `LineIndex`。
+3. `LineIndex` 保持只读语义，内部以 `Rope` 视图计算；Phase 1 不引入额外可变缓存结构。
+4. Phase 1 的优先级为“正确性优先 + 可替换接口先稳定”；Phase 1.5 再评估增量缓存优化。
 
-## 5. 性能与质量目标
+## 5. 现状核实（截至 2026-05-02）
 
-### 5.1 性能目标（MVP）
+### 5.1 已完成
 
-1. 打开 10MB 文本文件：可进入可编辑状态（目标 < 2s，开发机基线）。
-2. 连续输入：无明显卡顿（主线程帧掉落可感知阈值以下）。
-3. 单次粘贴 10,000 行：可完成并保持可继续编辑。
+1. Rope 文本核心与 UTF-8 边界校验已落地。
+2. 事务模型（版本校验、变更排序、选区映射）已落地。
+3. Undo/Redo 核心能力已下沉到 `zom-editor`，runtime 仅做编排。
+4. `SelectAll` 已归位到 `zom-editor` 行为层，不再由 runtime 特判。
+5. 现有测试通过：`zom-editor`、`zom-runtime` 编辑链路稳定。
 
-### 5.2 质量目标
+### 5.2 未完成（缺口）
 
-1. 单元测试覆盖 `TextBuffer`、`LineIndex`、`CommandStack` 核心路径。
-2. 引入随机编辑序列测试（fuzz/property-based）验证一致性。
-3. 对关键状态转移输出调试日志（可开关）。
+1. `ViewportModel` 与 `EditorEvents` 仍未形成核心协议层，UI 仍偏快照驱动。
+2. property/fuzz 随机编辑序列测试尚未接入。
 
-## 6. 对外接口（草案）
+## 6. 两周执行计划（可直接开工）
 
-```ts
-interface EditorCore {
-  apply(command: EditCommand): void;
-  undo(): void;
-  redo(): void;
-  getText(range?: Range): string;
-  getSelections(): Selection[];
-  setSelections(selections: Selection[]): void;
-  getViewport(): ViewportState;
-  on(event: EditorEvent, handler: (payload: unknown) => void): () => void;
-}
-```
+### Week 1：核心一致性收口
 
-## 7. 里程碑（首周）
+1. 单光标事务与选区语义收口：补齐边界测试矩阵（ASCII/CJK/emoji/组合字符/跨行编辑）。
+2. 明确并实现 `LineIndex` 策略（独立模块）。
+3. 把 runtime 仍残留的编辑语义特判清零（仅保留副作用编排）。
+4. 为 Phase 2 多光标预留协议扩展点（不实现多光标行为）。
 
-1. 完成 `TextBuffer(Rope)` 最小实现。
-2. 完成 `LineIndex` 与基础定位 API。
-3. 完成 `insert/delete/replace + undo/redo`。
-4. 完成最小基准测试（打开、输入、粘贴）。
-5. 用简易 UI 壳联通输入 -> 引擎 -> 渲染事件链路。
+门禁：
+1. `cargo test -p zom-editor -p zom-runtime` 全绿。
+2. 单光标边界用例补齐并无回归。
+3. `LineIndex` 验收项通过（见第 7 节补充条款）。
+
+### Week 2：增量渲染协议与性能门禁
+
+1. 定义 `EditorEvents` 最小协议：`Delta`、`SelectionChanged`、`ViewportInvalidated`。
+2. 定义 `ViewportState` 与脏区边界（逻辑行范围）。
+3. runtime/gpui 从“整文本快照刷新”迁移到“事件驱动 + 局部重建”。
+4. 增加 fuzz/property-based 编辑序列一致性验证。
+
+门禁：
+1. `./scripts/bench-editor-core.sh` 稳定产出并通过阈值。
+2. 大文本编辑无整屏闪烁，滚动与输入无明显退化。
+
+## 7. 验收与回滚策略
+
+1. 每项能力都要满足：可演示 + 自动化测试 + 回滚路径。
+2. 新增能力必须有降级开关或兼容旧路径。
+3. 若跨 3+ crate 修改，必须先做边界复盘再合并。
+
+LineIndex 补充验收项：
+1. `zom-text` 中 `TextBuffer` 对外映射行为与改造前保持一致（既有测试全通过）。
+2. 新增或更新测试覆盖：ASCII、CJK、emoji、组合字符、CRLF/LF 场景下的位置映射一致性。
+3. `cargo test -p zom-text -p zom-editor -p zom-runtime` 全绿。
+4. `./scripts/bench-editor-core.sh` 结果不劣于当前基线（至少保持 `PASS`）。
 
 ## 8. 风险与缓解
 
-1. **风险**：行索引更新逻辑复杂，易出现边界 bug。  
-   **缓解**：先做正确性优先实现，再做增量优化。
-2. **风险**：多光标语义不一致。  
-   **缓解**：先定义冲突规则（排序、合并、去重）并固化测试。
-3. **风险**：性能问题后置发现。  
-   **缓解**：首周即引入基准并持续跟踪。
+1. 增量事件协议不稳定导致 UI 抖动。  
+   缓解：先以最小事件集落地，逐步扩展事件类型。
+2. 性能回归后置发现。  
+   缓解：每次合并前执行性能基线并留存结果。
 
 ## 9. 待决策问题
 
-1. 文本缓冲是否需要在接口层预留可替换实现（当前默认 Rope）？
-2. 增量语法高亮在 Phase 1.5 引入还是 Phase 2 引入？
-3. 事件协议是否直接对齐后续 LSP 适配层？
+1. 事件协议是否直接对齐未来 LSP 适配层的数据形态？
+2. 多光标能力计划在哪个里程碑进入（建议 Phase 2）？
