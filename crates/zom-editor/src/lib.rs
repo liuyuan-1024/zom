@@ -1,8 +1,8 @@
-
 mod features;
 mod viewer_layout;
 
 pub use features::editing::{
+    history::{EditorHistory, should_record_history},
     invocation::{InvocationResult, apply_editor_invocation},
     state::{DocVersion, EditorState, Offset},
     transaction::{

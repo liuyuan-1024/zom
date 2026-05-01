@@ -30,13 +30,13 @@ impl DesktopAppState {
                 .redo_editor_history(active_buffer_id, &current_state)
                 .unwrap_or_else(|| current_state.clone()),
             EditorInvocation::Action(EditorAction::Copy) => {
-                if let Some(selected_text) = selected_text(&current_state) {
+                if let Some(selected_text) = current_state.selected_text() {
                     self.pending_ui_action = Some(DesktopUiAction::WriteClipboard(selected_text));
                 }
                 current_state.clone()
             }
             EditorInvocation::Action(EditorAction::Cut) => {
-                if let Some(selected_text) = selected_text(&current_state) {
+                if let Some(selected_text) = current_state.selected_text() {
                     self.pending_ui_action = Some(DesktopUiAction::WriteClipboard(selected_text));
                     self.apply_editor_change_with_history(
                         active_buffer_id,
@@ -56,9 +56,6 @@ impl DesktopAppState {
                 self.focus_editor();
                 self.pending_ui_action = Some(DesktopUiAction::OpenFindReplace);
                 current_state.clone()
-            }
-            EditorInvocation::Action(EditorAction::SelectAll) => {
-                self.select_all_in_editor(&current_state)
             }
             _ => self.apply_editor_change_with_history(active_buffer_id, &current_state, command),
         };
@@ -85,20 +82,4 @@ impl DesktopAppState {
         }
         result.state
     }
-}
-
-/// 提取当前选区文本；无选区或区间非法时返回 `None`。
-///
-/// 这里使用 UTF-8 字节切片，依赖 `EditorState` 的位置到偏移映射保证边界合法。
-fn selected_text(state: &EditorState) -> Option<String> {
-    let selection = state.selection();
-    if selection.is_caret() {
-        return None;
-    }
-    let from = state.position_to_offset(selection.start());
-    let to = state.position_to_offset(selection.end());
-    if from >= to {
-        return None;
-    }
-    state.text().get(from..to).map(ToOwned::to_owned)
 }

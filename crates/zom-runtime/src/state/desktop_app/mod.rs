@@ -16,7 +16,6 @@ mod focus;
 mod history;
 mod toast;
 mod project;
-mod selection;
 mod tabs;
 
 #[cfg(test)]

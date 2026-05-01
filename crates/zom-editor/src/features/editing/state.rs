@@ -70,6 +70,20 @@ impl EditorState {
         self.selection
     }
 
+    /// 返回当前选区文本；若为 caret 或切片边界异常，则返回 `None`。
+    pub fn selected_text(&self) -> Option<String> {
+        let selection = self.selection();
+        if selection.is_caret() {
+            return None;
+        }
+        let from = self.position_to_offset(selection.start());
+        let to = self.position_to_offset(selection.end());
+        if from >= to {
+            return None;
+        }
+        self.text().get(from..to).map(ToOwned::to_owned)
+    }
+
     /// 逻辑位置转 UTF-8 字节偏移；越界输入按 `TextBuffer` 规则自动钳制。
     pub fn position_to_offset(&self, position: Position) -> Offset {
         self.buffer.position_to_offset(position)
@@ -139,5 +153,23 @@ mod tests {
         let state = EditorState::from_text("ab\n中d");
         let offset = state.position_to_offset(Position::new(1, 1));
         assert_eq!(state.offset_to_position(offset), Position::new(1, 1));
+    }
+
+    #[test]
+    fn selected_text_returns_none_for_caret_and_some_for_range() {
+        let base = EditorState::from_text("abcd");
+        let caret = EditorState::from_parts(
+            base.buffer().clone(),
+            Selection::caret(Position::new(0, 1)),
+            base.version(),
+        );
+        assert_eq!(caret.selected_text(), None);
+
+        let range = EditorState::from_parts(
+            base.buffer().clone(),
+            Selection::new(Position::new(0, 1), Position::new(0, 3)),
+            base.version(),
+        );
+        assert_eq!(range.selected_text().as_deref(), Some("bc"));
     }
 }
