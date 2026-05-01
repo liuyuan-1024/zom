@@ -1166,6 +1166,103 @@ mod tests {
     }
 
     #[test]
+    fn single_cursor_boundary_matrix_covers_ascii_cjk_emoji_combining_and_cross_line() {
+        struct BoundaryCase {
+            name: &'static str,
+            text: &'static str,
+            cursor: zom_protocol::Position,
+            action: EditorAction,
+            expected_text: &'static str,
+            expected_cursor: zom_protocol::Position,
+        }
+
+        let cases = [
+            BoundaryCase {
+                name: "ascii move right",
+                text: "ab",
+                cursor: zom_protocol::Position::new(0, 0),
+                action: EditorAction::MoveRight,
+                expected_text: "ab",
+                expected_cursor: zom_protocol::Position::new(0, 1),
+            },
+            BoundaryCase {
+                name: "ascii delete backward",
+                text: "ab",
+                cursor: zom_protocol::Position::new(0, 1),
+                action: EditorAction::DeleteBackward,
+                expected_text: "b",
+                expected_cursor: zom_protocol::Position::new(0, 0),
+            },
+            BoundaryCase {
+                name: "cjk delete backward removes full scalar",
+                text: "中a",
+                cursor: zom_protocol::Position::new(0, 1),
+                action: EditorAction::DeleteBackward,
+                expected_text: "a",
+                expected_cursor: zom_protocol::Position::new(0, 0),
+            },
+            BoundaryCase {
+                name: "emoji delete forward removes full scalar",
+                text: "🙂a",
+                cursor: zom_protocol::Position::new(0, 0),
+                action: EditorAction::DeleteForward,
+                expected_text: "a",
+                expected_cursor: zom_protocol::Position::new(0, 0),
+            },
+            BoundaryCase {
+                name: "combining mark delete forward removes combining scalar",
+                text: "e\u{301}x",
+                cursor: zom_protocol::Position::new(0, 1),
+                action: EditorAction::DeleteForward,
+                expected_text: "ex",
+                expected_cursor: zom_protocol::Position::new(0, 1),
+            },
+            BoundaryCase {
+                name: "cross-line move right crosses newline",
+                text: "a\nb",
+                cursor: zom_protocol::Position::new(0, 1),
+                action: EditorAction::MoveRight,
+                expected_text: "a\nb",
+                expected_cursor: zom_protocol::Position::new(1, 0),
+            },
+            BoundaryCase {
+                name: "cross-line delete forward removes newline",
+                text: "a\nb",
+                cursor: zom_protocol::Position::new(0, 1),
+                action: EditorAction::DeleteForward,
+                expected_text: "ab",
+                expected_cursor: zom_protocol::Position::new(0, 1),
+            },
+            BoundaryCase {
+                name: "cross-line delete backward removes newline",
+                text: "a\nb",
+                cursor: zom_protocol::Position::new(1, 0),
+                action: EditorAction::DeleteBackward,
+                expected_text: "ab",
+                expected_cursor: zom_protocol::Position::new(0, 1),
+            },
+        ];
+
+        for case in cases {
+            let state = state_with_selection(case.text, Selection::caret(case.cursor));
+            let result = apply_editor_invocation(
+                &state,
+                case.cursor,
+                &EditorInvocation::from(case.action),
+            );
+
+            assert_eq!(result.state.text(), case.expected_text, "{}", case.name);
+            assert_eq!(result.cursor, case.expected_cursor, "{}", case.name);
+            assert_eq!(
+                result.state.selection(),
+                Selection::caret(case.expected_cursor),
+                "{}",
+                case.name
+            );
+        }
+    }
+
+    #[test]
     fn move_right_steps_over_emoji_in_single_command() {
         let state =
             state_with_selection("a🙂b", Selection::caret(zom_protocol::Position::new(0, 1)));
